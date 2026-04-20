@@ -1,0 +1,44 @@
+{
+  "name": "ko-epub-maker",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "keywords": [],
+  "author": "kwon",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "epub-gen": "^0.1.0",
+    "iconv-lite": "^0.7.2",
+    "jschardet": "^3.1.4"
+  },
+  "devDependencies": {
+    "electron": "^41.2.1",
+    "electron-builder": "^26.8.1"
+  },
+  "build": {
+    "appId": "com.kwon.koepubmaker",
+    "productName": "EPUB ko maker",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "portable",
+      "icon": "icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "icon.icns"
+    },
+    "files": [
+      "main.js",
+      "src/**/*",
+      "node_modules/**/*"
+    ]
+  }
+}

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>EPUB Workshop Pro</title>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --primary: #38bdf8; --border: #334155; --text: #f1f5f9; --text-dim: #94a3b8; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); padding: 20px; margin: 0; display: flex; justify-content: center; height: 100vh; overflow: hidden; box-sizing: border-box; }
+        .container { background: var(--card); width: 100%; max-width: 600px; display: flex; flex-direction: column; padding: 24px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+
+        h2 { font-size: 16px; font-weight: 700; color: var(--primary); text-align: center; margin: 0 0 16px; letter-spacing: 2px; }
+
+        .btn-group { display: flex; gap: 8px; margin-bottom: 16px; flex-shrink: 0; }
+        .btn { flex: 1; padding: 10px; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn-secondary { background: var(--border); color: var(--text); }
+        .btn-secondary:hover { background: #475569; }
+        .btn-primary { background: var(--primary); color: #0f172a; }
+        .btn-primary:hover { background: #7dd3fc; }
+        .btn-danger { background: #ef4444; color: white; }
+
+        .file-list-area { flex-grow: 1; margin: 12px 0; overflow-y: auto; border-radius: 8px; background: #0b1120; border: 1px solid var(--border); }
+        .file-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .file-table th { padding: 10px; font-size: 10px; background: #1e293b; color: var(--text-dim); text-align: left; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border); }
+        .file-table td { padding: 8px 10px; border-bottom: 1px solid #1e293b; font-size: 13px; }
+
+        .title-input { width: 100%; border: 1px solid transparent; background: transparent; color: var(--text); outline: none; padding: 4px; border-radius: 4px; }
+        .title-input:focus { border-color: var(--primary); background: #0f172a; }
+
+        .encoding-select { width: 100%; background: #1e293b; color: var(--primary); border: 1px solid var(--border); border-radius: 4px; font-size: 11px; padding: 2px; outline: none; cursor: pointer; }
+
+        .footer-area { margin-top: auto; border-top: 1px solid var(--border); padding-top: 16px; flex-shrink: 0; }
+        .config-box { background: #0b1120; padding: 12px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 12px; }
+
+        .label-flex { display: flex; align-items: center; cursor: pointer; font-size: 12px; margin-bottom: 6px; }
+        .label-flex input { margin-right: 8px; accent-color: var(--primary); }
+
+        #path-selector { font-size: 11px; margin-bottom: 10px; padding: 8px; background: #1e293b; border-radius: 4px; display: none; }
+
+        .progress-info { display: flex; justify-content: space-between; font-size: 11px; color: var(--primary); margin-bottom: 6px; }
+        .progress-bar { width: 100%; height: 8px; background: #334155; border-radius: 4px; overflow: hidden; }
+        .progress-fill { width: 0%; height: 100%; background: var(--primary); transition: 0.3s ease; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>EPUB WORKSHOP PRO</h2>
+
+    <div class="btn-group">
+        <button id="file-btn" class="btn btn-secondary">파일 추가</button>
+        <button id="folder-btn" class="btn btn-secondary">폴더 추가</button>
+    </div>
+
+    <div class="file-list-area">
+        <table class="file-table">
+            <thead>
+                <tr>
+                    <th>도서 제목 (수정 가능)</th>
+                    <th style="width: 100px;">인코딩</th>
+                    <th style="width: 40px;">삭제</th>
+                </tr>
+            </thead>
+            <tbody id="file-tbody">
+                </tbody>
+        </table>
+    </div>
+
+    <div class="footer-area">
+        <div class="config-box">
+            <div style="display: flex; gap: 20px; margin-bottom: 12px;">
+                <label class="label-flex"><input type="radio" name="save-mode" value="same" checked onclick="togglePath(false)"> 원본 폴더</label>
+                <label class="label-flex"><input type="radio" name="save-mode" value="custom" onclick="togglePath(true)"> 특정 폴더</label>
+            </div>
+
+            <div id="path-selector">
+                <span id="path-text" style="color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; max-width: 80%;">경로를 선택하세요</span>
+                <button id="change-path-btn" style="float: right; color: var(--primary); background: none; border: none; text-decoration: underline; cursor: pointer; font-size: 11px;">변경</button>
+            </div>
+
+            <label class="label-flex" style="margin-bottom: 0;">
+                <input type="checkbox" id="clean-check" checked> 빈 줄 제거 및 문단 정돈
+            </label>
+        </div>
+
+        <button id="start-btn" class="btn btn-primary" style="width: 100%; height: 45px; font-size: 14px;">변환 프로세스 시작</button>
+        <button id="cancel-btn" class="btn btn-danger" style="width: 100%; height: 45px; font-size: 14px; display: none;">변환 중단 요청</button>
+
+        <div id="progress-container" style="display: none; margin-top: 15px;">
+            <div class="progress-info">
+                <span id="p-count">0 / 0</span>
+                <span id="p-percent">0%</span>
+            </div>
+            <div class="progress-bar"><div id="bar-fill" class="progress-fill"></div></div>
+            <div id="p-text" style="font-size: 10px; text-align: center; margin-top: 6px; color: var(--text-dim);">준비 중...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const { ipcRenderer } = require('electron');
+    let fileQueue = [];
+    let customPath = '';
+
+    // 버튼 이벤트
+    document.getElementById('file-btn').onclick = () => ipcRenderer.send('open-file-dialog');
+    document.getElementById('folder-btn').onclick = () => ipcRenderer.send('open-folder-dialog');
+    document.getElementById('change-path-btn').onclick = () => ipcRenderer.send('select-output-folder');
+
+    function togglePath(show) {
+        document.getElementById('path-selector').style.display = show ? 'block' : 'none';
+        if (show && !customPath) ipcRenderer.send('select-output-folder');
+    }
+
+    ipcRenderer.on('selected-output-path', (e, path) => {
+        customPath = path;
+        document.getElementById('path-text').innerText = path;
+    });
+
+    // 파일 목록 렌더링
+    ipcRenderer.on('selected-files', (e, files) => {
+        const tbody = document.getElementById('file-tbody');
+        files.forEach(file => {
+            if (!fileQueue.some(item => item.filePath === file.filePath)) {
+                const index = fileQueue.length;
+                fileQueue.push({
+                    ...file,
+                    customTitle: file.fileName.replace(/\.[^/.]+$/, "")
+                });
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><input type="text" class="title-input" value="${fileQueue[index].customTitle}" oninput="fileQueue[${index}].customTitle=this.value"></td>
+                    <td>
+                        <select class="encoding-select" onchange="fileQueue[${index}].encoding=this.value">
+                            <option value="UTF-8" ${file.encoding === 'UTF-8' ? 'selected' : ''}>UTF-8</option>
+                            <option value="CP949" ${file.encoding === 'CP949' ? 'selected' : ''}>CP949 (EUC-KR)</option>
+                            <option value="UTF-16LE" ${file.encoding === 'UTF-16LE' ? 'selected' : ''}>UTF-16LE</option>
+                        </select>
+                    </td>
+                    <td style="text-align: center;"><button style="background: none; border: none; color: #ef4444; cursor: pointer;" onclick="removeFile(this, ${index})">×</button></td>
+                `;
+                tbody.appendChild(tr);
+            }
+        });
+    });
+
+    function removeFile(btn, index) {
+        fileQueue.splice(index, 1);
+        btn.closest('tr').remove();
+    }
+
+    // 변환 시작
+    document.getElementById('start-btn').onclick = () => {
+        if (fileQueue.length === 0) return alert("변환할 파일을 추가해주세요.");
+
+        const saveMode = document.querySelector('input[name="save-mode"]:checked').value;
+        if (saveMode === 'custom' && !customPath) return alert("저장 경로를 선택해주세요.");
+
+        document.getElementById('start-btn').style.display = 'none';
+        document.getElementById('cancel-btn').style.display = 'block';
+        document.getElementById('cancel-btn').disabled = false;
+        document.getElementById('cancel-btn').innerText = "변환 중단 요청";
+        document.getElementById('progress-container').style.display = 'block';
+
+        ipcRenderer.send('start-conversion', {
+            files: fileQueue,
+            removeEmptyLines: document.getElementById('clean-check').checked,
+            outputMode: saveMode,
+            customPath: customPath
+        });
+    };
+
+    // 중단 클릭
+    document.getElementById('cancel-btn').onclick = () => {
+        if (confirm("정말로 모든 작업을 중단하시겠습니까? 현재 진행 중인 파일까지만 저장됩니다.")) {
+            ipcRenderer.send('cancel-conversion');
+            document.getElementById('cancel-btn').disabled = true;
+            document.getElementById('cancel-btn').innerText = "중단 중...";
+        }
+    };
+
+    // 프로그레스 업데이트
+    ipcRenderer.on('progress', (e, data) => {
+        document.getElementById('bar-fill').style.width = data.percent + '%';
+        document.getElementById('p-count').innerText = `${data.current} / ${data.total}`;
+        document.getElementById('p-percent').innerText = data.percent + '%';
+        document.getElementById('p-text').innerText = data.message;
+    });
+
+    // 완료 알림
+    ipcRenderer.on('finished', (e, message) => {
+        alert(message);
+        document.getElementById('start-btn').style.display = 'block';
+        document.getElementById('cancel-btn').style.display = 'none';
+        document.getElementById('progress-container').style.display = 'none';
+        document.getElementById('bar-fill').style.width = '0%';
+    });
+</script>
+</body>
+</html>
