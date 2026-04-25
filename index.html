@@ -30,7 +30,7 @@
         }
 
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        h2 { font-size: 1.2rem; margin: 0; letter-spacing: 4px; font-weight: 900; text-transform: uppercase; }
+        h2 { font-size: 1.2rem; margin: 0; letter-spacing: 4px; font-weight: 900; }
         h2 span { color: var(--primary); }
 
         .config-section {
@@ -86,10 +86,6 @@
         .btn-header-action { background: none; border: 1px solid var(--border); color: var(--text-dim); width: 24px; height: 24px; border-radius: 4px; cursor: pointer; transition: 0.2s; }
         .btn-header-action:hover { border-color: var(--accent); color: var(--text); }
 
-        .valid-icon { font-size: 1rem; font-weight: bold; }
-        .valid-ok { color: var(--success); }
-        .valid-no { color: var(--danger); font-style: normal; }
-
         .status-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; }
         .badge-wait { background: #2d334a; color: var(--text-dim); }
         .badge-done { background: rgba(34, 197, 94, 0.15); color: var(--success); border: 1px solid var(--success); }
@@ -99,8 +95,6 @@
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             color: var(--text-dim); font-size: 0.9rem; text-align: center; pointer-events: none; line-height: 1.6;
         }
-
-        .add-more-hint { padding: 12px; text-align: center; color: var(--accent); font-size: 0.75rem; font-weight: bold; background: rgba(0,0,0,0.2); }
 
         .controls { display: flex; gap: 12px; }
         .btn-start { flex: 1; height: 55px; background: var(--primary); border: none; border-radius: 14px; font-weight: 800; cursor: pointer; color: white; font-size: 1rem; transition: 0.3s; }
@@ -128,18 +122,15 @@
         </div>
         <div class="regex-area" id="regexContainer">
             <div class="regex-label-row">
-                <div class="regex-label">목차 추출 정규식 (줄 단위 매칭)</div>
+                <div class="regex-label">목차 추출 정규식 (본문 오감지 방지 로직 적용)</div>
                 <div id="regexStatus">파일을 추가해 주세요</div>
             </div>
-            <input type="text" id="regexInput" value="^\s*(([<【〔]\s*(\d+[\.\s화]|제?\s*\d+화|자기\s*소개|프롤로그|에필로그|공지|작가).*?[>】〕])|제?\s*\d+화.*?|Chapter\s*\d+.*?|^#\d+$|(?!\d+\.?\d*[MK]\b)\d+[\s\.화][가-힣A-Z].{1,25}(?<![\.\?\!·다자죠요\]\s])(?<!···)$|\(\d+\)$)\s*$">
+            <input type="text" id="regexInput" value="^\s*(([<【〔]\s*(\d+[\.\s화]|제?\s*\d+화|자기\s*소개|프롤로그|에필로그|공지|작가).*?[>】〕])|제?\s*\d+화(?![이가을를은는의])(?:\s.{0,20})?$|Chapter\s*\d+.*?|^[#＃]\d+.*?$|(?!\d+(년|월|일|시|분|초|미터|km|살|차)\b)\d+[\s\.화][가-힣A-Z].{1,25}(?<![\.\?\!·다자죠요\]\s])(?<!···)$|\(\d+\)$)\s*$">
             <div class="regex-guide">
-                <span class="sample-tag tag-all" data-val="^\s*(([<【〔]\s*(\d+[\.\s화]|제?\s*\d+화|자기\s*소개|프롤로그|에필로그|공지|작가).*?[>】〕])|제?\s*\d+화.*?|Chapter\s*\d+.*?|^#\d+$|(?!\d+\.?\d*[MK]\b)\d+[\s\.화][가-힣A-Z].{1,25}(?<![\.\?\!·다자죠요\]\s])(?<!···)$|\(\d+\)$)\s*$">전체 통합 패턴</span>
-                <span class="sample-tag" data-val="^\s*[<【〔].*?[>】〕]\s*$">특수 괄호 (【001】 또는 <공지>)</span>
-                <span class="sample-tag" data-val="^\s*제?\s*\d+\s*화.*$">제~화 (제 10화. 본문 시작)</span>
-                <span class="sample-tag" data-val="^\s*Chapter\s*\d+.*$">영문 챕터 (Chapter 1. Origin)</span>
-                <span class="sample-tag" data-val="^\s*#\d+$\s*">단순 넘버링 (#123)</span>
-                <span class="sample-tag" data-val="^\s*\d+[\s\.화][가-힣A-Z].{1,25}$\s*">일반 제목 (1. 새로운 시작)</span>
-                <span class="sample-tag" data-val="^\s*\(\d+\)$\s*">단순 괄호 숫자 ((1))</span>
+                <span class="sample-tag tag-all" data-val="^\s*(([<【〔]\s*(\d+[\.\s화]|제?\s*\d+화|자기\s*소개|프롤로그|에필로그|공지|작가).*?[>】〕])|제?\s*\d+화(?![이가을를은는의])(?:\s.{0,20})?$|Chapter\s*\d+.*?|^[#＃]\d+.*?$|(?!\d+(년|월|일|시|분|초|미터|km|살|차)\b)\d+[\s\.화][가-힣A-Z].{1,25}(?<![\.\?\!·다자죠요\]\s])(?<!···)$|\(\d+\)$)\s*$">최신 통합 패턴 (본문 서사 방어)</span>
+                <span class="sample-tag" data-val="^\s*[#＃]\d+.*?$">범용 숫자 (#001, 002)</span>
+                <span class="sample-tag" data-val="^\s*[<【〔].*?[>】〕]\s*$">특수 괄호 (【001】)</span>
+                <span class="sample-tag" data-val="^\s*제?\s*\d+\s*화.*$">제~화 (제 10화)</span>
             </div>
         </div>
     </div>
@@ -155,10 +146,7 @@
                         <th class="col-valid">제목 감지</th>
                         <th class="col-status">상태</th>
                         <th class="col-action">
-                            <div style="display:flex; gap:4px; justify-content:center;">
-                                <button id="clearDoneBtn" class="btn-header-action" title="완료 제거">✓</button>
-                                <button id="clearAllBtn" class="btn-header-action" title="전체 제거">✕</button>
-                            </div>
+                            <button id="clearAllBtn" class="btn-header-action" title="전체 제거">✕</button>
                         </th>
                     </tr>
                 </thead>
@@ -168,7 +156,6 @@
                     <tbody id="fileTbody"></tbody>
                 </table>
             </div>
-            <div id="addMoreHint" class="add-more-hint">+ 드래그하거나 클릭하여 파일 추가</div>
         </div>
     </div>
 
