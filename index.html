@@ -122,13 +122,13 @@
         </div>
         <div class="regex-area" id="regexContainer">
             <div class="regex-label-row">
-                <div class="regex-label">목차 추출 정규식 (본문 오감지 방지 로직 적용)</div>
+                <div class="regex-label">목차 추출 정규식 (본문 오감지 방어 적용)</div>
                 <div id="regexStatus">파일을 추가해 주세요</div>
             </div>
-            <input type="text" id="regexInput" value="^\s*(([<【〔]\s*(\d+[\.\s화]|제?\s*\d+화|자기\s*소개|프롤로그|에필로그|공지|작가).*?[>】〕])|제?\s*\d+화(?![이가을를은는의])(?:\s.{0,20})?$|Chapter\s*\d+.*?|^[#＃]\d+.*?$|(?!\d+(년|월|일|시|분|초|미터|km|살|차)\b)\d+[\s\.화][가-힣A-Z].{1,25}(?<![\.\?\!·다자죠요\]\s])(?<!···)$|\(\d+\)$)\s*$">
+            <input type="text" id="regexInput" value="^\s*(([<【〔]\s*(\d+[\.\s화]|제?\s*\d+화|자기\s*소개|프롤로그|에필로그|공지|작가).*?[>】〕])|제?\s*\d+화(?![이가을를은는의])(?:\s.{0,20})?$|Chapter\s*\d+.*?|^[#＃]\d+.*?$|(?!\d+(년|월|일|시|분|초|미터|km|살|차)\b)\d+[\s\.화].{1,30}(?<![\.\?\!·다자죠요\]\s])(?<!···)$|\(\d+\)$)\s*$">
             <div class="regex-guide">
-                <span class="sample-tag tag-all" data-val="^\s*(([<【〔]\s*(\d+[\.\s화]|제?\s*\d+화|자기\s*소개|프롤로그|에필로그|공지|작가).*?[>】〕])|제?\s*\d+화(?![이가을를은는의])(?:\s.{0,20})?$|Chapter\s*\d+.*?|^[#＃]\d+.*?$|(?!\d+(년|월|일|시|분|초|미터|km|살|차)\b)\d+[\s\.화][가-힣A-Z].{1,25}(?<![\.\?\!·다자죠요\]\s])(?<!···)$|\(\d+\)$)\s*$">최신 통합 패턴 (본문 서사 방어)</span>
-                <span class="sample-tag" data-val="^\s*[#＃]\d+.*?$">범용 숫자 (#001, 002)</span>
+                <span class="sample-tag tag-all" data-val="^\s*(([<【〔]\s*(\d+[\.\s화]|제?\s*\d+화|자기\s*소개|프롤로그|에필로그|공지|작가).*?[>】〕])|제?\s*\d+화(?![이가을를은는의])(?:\s.{0,20})?$|Chapter\s*\d+.*?|^[#＃]\d+.*?$|(?!\d+(년|월|일|시|분|초|미터|km|살|차)\b)\d+[\s\.화].{1,30}(?<![\.\?\!·다자죠요\]\s])(?<!···)$|\(\d+\)$)\s*$">통합 패턴</span>
+                <span class="sample-tag" data-val="^\s*[#＃]\d+.*?$">범용 숫자 (#001)</span>
                 <span class="sample-tag" data-val="^\s*[<【〔].*?[>】〕]\s*$">특수 괄호 (【001】)</span>
                 <span class="sample-tag" data-val="^\s*제?\s*\d+\s*화.*$">제~화 (제 10화)</span>
             </div>
@@ -136,7 +136,7 @@
     </div>
 
     <div class="file-list-area" id="dropZone">
-        <div class="empty-msg" id="emptyMsg">텍스트 파일을 이곳에 드래그하거나<br>클릭하여 파일을 추가하세요</div>
+        <div class="empty-msg" id="emptyMsg">텍스트 파일을 드래그하거나<br>클릭하여 추가하세요</div>
         <div class="table-wrapper" id="tableWrapper">
             <table class="file-table-header">
                 <thead>
@@ -146,7 +146,7 @@
                         <th class="col-valid">제목 감지</th>
                         <th class="col-status">상태</th>
                         <th class="col-action">
-                            <button id="clearAllBtn" class="btn-header-action" title="전체 제거">✕</button>
+                            <button type="button" id="clearAllBtn" class="btn-header-action" title="전체 제거">✕</button>
                         </th>
                     </tr>
                 </thead>
@@ -162,8 +162,8 @@
     <input type="file" id="fileInput" multiple accept=".txt" style="display:none">
 
     <div class="controls">
-        <button class="btn-start" id="convertBtn">EPUB 변환 시작</button>
-        <button class="btn-stop" id="stopBtn">중단</button>
+        <button type="button" class="btn-start" id="convertBtn">EPUB 변환 시작</button>
+        <button type="button" class="btn-stop" id="stopBtn">중단</button>
     </div>
 
     <div id="status">파일을 대기 중입니다.</div>
@@ -179,13 +179,16 @@
     const elements = {
         fileInput: document.getElementById('fileInput'), dropZone: document.getElementById('dropZone'),
         fileTbody: document.getElementById('fileTbody'), tableWrapper: document.getElementById('tableWrapper'),
-        emptyMsg: document.getElementById('emptyMsg'), addMoreHint: document.getElementById('addMoreHint'),
-        convertBtn: document.getElementById('convertBtn'), stopBtn: document.getElementById('stopBtn'),
-        regexInput: document.getElementById('regexInput'), regexContainer: document.getElementById('regexContainer'),
-        optToc: document.getElementById('optToc'), statusText: document.getElementById('status'),
-        progFill: document.getElementById('progFill'), progBar: document.getElementById('progBar'),
-        regexStatus: document.getElementById('regexStatus')
+        emptyMsg: document.getElementById('emptyMsg'), convertBtn: document.getElementById('convertBtn'),
+        stopBtn: document.getElementById('stopBtn'), regexInput: document.getElementById('regexInput'),
+        regexContainer: document.getElementById('regexContainer'), optToc: document.getElementById('optToc'),
+        statusText: document.getElementById('status'), progFill: document.getElementById('progFill'),
+        progBar: document.getElementById('progBar'), regexStatus: document.getElementById('regexStatus')
     };
+
+    const escapeXml = (unsafe) => unsafe.replace(/[<>&"']/g, m => ({
+        '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;'
+    }[m]));
 
     function resetStatusUI() {
         elements.statusText.innerText = "파일을 대기 중입니다.";
@@ -196,81 +199,30 @@
         elements.stopBtn.style.display = 'none';
     }
 
-    elements.optToc.onchange = () => {
-        const active = elements.optToc.checked;
-        elements.regexInput.disabled = !active;
-        elements.regexContainer.style.opacity = active ? "1" : "0.3";
-        elements.regexContainer.style.pointerEvents = active ? "auto" : "none";
-        validateAllFiles();
-    };
-
-    document.querySelectorAll('.sample-tag').forEach(tag => {
-        tag.onclick = () => { elements.regexInput.value = tag.getAttribute('data-val'); validateAllFiles(); };
-    });
-
-    elements.regexInput.oninput = () => validateAllFiles();
-
     elements.dropZone.onclick = (e) => {
+        e.preventDefault();
         if (e.target.closest('.btn-header-action') || e.target.closest('.title-input') || e.target.closest('select') || e.target.closest('button')) return;
         elements.fileInput.click();
     };
 
     elements.dropZone.ondragover = (e) => { e.preventDefault(); elements.dropZone.classList.add('drag-over'); };
     elements.dropZone.ondragleave = () => elements.dropZone.classList.remove('drag-over');
-    elements.dropZone.ondrop = (e) => { e.preventDefault(); elements.dropZone.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); };
-    elements.fileInput.onchange = (e) => { handleFiles(e.target.files); elements.fileInput.value = ""; };
+    elements.dropZone.ondrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        elements.dropZone.classList.remove('drag-over');
+        handleFiles(e.dataTransfer.files);
+    };
 
-    async function validateAllFiles() {
-        if (fileQueue.length === 0) {
-            elements.regexStatus.innerText = "파일을 추가해 주세요";
-            return;
-        }
-
-        const useToc = elements.optToc.checked;
-        const pattern = elements.regexInput.value;
-        let re;
-        try { re = new RegExp(pattern); } catch(e) { elements.regexStatus.innerText = "정규식 오류"; return; }
-
-        let validCount = 0;
-        const promises = fileQueue.map(async (item) => {
-            if (!useToc) { item.isValid = 'none'; return; }
-            if (item.state === 'done') return;
-
-            const text = await new Promise(res => {
-                const r = new FileReader();
-                r.onload = e => res(e.target.result.substring(0, 200000));
-                r.readAsText(item.file, item.encoding);
-            });
-
-            const lines = text.split('\n');
-            let found = false;
-            for(let i=0; i<lines.length; i++) {
-                const line = lines[i].trim();
-                if(line && re.test(line) && line.length < 100) {
-                    found = true;
-                    break;
-                }
-            }
-            item.isValid = found ? 'ok' : 'no';
-            if (found) validCount++;
-        });
-
-        await Promise.all(promises);
-
-        if (useToc) {
-            elements.regexStatus.innerText = `총 ${fileQueue.length}개 중 ${validCount}개 파일에서 제목 감지됨`;
-            elements.regexStatus.style.color = (validCount === fileQueue.length) ? "var(--success)" : "var(--warning)";
-        } else {
-            elements.regexStatus.innerText = "목차 추출 기능 꺼짐";
-        }
-        renderList();
-    }
+    elements.fileInput.onchange = (e) => {
+        if (e.target.files.length > 0) handleFiles(e.target.files);
+        elements.fileInput.value = "";
+    };
 
     async function handleFiles(files) {
         if(!isProcessing) resetStatusUI();
         for (const file of Array.from(files)) {
             if (!file.name.toLowerCase().endsWith('.txt')) continue;
-            if (fileQueue.some(item => item.file.name === file.name && item.file.size === file.size)) continue;
             const buffer = await file.slice(0, 32768).arrayBuffer();
             let binary = ""; new Uint8Array(buffer).forEach(b => binary += String.fromCharCode(b));
             let det = jschardet.detect(binary);
@@ -281,27 +233,35 @@
         await validateAllFiles();
     }
 
-    function renderList() {
-        const hasFiles = fileQueue.length > 0;
-        elements.emptyMsg.style.display = hasFiles ? 'none' : 'block';
-        elements.tableWrapper.classList.toggle('active', hasFiles);
-        elements.dropZone.style.borderStyle = hasFiles ? 'solid' : 'dashed';
-        elements.fileTbody.innerHTML = '';
+    async function validateAllFiles() {
+        const pattern = elements.regexInput.value;
+        let re; try { re = new RegExp(pattern); } catch(e) { return; }
 
+        const promises = fileQueue.map(async (item) => {
+            if (item.state === 'done') return;
+            const text = await new Promise(res => {
+                const r = new FileReader();
+                r.onload = e => res(e.target.result.substring(0, 20000));
+                r.readAsText(item.file, item.encoding);
+            });
+            item.isValid = text.split('\n').some(line => line.trim() && re.test(line.trim()) && line.trim().length < 100) ? 'ok' : 'no';
+        });
+        await Promise.all(promises);
+        renderList();
+    }
+
+    function renderList() {
+        elements.emptyMsg.style.display = fileQueue.length ? 'none' : 'block';
+        elements.tableWrapper.classList.toggle('active', fileQueue.length > 0);
+        elements.fileTbody.innerHTML = '';
         fileQueue.forEach((item, i) => {
             const tr = document.createElement('tr');
-            let validHtml = '-';
-            if (item.isValid === 'ok') validHtml = '<span class="valid-icon valid-ok" title="목차 패턴 감지됨">✓</span>';
-            else if (item.isValid === 'no') validHtml = '<span class="valid-icon valid-no" title="패턴을 찾지 못함">!</span>';
-
             tr.innerHTML = `
                 <td class="col-title"><input type="text" class="title-input" value="${item.customTitle}" oninput="fileQueue[${i}].customTitle=this.value"></td>
-                <td class="col-enc"><select onchange="fileQueue[${i}].encoding=this.value; validateAllFiles();" style="background:none; border:none; color:var(--accent); font-size:0.75rem; cursor:pointer; outline:none;">
-                    ${["UTF-8","CP949","EUC-KR","UTF-16LE"].map(e => `<option value="${e}" ${item.encoding===e?'selected':''}>${e}</option>`).join('')}
-                </select></td>
-                <td class="col-valid">${validHtml}</td>
-                <td class="col-status"><span class="status-badge badge-${item.state}">${item.state==='done'?'Done':'Wait'}</span></td>
-                <td class="col-action"><button onclick="event.stopPropagation(); fileQueue.splice(${i},1);renderList();validateAllFiles();" style="background:none; border:none; color:var(--danger); cursor:pointer; font-weight:bold;">✕</button></td>
+                <td class="col-enc">${item.encoding}</td>
+                <td class="col-valid">${item.isValid==='ok'?'<span style="color:var(--success)">✓</span>':'<span style="color:var(--danger)">!</span>'}</td>
+                <td class="col-status"><span class="status-badge badge-${item.state}">${item.state}</span></td>
+                <td class="col-action"><button type="button" onclick="fileQueue.splice(${i},1);renderList();" style="background:none;border:none;color:var(--danger);cursor:pointer;">✕</button></td>
             `;
             elements.fileTbody.appendChild(tr);
         });
@@ -317,75 +277,71 @@
         let currentChapter = { title: "시작", lines: [] };
         const customRegex = useAutoToc ? new RegExp(userRegex) : null;
 
-        for (let i = 0; i < rawLines.length; i++) {
-            const line = rawLines[i].trim();
-            let isTitle = false;
-            if (useAutoToc && line && customRegex.test(line) && line.length < 100) {
-                isTitle = true;
-            }
-            if (isTitle) {
+        rawLines.forEach((line, i) => {
+            const trimmed = line.trim();
+            if (useAutoToc && trimmed && customRegex.test(trimmed) && trimmed.length < 100) {
                 if (currentChapter.lines.length > 0) chapters.push(currentChapter);
-                currentChapter = { title: line, lines: [] };
-                continue;
+                currentChapter = { title: trimmed, lines: [] };
+            } else {
+                if (trimmed !== "" || !useTrim) currentChapter.lines.push(trimmed);
             }
-            if (line !== "") currentChapter.lines.push(line);
-            else if (useTrim && i + 1 < rawLines.length && rawLines[i+1].trim() === "") {
-                currentChapter.lines.push(""); while (i+1 < rawLines.length && rawLines[i+1].trim() === "") i++;
-            } else if (!useTrim) currentChapter.lines.push("");
-        }
+        });
         chapters.push(currentChapter);
 
         const oebps = zip.folder("OEBPS");
         const manifest = [], spine = [], nav = [], ncx = [];
         chapters.forEach((ch, idx) => {
             const fname = `ch_${idx}.xhtml`;
-            const body = ch.lines.map(l => l ? `<p>${l.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}</p>` : `<p><br/></p>`).join('\n');
-            const html = `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ko"><head><title>${ch.title}</title><style>body{font-family:sans-serif;line-height:1.7;padding:5% 7%;word-break:break-all;} h2{border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:20px;}</style></head><body><h2 id="p${idx}">${ch.title}</h2>${body}</body></html>`;
+            const safeTitle = escapeXml(ch.title);
+            const body = ch.lines.map(l => l ? `<p>${escapeXml(l)}</p>` : `<p><br/></p>`).join('\n');
+            const html = `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ko"><head><title>${safeTitle}</title><style>body{font-family:sans-serif;line-height:1.7;padding:5% 7%;word-break:break-all;} h2{border-bottom:1px solid #eee; padding-bottom:10px;}</style></head><body><h2>${safeTitle}</h2>${body}</body></html>`;
             oebps.file(fname, html);
             manifest.push(`<item id="c${idx}" href="${fname}" media-type="application/xhtml+xml"/>`);
             spine.push(`<itemref idref="c${idx}"/>`);
-            nav.push(`<li><a href="${fname}#p${idx}">${ch.title}</a></li>`);
-            ncx.push(`<navPoint id="n${idx}" playOrder="${idx+1}"><navLabel><text>${ch.title}</text></navLabel><content src="${fname}"/></navPoint>`);
+            nav.push(`<li><a href="${fname}">${safeTitle}</a></li>`);
+            ncx.push(`<navPoint id="n${idx}" playOrder="${idx+1}"><navLabel><text>${safeTitle}</text></navLabel><content src="${fname}"/></navPoint>`);
         });
+
         oebps.file("nav.xhtml", `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>TOC</title></head><body><nav epub:type="toc"><h1>목차</h1><ol>${nav.join('\n')}</ol></nav></body></html>`);
-        oebps.file("toc.ncx", `<?xml version="1.0" encoding="UTF-8"?><ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1"><head><meta name="dtb:uid" content="uuid"/><meta name="dtb:depth" content="1"/></head><docTitle><text>${title}</text></docTitle><navMap>${ncx.join('\n')}</navMap></ncx>`);
-        oebps.file("content.opf", `<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">u${crypto.randomUUID()}</dc:identifier><dc:title>${title}</dc:title><dc:language>ko</dc:language><meta property="dcterms:modified">${new Date().toISOString().replace(/\.\d+Z$/,"Z")}</meta></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>${manifest.join('\n')}</manifest><spine toc="ncx">${spine.join('\n')}</spine></package>`);
+        oebps.file("toc.ncx", `<?xml version="1.0" encoding="UTF-8"?><ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1"><head><meta name="dtb:uid" content="uuid"/></head><docTitle><text>${escapeXml(title)}</text></docTitle><navMap>${ncx.join('\n')}</navMap></ncx>`);
+        oebps.file("content.opf", `<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">u${crypto.randomUUID()}</dc:identifier><dc:title>${escapeXml(title)}</dc:title><dc:language>ko</dc:language><meta property="dcterms:modified">${new Date().toISOString().replace(/\.\d+Z$/,"Z")}</meta></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>${manifest.join('\n')}</manifest><spine toc="ncx">${spine.join('\n')}</spine></package>`);
+
         return await zip.generateAsync({ type: "blob", mimeType: "application/epub+zip", compression: "DEFLATE" });
     }
 
     elements.convertBtn.onclick = async () => {
-        if (isProcessing || fileQueue.length === 0) return;
+        if (isProcessing || !fileQueue.length) return;
         isProcessing = true; shouldStop = false;
         elements.convertBtn.disabled = true; elements.stopBtn.style.display = 'block'; elements.progBar.style.display = 'block';
         const regValue = elements.regexInput.value, useTrim = document.getElementById('optTrim').checked,
               useAutoToc = elements.optToc.checked, useZip = document.getElementById('optZip').checked;
         const finalZip = useZip ? new JSZip() : null;
-        let count = 0;
+
         for (let i = 0; i < fileQueue.length; i++) {
             if (shouldStop) break;
             const item = fileQueue[i]; if (item.state === 'done') continue;
-            elements.statusText.innerText = `변환 중: ${item.customTitle}`;
-            elements.progFill.style.width = `${((i+1)/fileQueue.length)*100}%`;
+            item.state = 'ing'; renderList();
             try {
                 const text = await new Promise(res => { const r = new FileReader(); r.onload = e => res(e.target.result); r.readAsText(item.file, item.encoding); });
                 const blob = await createEpub(item.customTitle, text, useTrim, useAutoToc, regValue);
                 if (useZip) finalZip.file(`${item.customTitle}.epub`, blob);
                 else { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${item.customTitle}.epub`; a.click(); }
-                item.state = 'done'; count++; renderList();
-            } catch (e) { item.state = 'stop'; renderList(); }
+                item.state = 'done';
+            } catch (e) { item.state = 'error'; }
+            elements.progFill.style.width = `${((i+1)/fileQueue.length)*100}%`;
+            renderList();
         }
-        if (useZip && count > 0) {
+        if (useZip) {
             const zipBlob = await finalZip.generateAsync({ type: "blob" });
             const a = document.createElement('a'); a.href = URL.createObjectURL(zipBlob); a.download = `EPUB_COLLECTION.zip`; a.click();
         }
-        elements.statusText.innerText = shouldStop ? "변환 중단됨" : `✅ 완료 (${count}개)`;
-        isProcessing = false; elements.convertBtn.disabled = false; elements.stopBtn.style.display = 'none';
+        resetStatusUI();
+        elements.statusText.innerText = "변환 완료!";
     };
 
     elements.stopBtn.onclick = () => shouldStop = true;
-    document.getElementById('clearDoneBtn').onclick = (e) => { e.stopPropagation(); fileQueue = fileQueue.filter(f => f.state !== 'done'); renderList(); validateAllFiles(); if(!isProcessing) resetStatusUI(); };
-    document.getElementById('clearAllBtn').onclick = (e) => { e.stopPropagation(); if (confirm("전체 삭제하시겠습니까?")) { fileQueue = []; renderList(); resetStatusUI(); elements.regexStatus.innerText = "파일을 추가해 주세요"; } };
-    document.getElementById('sortHeader').onclick = (e) => { e.stopPropagation(); currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc'; fileQueue.sort((a,b) => a.customTitle.localeCompare(b.customTitle, undefined, {numeric:true}) * (currentSortDir === 'asc' ? 1 : -1)); renderList(); };
+    document.getElementById('clearAllBtn').onclick = () => { fileQueue = []; renderList(); resetStatusUI(); };
+    document.querySelectorAll('.sample-tag').forEach(tag => tag.onclick = () => { elements.regexInput.value = tag.dataset.val; validateAllFiles(); });
 </script>
 </body>
 </html>
