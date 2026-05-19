@@ -326,7 +326,7 @@
         </div>
         <div class="regex-area">
             <div class="regex-label-row">
-                <div class="regex-label">목차 추출 정규식 (Flux 아키텍처 및 선언적 UI 적용)</div>
+                <div class="regex-label">목차 추출 정규식</div>
             </div>
             <input type="text" id="regexInput" value="^\s*(([<【〔]\s*(\d+[\.\s화]|제?\s*\d+화|자기\s*소개|프롤로그|에필로그|공지|작가).*?[>】〕])|제?\s*\d+[화회](?![이가을를은는의])(?:\s.{1,70})?$|Chapter\s*\d+.*?|^[#＃]\d+.*?$|(?!\d*\.?\d+\s*(?:년|월|일|시|분|초|미터|km|살|차|퍼센트|%|배|개|명|번|회분|곱하기|x|\*))\d*\.?\d+[\s\.화].{1,70}(?<![고다자죠요]\.)$|\(\d+\)$)\s*$">
         </div>
@@ -372,7 +372,6 @@
      * ==========================================
      * [ITEM 2] 상태 관리소 (State Store)
      * ==========================================
-     * 전역 변수들의 혼재를 막고, 오직 dispatch를 통해 예측 가능하게 상태를 제어합니다.
      */
     class Store {
         constructor(initialState) {
@@ -429,7 +428,6 @@
      * ==========================================
      * [ITEM 3] 선언적 UI 렌더링 함수 (Declarative View)
      * ==========================================
-     * React의 createElement처럼 직관적으로 DOM을 구성하며 XSS를 완벽히 차단합니다.
      */
     function el(tag, attributes = {}, ...children) {
         const element = document.createElement(tag);
@@ -457,9 +455,6 @@
         return element;
     }
 
-    /**
-     * DOM 엘리먼트 캐싱
-     */
     const dom = {
         fileInput: document.getElementById('fileInput'),
         dropZone: document.getElementById('dropZone'),
@@ -478,11 +473,7 @@
         clearAllBtn: document.getElementById('clearAllBtn')
     };
 
-    /**
-     * Store 구독 - 상태 변화에 따른 UI 자동 업데이트
-     */
     store.subscribe((state, action) => {
-        // UI 상태 동기화
         dom.convertBtn.disabled = state.isProcessing;
         dom.stopBtn.style.display = (state.isProcessing && !state.shouldStop) ? 'block' : 'none';
         dom.progBar.style.display = state.isProcessing ? 'block' : 'none';
@@ -492,27 +483,21 @@
         dom.emptyMsg.style.display = state.files.length ? 'none' : 'block';
         dom.tableWrapper.classList.toggle('active', state.files.length > 0);
 
-        // 리스트 재렌더링 (입력 중 포커스 손실을 막기 위해 타이틀 업데이트 시에는 리렌더링 생략)
         if (['ADD_FILES', 'REMOVE_FILE', 'CLEAR_FILES', 'UPDATE_FILE_VALIDITY', 'UPDATE_FILE_STATUS'].includes(action.type)) {
             renderList(state.files);
         }
     });
 
-    /**
-     * 리스트 렌더링 (선언적 UI 적용)
-     */
     function renderList(files) {
         dom.fileTbody.innerHTML = '';
 
         const rows = files.map(item => {
-            // 유효성 체크 뱃지 구성
             let validSpan;
             if (item.isValid === 'ok') validSpan = el('span', { style: { color: 'var(--success)' } }, '✓');
             else if (item.isValid === 'no') validSpan = el('span', { style: { color: 'var(--danger)' } }, '!');
             else validSpan = el('span', { style: { color: 'var(--text-dim)' } }, '-');
 
             return el('tr', {},
-                // 타이틀 입력 (XSS 안전)
                 el('td', { className: 'col-title' },
                     el('input', {
                         type: 'text',
@@ -526,7 +511,6 @@
                 el('td', { className: 'col-status' },
                     el('span', { className: `status-badge badge-${item.state}` }, item.state)
                 ),
-                // 개별 삭제 버튼
                 el('td', { className: 'col-action' },
                     el('button', {
                         type: 'button',
@@ -542,7 +526,9 @@
 
 
     /**
-     * Web Worker 스크립트 (이전 단계 100% 유지)
+     * ==========================================
+     * 스마트 공백 정제 (Smart Trim) 적용 Web Worker
+     * ==========================================
      */
     const workerCode = `
         importScripts("https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js");
@@ -603,22 +589,39 @@
                 const { id, title, content, useTrim, useAutoToc, userRegex } = payload;
                 const parser = new TextParser(userRegex);
                 const rawLines = content.replace(/\\r\\n/g, '\\n').split('\\n');
+
                 const chapters = [];
                 let currentChapter = { title: "시작", lines: [] };
+                let consecutiveEmptyLines = 0; // 빈 줄 카운터 추가
 
                 rawLines.forEach((line, i) => {
                     const trimmed = line.trim();
                     const isTitle = useAutoToc && parser.isTitle(line, i, rawLines);
 
+                    // 제목일 경우: 챕터 구분 후 카운터 리셋
                     if (isTitle) {
                         if (currentChapter.lines.length > 0) chapters.push(currentChapter);
                         currentChapter = { title: trimmed, lines: [] };
+                        consecutiveEmptyLines = 0;
                         return;
                     }
-                    if (trimmed !== "" || !useTrim) {
-                        currentChapter.lines.push(trimmed);
+
+                    // 본문 처리
+                    if (trimmed === "") {
+                        consecutiveEmptyLines++;
+                        // 공백 정제 옵션 켜짐 + 연속된 빈 줄이 1줄 초과일 때 -> 무시 (압축)
+                        if (useTrim && consecutiveEmptyLines > 1) {
+                            return;
+                        }
+                        // HTML 생성 시 <p><br/></p>로 변환되도록 빈 문자열 저장
+                        currentChapter.lines.push("");
+                    } else {
+                        consecutiveEmptyLines = 0;
+                        // 공백 정제 옵션 켜짐: 우측 공백만 날리고 작가가 의도한 들여쓰기(좌측 공백)는 보존
+                        currentChapter.lines.push(useTrim ? line.trimEnd() : line);
                     }
                 });
+
                 chapters.push(currentChapter);
 
                 const zip = new JSZip();
@@ -633,6 +636,8 @@
                 chapters.forEach((ch, idx) => {
                     const fname = "ch_" + idx + ".xhtml";
                     const safeTitle = escapeXml(ch.title);
+
+                    // 빈 문자열인 경우 <br/>로 치환 (위쪽 로직과 연계됨)
                     const bodyHtml = ch.lines.map(l => l ? "<p>" + escapeXml(l) + "</p>" : "<p><br/></p>").join('\\n');
 
                     const htmlContent = '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ko"><head><title>' + safeTitle + '</title><style>body { font-family: sans-serif; line-height: 1.7; padding: 5% 7%; word-break: break-all; } h2 { border-bottom: 1px solid #eee; padding-bottom: 10px; font-size: 1.25em; color: #333; } p { margin: 0.8em 0; text-indent: 0.5em; }</style></head><body><h2>' + safeTitle + '</h2>' + bodyHtml + '</body></html>';
