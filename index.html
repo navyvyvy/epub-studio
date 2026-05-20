@@ -154,7 +154,7 @@
         </div>
 
         <div class="regex-area" id="advancedArea">
-            <div style="font-size: 0.75rem; color: var(--accent); font-weight: 700;">목차 추출 커스텀 정규식</div>
+            <div style="font-size: 0.75rem; color: var(--accent); font-weight: 700;">목차 추출 커스텀 정규식 (승자 독식 파서용)</div>
             <input type="text" id="regexInput" value="^\s*(([<【〔]\s*(\d+[\.\s화]|제?\s*\d+화|자기\s*소개|프롤로그|에필로그|공지|작가).*?[>】〕])|제?\s*\d+[화회](?![이가을를은는의])(?:\s.{1,70})?$|(?:Chapter|Stage|Episode|Ep|Part)\s*\d+.*?|^[#＃]\d+.*?$|(?!\d*\.?\d+\s*(?:년|월|일|시|분|초|미터|km|살|차|퍼센트|%|배|개|명|번|회분|곱하기|x|\*))\d*\.?\d+[\s\.화].{1,70}(?<![고다자죠요]\.)$|\(\d+\)$)\s*$">
         </div>
     </div>
@@ -361,7 +361,7 @@
     }
 
     /**
-     * Web Worker: [최종 병기] 1등 DNA 승자 독식 2-Pass 알고리즘
+     * Web Worker: [최종 병기] 3중 철벽 방어 필터 + 1등 DNA 승자 독식 파서
      */
     const workerCode = `
         importScripts("https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js");
@@ -369,6 +369,7 @@
         class ClusterParser {
             constructor(customRegexStr = null) {
                 this.customRegex = customRegexStr ? new RegExp(customRegexStr, 'i') : null;
+                // 수치/단위 데이터 필터
                 this.bannedRegex = /\\d*\\.?\\d+\\s*(?:년|월|일|시|분|초|미터|km|m|cm|mm|kg|g|살|차|퍼센트|%|배|개|명|번|회분|곱하기|x|\\*|위)/i;
             }
 
@@ -376,13 +377,22 @@
                 const groupCounts = {};
                 const lineData = new Array(lines.length).fill(null);
 
-                // 1-Pass: 각각의 유전자(DNA)를 독립적으로 파악하여 카운팅
+                // 1-Pass: 3중 필터를 통과한 유전자(DNA)만 독립적으로 카운팅
                 for (let i = 0; i < lines.length; i++) {
                     const t = lines[i].trim();
                     if (!t || t.length > 90) continue;
 
-                    if (/^["'”’「『]/.test(t)) continue;
-                    if (/[다요네지음니]\\.$/.test(t) || /[다요네지음니]$/.test(t)) continue; // 서술형 종결어미 완전 배제
+                    // [철벽 방어 1: 대화문 원천 차단] 따옴표, 꺾쇠인용구로 시작하면 무조건 배제
+                    if (/^["'”’「『“‘]/.test(t)) continue;
+
+                    // [철벽 방어 2: 문장형 종결어미 차단] 다,요,네,지,음,니,까,야,라,자,고,대,군,걸,죠,셔로 끝나는 긴 문장 배제
+                    // (정상 제목인 "1화. 귀환하다" 등을 보호하기 위해 길이 15자 초과 조건 부여)
+                    if (/[다요네지음니까야라자고대군걸죠셔][.?!~"”'’\\s]*$/.test(t) && t.length > 15) continue;
+
+                    // [철벽 방어 3: 조사 및 명사 의존 필터] "1화가", "10화 정도" 등 문맥 속 챕터 표기 차단
+                    if (/\\d+\\s*[화회장막편부](?:[이가을를은는에로와과]|에서|으로|부터|까지|쯤|정도|분량)/.test(t)) continue;
+
+                    // 수치 데이터 기호 배제
                     if (this.bannedRegex.test(t)) continue;
 
                     const prevE = (i === 0 || lines[i-1].trim() === "");
@@ -395,7 +405,7 @@
                     if (/^(?:프롤로그|에필로그|외전|공지|작가의\\s*말|서장|종장|프로필)/.test(t)) {
                         matchedGroup = 'SPECIAL';
                     }
-                    // [핵심 변경] 화, 회, 장, 막, 편, 부를 퉁치지 않고 KOR_화, KOR_부 등으로 완벽 분리
+                    // [분류 핵심] 화, 회, 장, 막, 편, 부를 퉁치지 않고 KOR_화, KOR_부 등으로 완벽하게 분리해서 수집
                     else if ((match = t.match(/(?:제\\s*)?\\d+\\s*([화회장막편부])(?:\\]|\\s|:|\\.|-|$)/))) {
                         matchedGroup = 'KOR_' + match[1];
                     } else if ((match = t.match(/^(Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\d+/i))) {
@@ -411,6 +421,7 @@
                     }
 
                     if (matchedGroup) {
+                        // SPECIAL, BRACKET을 제외한 패턴 그룹은 본문 텍스트 간섭을 막기 위해 위아래 공백 요구
                         if (matchedGroup !== 'SPECIAL' && matchedGroup !== 'BRACKET' && !isIsolated) continue;
 
                         groupCounts[matchedGroup] = (groupCounts[matchedGroup] || 0) + 1;
@@ -418,11 +429,12 @@
                     }
                 }
 
-                // 2-Pass: [승자 독식 알고리즘] 카운트가 가장 높은 '단 하나의 유전자'만 1등으로 선정
+                // 2-Pass: [승자 독식 알고리즘] 카운트가 가장 높은 '단 하나의 독립된 유전자'만 1등으로 선정
                 let maxGroup = null;
                 let maxCount = 0;
 
                 for (const [group, count] of Object.entries(groupCounts)) {
+                    // 특수 진영(프롤로그 등)과 커스텀은 승자 경쟁에서 제외 (항상 살림)
                     if (group !== 'SPECIAL' && group !== 'CUSTOM') {
                         if (count > maxCount) {
                             maxCount = count;
