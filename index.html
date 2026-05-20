@@ -31,221 +31,102 @@
             color: var(--text);
         }
 
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+        body { display: flex; justify-content: center; align-items: center; }
 
-        /* 스크롤바 커스텀 */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: var(--scroll-track); }
         ::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
         .container {
-            background: var(--card);
-            width: 720px;
-            height: 920px;
-            display: flex;
-            flex-direction: column;
-            padding: 25px;
-            border-radius: 24px;
-            border: 1px solid var(--border);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            box-sizing: border-box;
+            background: var(--card); width: 760px; height: 920px;
+            display: flex; flex-direction: column; padding: 25px;
+            border-radius: 24px; border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); box-sizing: border-box;
         }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        h2 {
-            font-size: 1.1rem;
-            margin: 0;
-            letter-spacing: 3px;
-            font-weight: 900;
-        }
-
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        h2 { font-size: 1.1rem; margin: 0; letter-spacing: 3px; font-weight: 900; }
         h2 span { color: var(--primary); }
 
         .config-section {
-            background: rgba(255, 255, 255, 0.02);
-            border-radius: 16px;
-            border: 1px solid var(--border);
-            padding: 15px;
-            margin-bottom: 15px;
+            background: rgba(255, 255, 255, 0.02); border-radius: 16px;
+            border: 1px solid var(--border); padding: 15px; margin-bottom: 15px; transition: 0.3s;
         }
 
-        .options-bar {
-            display: flex;
-            gap: 24px;
-            margin-bottom: 12px;
-            font-size: 0.8rem;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 12px;
-            white-space: nowrap;
-        }
+        .options-bar { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
+        .options-group { display: flex; gap: 24px; }
+        .option-item { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
 
-        .option-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            cursor: pointer;
-            user-select: none;
+        .btn-advanced-toggle {
+            font-size: 0.75rem; color: var(--text-dim); background: none; border: none; cursor: pointer;
+            display: flex; align-items: center; gap: 6px; transition: color 0.2s; padding: 0;
+        }
+        .btn-advanced-toggle:hover { color: var(--text); }
+        .btn-advanced-toggle .arrow { transition: transform 0.3s ease; font-size: 0.6rem; }
+        .btn-advanced-toggle.open .arrow { transform: rotate(180deg); }
+
+        .regex-area {
+            display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border);
+            animation: slideDown 0.3s ease-out forwards;
+        }
+        .regex-area.open { display: block; }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         #regexInput {
-            background: #0b0f1a;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text);
-            padding: 8px 12px;
-            font-family: 'Fira Code', monospace;
-            font-size: 0.75rem;
-            outline: none;
-            width: 100%;
-            box-sizing: border-box;
+            background: #0b0f1a; border: 1px solid var(--border); border-radius: 8px; color: var(--text);
+            padding: 8px 12px; font-family: 'Fira Code', monospace; font-size: 0.75rem; outline: none;
+            width: 100%; box-sizing: border-box; margin-top: 8px;
         }
 
         .file-list-area {
-            flex-grow: 1;
-            overflow: hidden;
-            background: #0d111d;
-            border-radius: 16px;
-            border: 2px dashed var(--border);
-            margin-bottom: 15px;
-            position: relative;
-            transition: 0.3s;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
+            flex-grow: 1; overflow: hidden; background: #0d111d; border-radius: 16px;
+            border: 2px dashed var(--border); margin-bottom: 15px; position: relative;
+            display: flex; flex-direction: column; transition: 0.3s;
         }
+        .file-list-area.drag-over { border-color: var(--primary); background: rgba(99, 102, 241, 0.1); border-style: solid; }
 
-        .file-list-area.drag-over {
-            border-color: var(--primary);
-            background: rgba(99, 102, 241, 0.1);
-            border-style: solid;
-        }
-
-        .table-wrapper {
-            display: none;
-            flex-direction: column;
-            height: 100%;
-            width: 100%;
-        }
-
+        .table-wrapper { display: none; flex-direction: column; height: 100%; width: 100%; }
         .table-wrapper.active { display: flex; }
 
-        .file-table-header {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-            background: #1c2336;
-            z-index: 2;
-        }
+        .table-scroll-box { flex-grow: 1; overflow-y: auto; overflow-x: hidden; width: 100%; }
 
-        .file-table-header th {
-            padding: 10px;
-            color: var(--text-dim);
-            font-size: 0.75rem;
-            border-bottom: 1px solid var(--border);
+        .file-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 0.75rem; }
+        .file-table th {
+            position: sticky; top: 0; background: #1c2336; z-index: 2; padding: 10px;
+            color: var(--text-dim); font-size: 0.75rem; border-bottom: 1px solid var(--border);
+            box-shadow: 0 1px 0 var(--border); text-align: center;
         }
+        .file-table td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: middle; background: #0d111d; text-align: center; }
 
-        .table-scroll-box {
-            flex-grow: 1;
-            overflow-y: auto;
-            overflow-x: hidden;
-            width: 100%;
-        }
+        .file-table th.col-title, .file-table td.col-title { text-align: left; padding-left: 15px; }
 
-        .file-table-body {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-            font-size: 0.75rem;
-        }
+        .title-input { background: none; border: none; color: var(--text); width: 100%; outline: none; font-size: 0.75rem; }
 
-        .file-table-body td {
-            padding: 8px;
-            border-bottom: 1px solid var(--border);
-            vertical-align: middle;
-            background: #0d111d;
-        }
-
-        /* [디자인 수정] 밀림 현상 방지를 위해 표지 컬럼 너비 축소 (140px -> 115px) */
-        .col-title { text-align: left; padding-left: 10px; }
-        .col-cover { width: 115px; text-align: center; }
-        .col-enc { width: 80px; text-align: center; }
-        .col-valid { width: 55px; text-align: center; }
-        .col-status { width: 70px; text-align: center; }
-        .col-action { width: 50px; text-align: center; }
-
-        .title-input {
-            background: none;
-            border: none;
-            color: var(--text);
-            width: 100%;
-            outline: none;
-            font-size: 0.75rem;
-        }
-
-        .btn-header-action {
-            background: none;
-            border: 1px solid var(--border);
-            color: var(--text-dim);
-            width: 22px;
-            height: 22px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
+        .btn-header-action { background: none; border: 1px solid var(--border); color: var(--text-dim); width: 22px; height: 22px; border-radius: 4px; cursor: pointer; transition: 0.2s; }
+        .btn-header-action:hover { border-color: var(--accent); color: var(--text); }
 
         .cover-btn-group { display: flex; gap: 4px; justify-content: center; }
-
-        .btn-cover {
-            background: #2d334a;
-            border: 1px solid var(--border);
-            color: var(--text-dim);
-            padding: 3px 8px;
-            font-size: 0.65rem;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
+        .btn-cover { background: #2d334a; border: 1px solid var(--border); color: var(--text-dim); padding: 3px 8px; font-size: 0.65rem; border-radius: 4px; cursor: pointer; transition: 0.2s; }
         .btn-cover:hover { border-color: var(--primary); color: var(--text); }
         .btn-cover.active { background: rgba(34, 197, 94, 0.15); border-color: var(--success); color: var(--success); }
 
-        .status-badge {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 0.6rem;
-            font-weight: 800;
-            text-transform: uppercase;
-        }
-
+        .status-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.6rem; font-weight: 800; text-transform: uppercase; }
         .badge-wait { background: #2d334a; color: var(--text-dim); }
         .badge-done { background: rgba(34, 197, 94, 0.15); color: var(--success); border: 1px solid var(--success); }
         .badge-ing { background: rgba(99, 102, 241, 0.15); color: var(--primary); border: 1px solid var(--primary); }
         .badge-error { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); }
 
-        .empty-msg {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            color: var(--text-dim); font-size: 0.85rem; text-align: center; pointer-events: none;
-        }
+        .empty-msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--text-dim); font-size: 0.85rem; text-align: center; pointer-events: none; }
 
         .controls { display: flex; gap: 10px; }
-
-        .btn-start {
-            flex: 1; height: 50px; background: var(--primary); border: none; border-radius: 12px;
-            font-weight: 800; cursor: pointer; color: white; font-size: 0.95rem; transition: 0.3s;
-        }
+        .btn-start { flex: 1; height: 50px; background: var(--primary); border: none; border-radius: 12px; font-weight: 800; cursor: pointer; color: white; font-size: 0.95rem; transition: 0.3s; }
         .btn-start:hover { background: var(--accent); transform: translateY(-1px); }
         .btn-start:disabled { background: #2d334a; cursor: not-allowed; transform: none; }
-
         .btn-stop { width: 70px; height: 50px; background: transparent; border: 2px solid var(--danger); border-radius: 12px; font-weight: 700; color: var(--danger); cursor: pointer; display: none; }
 
         #status { margin-top: 12px; font-size: 0.8rem; text-align: center; color: var(--text-dim); min-height: 1.2rem; }
@@ -262,32 +143,47 @@
 
     <div class="config-section">
         <div class="options-bar">
-            <label class="option-item"><input type="checkbox" id="optTrim" checked> 공백 정제</label>
-            <label class="option-item"><input type="checkbox" id="optToc" checked> 목차 추출</label>
-            <label class="option-item"><input type="checkbox" id="optZip"> ZIP 일괄 압축</label>
+            <div class="options-group">
+                <label class="option-item"><input type="checkbox" id="optTrim" checked> 공백 정제</label>
+                <label class="option-item"><input type="checkbox" id="optToc" checked> 목차 추출</label>
+                <label class="option-item"><input type="checkbox" id="optZip"> ZIP 일괄 압축</label>
+            </div>
+            <button type="button" class="btn-advanced-toggle" id="btnToggleAdvanced">
+                ⚙️ 고급 설정 <span class="arrow">▼</span>
+            </button>
         </div>
-        <div class="regex-area">
-            <input type="text" id="regexInput" value="^\s*(([<【〔]\s*(\d+[\.\s화]|제?\s*\d+화|자기\s*소개|프롤로그|에필로그|공지|작가).*?[>】〕])|제?\s*\d+[화회](?![이가을를은는의])(?:\s.{1,70})?$|Chapter\s*\d+.*?|^[#＃]\d+.*?$|(?!\d*\.?\d+\s*(?:년|월|일|시|분|초|미터|km|살|차|퍼센트|%|배|개|명|번|회분|곱하기|x|\*))\d*\.?\d+[\s\.화].{1,70}(?<![고다자죠요]\.)$|\(\d+\)$)\s*$">
+
+        <div class="regex-area" id="advancedArea">
+            <div style="font-size: 0.75rem; color: var(--accent); font-weight: 700;">목차 추출 커스텀 정규식</div>
+            <input type="text" id="regexInput" value="^\s*(([<【〔]\s*(\d+[\.\s화]|제?\s*\d+화|자기\s*소개|프롤로그|에필로그|공지|작가).*?[>】〕])|제?\s*\d+[화회](?![이가을를은는의])(?:\s.{1,70})?$|(?:Chapter|Stage|Episode|Ep|Part)\s*\d+.*?|^[#＃]\d+.*?$|(?!\d*\.?\d+\s*(?:년|월|일|시|분|초|미터|km|살|차|퍼센트|%|배|개|명|번|회분|곱하기|x|\*))\d*\.?\d+[\s\.화].{1,70}(?<![고다자죠요]\.)$|\(\d+\)$)\s*$">
         </div>
     </div>
 
     <div class="file-list-area" id="dropZone">
         <div class="empty-msg" id="emptyMsg">텍스트 파일을 드래그하거나 클릭하여 추가하세요</div>
         <div class="table-wrapper" id="tableWrapper">
-            <table class="file-table-header">
-                <thead>
-                    <tr>
-                        <th class="col-title">도서 제목</th>
-                        <th class="col-cover">표지 설정</th>
-                        <th class="col-enc">인코딩</th>
-                        <th class="col-valid">감지</th>
-                        <th class="col-status">상태</th>
-                        <th class="col-action"><button type="button" id="clearAllBtn" class="btn-header-action">✕</button></th>
-                    </tr>
-                </thead>
-            </table>
             <div class="table-scroll-box">
-                <table class="file-table-body"><tbody id="fileTbody"></tbody></table>
+                <table class="file-table">
+                    <colgroup>
+                        <col style="width: auto;">
+                        <col style="width: 125px;">
+                        <col style="width: 85px;">
+                        <col style="width: 60px;">
+                        <col style="width: 75px;">
+                        <col style="width: 45px;">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th class="col-title">도서 제목</th>
+                            <th>표지 설정</th>
+                            <th>인코딩</th>
+                            <th>감지</th>
+                            <th>상태</th>
+                            <th><button type="button" id="clearAllBtn" class="btn-header-action">✕</button></th>
+                        </tr>
+                    </thead>
+                    <tbody id="fileTbody"></tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -304,50 +200,6 @@
 </div>
 
 <script>
-    /**
-     * 메인 스레드 검증용 목차 추출 엔진 클래스 (TextParser)
-     */
-    class TextParser {
-        constructor(customRegexStr = null) {
-            this.customRegex = customRegexStr ? new RegExp(customRegexStr) : null;
-            this.bannedRegex = /\d*\.?\d+\s*(?:년|월|일|시|분|초|미터|km|살|차|퍼센트|%|배|개|명|번|회분|곱하기|x|\*)/i;
-            this.sentenceEndRegex = /[고다자죠요]\.$/;
-        }
-
-        isTitle(line, index, array) {
-            const trimmed = line.trim();
-            if (!trimmed || trimmed.length > 120) return false;
-            if (this.bannedRegex.test(trimmed)) return false;
-
-            let isCandidate = false;
-            if (this.customRegex) {
-                isCandidate = this.customRegex.test(trimmed);
-            } else {
-                const isBracket = /^[<【〔]\s*(\d+[\.\s화]|제?\s*\d+화|자기\s*소개|프롤로그|에필로그|공지|작가).*?[>】〕]/.test(trimmed);
-                const isChapter = /^(?:Chapter\s*\d+|[#＃]\d+)/i.test(trimmed);
-                const isHwaHoe = /^(?:제?\s*\d+[화회])/.test(trimmed) || /^\d*\.?\d+화[\s\.]/.test(trimmed);
-                isCandidate = isBracket || isChapter || isHwaHoe;
-            }
-
-            if (!isCandidate) return false;
-
-            const isHoe = trimmed.includes('회');
-            const isHwaPattern = /^\d*\.?\d+화[\s\.]/.test(trimmed);
-
-            if (isHoe || isHwaPattern) {
-                if (this.sentenceEndRegex.test(trimmed)) return false;
-                const isPrevEmpty = (index === 0 || array[index - 1].trim() === "");
-                const isNextEmpty = (index === array.length - 1 || array[index + 1].trim() === "");
-                return isPrevEmpty && isNextEmpty;
-            }
-
-            return true;
-        }
-    }
-
-    /**
-     * 상태 관리소 Store (Flux Architecture)
-     */
     class Store {
         constructor(initialState) {
             this.state = initialState;
@@ -360,11 +212,11 @@
         }
         reducer(state, action) {
             switch (action.type) {
+                case 'TOGGLE_ADVANCED': return { ...state, isAdvancedOpen: !state.isAdvancedOpen };
                 case 'ADD_FILES': return { ...state, files: [...state.files, ...action.payload] };
                 case 'REMOVE_FILE': return { ...state, files: state.files.filter(f => f.id !== action.payload) };
                 case 'CLEAR_FILES': return { ...state, files: [], progress: 0, statusText: "대기 중" };
                 case 'UPDATE_FILE_TITLE': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, customTitle: action.payload.title } : f) };
-                // 첨부 방식이 사라졌으므로 URL 플래그 복잡성도 간소화
                 case 'UPDATE_FILE_COVER': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, coverBlob: action.payload.blob } : f) };
                 case 'UPDATE_FILE_VALIDITY': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, isValid: action.payload.isValid } : f) };
                 case 'UPDATE_FILE_STATUS': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, state: action.payload.status } : f) };
@@ -378,7 +230,7 @@
         }
     }
 
-    const store = new Store({ files: [], isProcessing: false, shouldStop: false, progress: 0, statusText: "대기 중" });
+    const store = new Store({ files: [], isProcessing: false, shouldStop: false, progress: 0, statusText: "대기 중", isAdvancedOpen: false });
 
     function el(tag, attributes = {}, ...children) {
         const element = document.createElement(tag);
@@ -410,8 +262,12 @@
         statusText: document.getElementById('status'),
         progFill: document.getElementById('progFill'),
         progBar: document.getElementById('progBar'),
-        clearAllBtn: document.getElementById('clearAllBtn')
+        clearAllBtn: document.getElementById('clearAllBtn'),
+        btnToggleAdvanced: document.getElementById('btnToggleAdvanced'),
+        advancedArea: document.getElementById('advancedArea')
     };
+
+    dom.btnToggleAdvanced.onclick = () => store.dispatch({ type: 'TOGGLE_ADVANCED' });
 
     store.subscribe((state, action) => {
         dom.convertBtn.disabled = state.isProcessing;
@@ -422,6 +278,14 @@
         dom.emptyMsg.style.display = state.files.length ? 'none' : 'block';
         dom.tableWrapper.classList.toggle('active', state.files.length > 0);
 
+        if (state.isAdvancedOpen) {
+            dom.advancedArea.classList.add('open');
+            dom.btnToggleAdvanced.classList.add('open');
+        } else {
+            dom.advancedArea.classList.remove('open');
+            dom.btnToggleAdvanced.classList.remove('open');
+        }
+
         if (['ADD_FILES', 'REMOVE_FILE', 'CLEAR_FILES', 'UPDATE_FILE_VALIDITY', 'UPDATE_FILE_STATUS', 'UPDATE_FILE_COVER'].includes(action.type)) {
             renderList(state.files);
         }
@@ -429,7 +293,7 @@
 
     function renderList(files) {
         dom.fileTbody.innerHTML = '';
-        files.forEach((item, i) => {
+        files.forEach((item) => {
             const hasCover = !!item.coverBlob;
 
             const row = el('tr', {},
@@ -439,26 +303,24 @@
                         onInput: (e) => store.dispatch({ type: 'UPDATE_FILE_TITLE', payload: { id: item.id, title: e.target.value } })
                     })
                 ),
-                el('td', { className: 'col-cover' },
+                el('td', {},
                     el('div', { className: 'cover-btn-group' },
-                        // [검색 버튼] 구글 이미지 검색 새창 띄우기 연동
                         el('button', {
                             className: 'btn-cover',
                             onClick: () => window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(item.customTitle)}`, '_blank')
                         }, '검색'),
-                        // [클립보드 버튼] 로드 완료 시 초록색 액티브
                         el('button', {
                             className: 'btn-cover' + (hasCover ? ' active' : ''),
                             onClick: () => readClipboardImage(item.id)
                         }, '클립보드')
                     )
                 ),
-                el('td', { className: 'col-enc' }, item.encoding),
-                el('td', { className: 'col-valid' },
+                el('td', {}, item.encoding),
+                el('td', {},
                     el('span', { style: { color: item.isValid === 'ok' ? 'var(--success)' : 'var(--danger)' } }, item.isValid === 'ok' ? '✓' : '!')
                 ),
-                el('td', { className: 'col-status' }, el('span', { className: `status-badge badge-${item.state}` }, item.state)),
-                el('td', { className: 'col-action' },
+                el('td', {}, el('span', { className: `status-badge badge-${item.state}` }, item.state)),
+                el('td', {},
                     el('button', { className: 'btn-header-action', onClick: () => store.dispatch({ type: 'REMOVE_FILE', payload: item.id }) }, '✕')
                 )
             );
@@ -475,14 +337,14 @@
                 if (imageType) {
                     const blob = await item.getType(imageType);
                     store.dispatch({ type: 'UPDATE_FILE_COVER', payload: { id, blob } });
-                    store.dispatch({ type: 'SET_STATUS', payload: "클립보드 이미지 주입 완료" });
+                    store.dispatch({ type: 'SET_STATUS', payload: "클립보드 이미지 적용 완료" });
                     return;
                 }
             }
 
             const text = await navigator.clipboard.readText();
             if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
-                store.dispatch({ type: 'SET_STATUS', payload: "이미지 주소 다운로드 중..." });
+                store.dispatch({ type: 'SET_STATUS', payload: "이미지 다운로드 중..." });
                 const res = await fetch(text);
                 if (!res.ok) throw new Error();
                 const blob = await res.blob();
@@ -490,49 +352,101 @@
                 store.dispatch({ type: 'SET_STATUS', payload: "원격 이미지 캐싱 완료" });
                 return;
             }
-            alert("클립보드에 유효한 이미지 또는 이미지 주소가 없습니다.");
+            alert("클립보드에 유효한 이미지 또는 주소가 없습니다.");
             store.dispatch({ type: 'SET_STATUS', payload: "클립보드 판독 실패" });
         } catch (e) {
-            alert("클립보드 데이터를 읽을 수 없습니다.\n보안 권한을 확인하시거나 CORS 정책 제한 주소입니다.");
+            alert("클립보드를 읽을 수 없습니다.\n브라우저 권한을 확인하시거나 CORS 정책이 제한된 주소입니다.");
             store.dispatch({ type: 'SET_STATUS', payload: "권한 거부 또는 CORS 오류" });
         }
     }
 
     /**
-     * JSZip 조립 구조 및 정규식 엔진이 내장된 강건화 Web Worker (Transferable)
+     * Web Worker: [최종 병기] 1등 DNA 승자 독식 2-Pass 알고리즘
      */
     const workerCode = `
         importScripts("https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js");
 
-        class TextParser {
-            constructor(regexStr) {
-                this.re = regexStr ? new RegExp(regexStr) : null;
-                this.ban = /\\d*\\.?\\d+\\s*(?:년|월|일|시|분|초|미터|km|살|차|퍼센트|%|배|개|명|번|회분|곱하기|x|\\*)/i;
+        class ClusterParser {
+            constructor(customRegexStr = null) {
+                this.customRegex = customRegexStr ? new RegExp(customRegexStr, 'i') : null;
+                this.bannedRegex = /\\d*\\.?\\d+\\s*(?:년|월|일|시|분|초|미터|km|m|cm|mm|kg|g|살|차|퍼센트|%|배|개|명|번|회분|곱하기|x|\\*|위)/i;
             }
-            isTitle(line, index, arr) {
-                const t = line.trim();
-                if (!t || t.length > 120) return false;
-                if (this.ban.test(t)) return false;
 
-                let isC = false;
-                if (this.re) {
-                    isC = this.re.test(t);
-                } else {
-                    const isB = /^[<【〔]\\s*(\\d+[\\.\\s화]|제?\\s*\\d+화|자기\\s*소개|프롤로그|에필로그|공지|작가).*?[>】〕]/.test(t);
-                    const isCh = /^(?:Chapter\\s*\\d+|[#＃]\\d+)/i.test(t);
-                    const isHw = /^(?:제?\\s*\\d+[화회])/.test(t) || /^\\d*\\.?\\d+화[\\s\\.]/.test(t);
-                    isC = isB || isCh || isHw;
+            analyze(lines) {
+                const groupCounts = {};
+                const lineData = new Array(lines.length).fill(null);
+
+                // 1-Pass: 각각의 유전자(DNA)를 독립적으로 파악하여 카운팅
+                for (let i = 0; i < lines.length; i++) {
+                    const t = lines[i].trim();
+                    if (!t || t.length > 90) continue;
+
+                    if (/^["'”’「『]/.test(t)) continue;
+                    if (/[다요네지음니]\\.$/.test(t) || /[다요네지음니]$/.test(t)) continue; // 서술형 종결어미 완전 배제
+                    if (this.bannedRegex.test(t)) continue;
+
+                    const prevE = (i === 0 || lines[i-1].trim() === "");
+                    const nextE = (i === lines.length-1 || lines[i+1].trim() === "");
+                    const isIsolated = prevE && nextE;
+
+                    let matchedGroup = null;
+                    let match;
+
+                    if (/^(?:프롤로그|에필로그|외전|공지|작가의\\s*말|서장|종장|프로필)/.test(t)) {
+                        matchedGroup = 'SPECIAL';
+                    }
+                    // [핵심 변경] 화, 회, 장, 막, 편, 부를 퉁치지 않고 KOR_화, KOR_부 등으로 완벽 분리
+                    else if ((match = t.match(/(?:제\\s*)?\\d+\\s*([화회장막편부])(?:\\]|\\s|:|\\.|-|$)/))) {
+                        matchedGroup = 'KOR_' + match[1];
+                    } else if ((match = t.match(/^(Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\d+/i))) {
+                        matchedGroup = 'ENG_' + match[1].toUpperCase();
+                    } else if (/^[<【〔].+?[>】〕]/.test(t)) {
+                        matchedGroup = 'BRACKET';
+                    } else if (/^[#＃]\\d+/.test(t)) {
+                        matchedGroup = 'SHARP';
+                    } else if (/^\\d+[-_.]\\d+/.test(t) || /^\\d+\\./.test(t)) {
+                        matchedGroup = 'NUMBER';
+                    } else if (this.customRegex && this.customRegex.test(t)) {
+                        matchedGroup = 'CUSTOM';
+                    }
+
+                    if (matchedGroup) {
+                        if (matchedGroup !== 'SPECIAL' && matchedGroup !== 'BRACKET' && !isIsolated) continue;
+
+                        groupCounts[matchedGroup] = (groupCounts[matchedGroup] || 0) + 1;
+                        lineData[i] = matchedGroup;
+                    }
                 }
 
-                if (!isC) return false;
+                // 2-Pass: [승자 독식 알고리즘] 카운트가 가장 높은 '단 하나의 유전자'만 1등으로 선정
+                let maxGroup = null;
+                let maxCount = 0;
 
-                if (t.includes('회') || /^\\d*\\.?\\d+화[\\s\\.]/.test(t)) {
-                    if (/[고다자죠요]\\.$/.test(t)) return false;
-                    const prevE = (index === 0 || arr[index-1].trim() === "");
-                    const nextE = (index === arr.length-1 || arr[index+1].trim() === "");
-                    return prevE && nextE;
+                for (const [group, count] of Object.entries(groupCounts)) {
+                    if (group !== 'SPECIAL' && group !== 'CUSTOM') {
+                        if (count > maxCount) {
+                            maxCount = count;
+                            maxGroup = group;
+                        }
+                    }
                 }
-                return true;
+
+                const activeGroups = new Set(['SPECIAL']);
+                if (groupCounts['CUSTOM'] > 0) activeGroups.add('CUSTOM');
+
+                // 1등 패턴만 유일한 메인 목차로 인정 (최소 2번 이상 규칙적으로 등장했을 때만)
+                if (maxGroup && maxCount >= 2) {
+                    activeGroups.add(maxGroup);
+                }
+
+                const validIndices = new Set();
+                lineData.forEach((group, i) => {
+                    if (group && activeGroups.has(group)) {
+                        validIndices.add(i);
+                    }
+                });
+
+                return validIndices;
             }
         }
 
@@ -543,22 +457,24 @@
                 const { type, payload } = e.data;
 
                 if (type === 'VALIDATE') {
-                    const parser = new TextParser(payload.userRegex);
-                    const lines = payload.text.split('\\n');
-                    self.postMessage({ type: 'VALIDATE_RESULT', payload: { id: payload.id, isValid: lines.some((l, i) => parser.isTitle(l, i, lines)) ? 'ok' : 'no' } });
+                    const parser = new ClusterParser(payload.userRegex);
+                    const lines = payload.text.replace(/\\r\\n/g, '\\n').split('\\n');
+                    const validIndices = parser.analyze(lines);
+                    self.postMessage({ type: 'VALIDATE_RESULT', payload: { id: payload.id, isValid: validIndices.size > 0 ? 'ok' : 'no' } });
                 }
                 else if (type === 'CONVERT') {
                     const { id, title, content, useTrim, useAutoToc, userRegex, coverBuffer } = payload;
-                    const parser = new TextParser(userRegex);
+                    const parser = new ClusterParser(userRegex);
                     const rawLines = content.replace(/\\r\\n/g, '\\n').split('\\n');
 
+                    const validIndices = useAutoToc ? parser.analyze(rawLines) : new Set();
                     const chapters = [];
                     let currentChapter = { title: "시작", lines: [] };
                     let consecutiveEmptyLines = 0;
 
                     rawLines.forEach((line, i) => {
                         const trimmed = line.trim();
-                        const isTitle = useAutoToc && parser.isTitle(line, i, rawLines);
+                        const isTitle = validIndices.has(i);
 
                         if (isTitle) {
                             if (currentChapter.lines.length > 0) chapters.push(currentChapter);
@@ -657,23 +573,19 @@
         const newFiles = [];
         for (const file of Array.from(files)) {
             if (!file.name.toLowerCase().endsWith('.txt')) continue;
+
             const buf = await file.slice(0, 32768).arrayBuffer();
             let bin = ""; new Uint8Array(buf).forEach(b => bin += String.fromCharCode(b));
             let det = jschardet.detect(bin);
             let enc = (det && det.confidence > 0.7) ? det.encoding.toUpperCase() : 'UTF-8';
             if (["EUC-KR", "CP949"].includes(enc)) enc = "CP949";
 
-            // [UX 개선] 파일명에 포함된 + 문자(다운로드 파라미터 변환 흔적)를 공백으로 자동 치환
             const cleanedTitle = file.name.replace(/\.[^/.]+$/, "").replace(/(?<=[가-힣\w])\+(?=[가-힣\w])/g, ' ');
 
             newFiles.push({
                 id: Date.now()+'-'+Math.random(),
-                file,
-                customTitle: cleanedTitle,
-                encoding: enc,
-                state: 'wait',
-                isValid: 'none',
-                coverBlob: null
+                file, customTitle: cleanedTitle, encoding: enc,
+                state: 'wait', isValid: 'none', coverBlob: null
             });
         }
         store.dispatch({ type: 'ADD_FILES', payload: newFiles });
@@ -715,7 +627,6 @@
                     fr.readAsText(item.file, item.encoding);
                 });
 
-                // [안정화 완료] ArrayBuffer를 사용하여 메모리 누수나 멈춤 없이 워커로 전송
                 const coverBuf = item.coverBlob ? await item.coverBlob.arrayBuffer() : null;
 
                 const blob = await new Promise((resolve, reject) => {
