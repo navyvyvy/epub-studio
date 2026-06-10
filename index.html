@@ -196,6 +196,7 @@
             <div class="options-group">
                 <label class="option-item"><input type="checkbox" id="optTrim" checked> 공백 정제</label>
                 <label class="option-item"><input type="checkbox" id="optToc" checked> 목차 추출</label>
+                <!-- 다중 패턴 옵션 해제 후 테스트 해보세요! -->
                 <label class="option-item" title="체크 시 '몇 화'와 '070' 등 서로 다른 형식의 챕터 기호가 섞여 있어도 모두 목차로 추출합니다.">
                     <input type="checkbox" id="optMultiToc" checked> 🔀 다중 패턴 허용
                 </label>
@@ -212,11 +213,11 @@
 
             <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border);">
                 <div style="font-size: 0.75rem; color: var(--accent); font-weight: 700; margin-bottom: 8px;">🔬 파서 시뮬레이터 (엔진 테스트)</div>
-                <textarea id="testInput" rows="4" placeholder="회귀 스트라이커는 미쳤다 159화&#10;2026 북중미 월드컵.&#10;회귀 스트라이커는 미쳤다 160화&#10;127화. 파르크 바이러스(4)&#10;1.5군에 가까운 멤버를 꺼내는 바르셀로나...&#10;128화. 결승전"></textarea>
+                <textarea id="testInput" rows="4" placeholder="야구단 신입이 너무 잘함 외전 100화&#10;외전 19장 우리들은 언제까지나(5)&#10;다중패턴 체크를 끄고 테스트해보세요."></textarea>
                 <div style="display: flex; gap: 10px; margin-top: 8px;">
                     <button type="button" id="btnTestParser">테스트 실행</button>
                 </div>
-                <div id="testOutput">감지된 제목이 이곳에 표시됩니다. (완벽 샌드위치 필터 가동 중)</div>
+                <div id="testOutput">감지된 제목이 이곳에 표시됩니다. (순위 결정전 최적화 엔진 가동)</div>
             </div>
         </div>
     </div>
@@ -440,7 +441,7 @@
     }
 
     /**
-     * Web Worker: 번호 추출기 완벽 개선 및 오직 '샌드위치 필터'로 승부하는 갓벽 엔진
+     * Web Worker: SPECIAL 계급장 검증 로직 순서 교정 적용!
      */
     const workerCode = `
         importScripts("https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js");
@@ -468,8 +469,9 @@
 
                     if (/^[-—~]?\\s*["'”’「『“‘]/.test(t)) continue;
 
+                    // [핵심 변경] 외전이나 프롤로그가 앞에 붙어도 StrongStart로 쳐주도록 보강
                     const isStrongStart =
-                        /^[<【〔\\[(=\\-~]?\\s*(?:제\\s*)?\\d+\\s*[화회장막편부](?:\\s|:|\\.|-|$)/i.test(t) ||
+                        /^[<【〔\\[(=\\-~]?\\s*(?:외전|프롤로그|에필로그)?\\s*(?:제\\s*)?\\d+\\s*[화회장막편부](?:\\s|:|\\.|-|$)/i.test(t) ||
                         /^[<【〔\\[(]?\\s*(?:Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\d+/i.test(t) ||
                         /^[<【〔\\[(=\\-~]?\\s*[#＃]\\d+/.test(t) ||
                         /^0\\d{1,3}(?:[.,)\\]]?(?:\\s|$)|[>\\]】〕〉》」』)])/.test(t) ||
@@ -499,12 +501,16 @@
                     let matchedGroup = null;
                     let match;
 
-                    if (/^(?:프롤로그|에필로그|외전|공지|작가의\\s*말|서장|종장|프로필)/.test(t)) {
-                        matchedGroup = 'SPECIAL';
-                    } else if ((match = t.match(/(?:제\\s*)?\\d+\\s*([화회장막편부])/))) {
+                    // [핵심 해결] SPECIAL 우선순위 강등! KOR(숫자 챕터)를 가장 먼저 검사합니다.
+                    // 이렇게 하면 "외전 19장"이 SPECIAL 그룹으로 빠지는 걸 막고 "장" 계급으로 묶어 다중패턴 Off 시 탈락시킵니다.
+                    if ((match = t.match(/(?:제\\s*)?\\d+\\s*([화회장막편부])/))) {
                         matchedGroup = 'KOR_' + match[1];
-                    } else if ((match = t.match(/^(Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\d+/i))) {
+                    } else if ((match = t.match(/^(?:Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\d+/i))) {
                         matchedGroup = 'ENG_' + match[1].toUpperCase();
+                    }
+                    // 숫자 없는 찐 외전/프롤로그만 SPECIAL 그룹으로 생존
+                    else if (/^(?:프롤로그|에필로그|외전|공지|작가의\\s*말|서장|종장|프로필)/.test(t)) {
+                        matchedGroup = 'SPECIAL';
                     } else if (/^[<【〔\\[].+?[>】〕\\]]/.test(t)) {
                         matchedGroup = 'BRACKET';
                     } else if (/^[#＃]\\d+/.test(t)) {
@@ -555,17 +561,15 @@
                     if (group && activeGroups.has(group)) prelimIndices.push(i);
                 });
 
-                // [핵심 변경] 숫자를 기가 막히게 뽑아내는 전용 함수
-                // "소설제목 159화" 처럼 문장 중간에 있어도 정확히 159를 찾아냅니다.
                 function getChapterNum(str) {
                     let m = str.match(/(?:제\\s*)?(\\d+)\\s*[화회장막편부]/) ||
                             str.match(/(?:Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*(\\d+)/i) ||
                             str.match(/[#＃](\\d+)/) ||
-                            str.match(/(?:^|[^a-zA-Z0-9가-힣])(\\d+)(?![.\\/\\\\]\\d)/); // 소수점 완벽 방어
+                            str.match(/(?:^|[^a-zA-Z0-9가-힣])(\\d+)(?![.\\/\\\\]\\d)/);
                     return m ? parseInt(m[1], 10) : -1;
                 }
 
-                // --- 3단계: 전체 문맥 샌드위치 필터 (최종 이상치 척결) ---
+                // --- 3단계: 샌드위치 필터 ---
                 let items = prelimIndices.map(idx => {
                     let t = lines[idx].replace(/[\\u200B-\\u200D\\uFEFF]/g, '').trim();
                     let num = getChapterNum(t);
@@ -580,7 +584,6 @@
                 for (let i = 0; i < items.length; i++) {
                     let curr = items[i];
 
-                    // 특수 기호이거나, 159화 처럼 완벽한 앵커는 무조건 통과
                     if (curr.group === 'SPECIAL' || curr.isAnchor) {
                         finalIndices.add(curr.idx);
                         continue;
@@ -605,9 +608,7 @@
                     let isValid = false;
 
                     if (curr.num !== -1) {
-                        // "2026", "1.5군" 등 숫자 찌꺼기가 검출되었을 때
                         if (prevNum !== -1 && nextNum !== -1) {
-                            // 앞뒤 기둥 숫자 사이에 속할 때만 합격 (예: 127과 128 사이에 2026은 절대 못 옴!)
                             if (curr.num >= prevNum && curr.num <= nextNum) {
                                 isValid = true;
                             }
@@ -619,9 +620,8 @@
                             isValid = true;
                         }
                     } else {
-                        // 숫자가 아예 없는 "[레알 마드리드 불참!]" 같은 기사체
                         if (prevNum !== -1 && nextNum !== -1 && (nextNum - prevNum <= 2)) {
-                            isValid = false; // 앞뒤 기둥이 멀쩡히 살아있으면 넌 불순물이다!
+                            isValid = false;
                         } else {
                             isValid = !hasAnchors;
                         }
