@@ -3,7 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EPUB STUDIO</title>
+    <title>EPUB STUDIO | TXT를 EPUB으로 변환하는 브라우저 기반 도구</title>
+    <meta name="description" content="EPUB STUDIO는 TXT 파일을 브라우저에서 EPUB으로 일괄 변환하는 도구입니다. 공백 정제, 목차 추출, 표지 적용, 인코딩 자동 감지, ZIP 압축을 로컬에서 처리합니다.">
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
+    <meta name="theme-color" content="#0b0f1a">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230b0f1a'/%3E%3Cpath d='M14 18h36v28H14z' fill='%23161b2c' stroke='%236366f1' stroke-width='2'/%3E%3Cpath d='M20 26h24M20 32h18M20 38h22' stroke='%23f8fafc' stroke-width='3' stroke-linecap='round'/%3E%3C/svg>">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="EPUB STUDIO | TXT를 EPUB으로 변환하는 브라우저 기반 도구">
+    <meta property="og:description" content="브라우저 안에서 TXT 파일을 EPUB으로 변환합니다. 공백 정제, 목차 추출, 표지 적용, 인코딩 자동 감지, ZIP 압축을 지원합니다.">
+    <meta property="og:url" content="">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="EPUB STUDIO | TXT를 EPUB으로 변환하는 브라우저 기반 도구">
+    <meta name="twitter:description" content="브라우저에서 TXT 파일을 EPUB으로 변환하고, 공백 정제와 목차 추출을 한 번에 처리합니다.">
+    <link rel="canonical" id="canonicalLink" href="">
+    <script>
+        (function () {
+            const url = location.href.split('#')[0];
+            const canonical = document.getElementById('canonicalLink');
+            if (canonical) canonical.href = url;
+            const ogUrl = document.querySelector('meta[property="og:url"]');
+            if (ogUrl) ogUrl.setAttribute('content', url);
+            const schema = {
+                "@context": "https://schema.org",
+                "@type": "SoftwareApplication",
+                "name": "EPUB STUDIO",
+                "applicationCategory": "UtilitiesApplication",
+                "operatingSystem": "Web",
+                "inLanguage": "ko",
+                "description": "브라우저에서 TXT 파일을 EPUB으로 일괄 변환하는 웹 도구입니다.",
+                "url": url,
+                "offers": {
+                    "@type": "Offer",
+                    "price": "0",
+                    "priceCurrency": "KRW"
+                }
+            };
+            let schemaTag = document.getElementById('siteJsonLd');
+            if (!schemaTag) {
+                schemaTag = document.createElement('script');
+                schemaTag.type = 'application/ld+json';
+                schemaTag.id = 'siteJsonLd';
+                document.head.appendChild(schemaTag);
+            }
+            if (schemaTag) schemaTag.textContent = JSON.stringify(schema);
+        })();
+    </script>
     <!-- 외부 라이브러리 로드 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jschardet/3.0.0/jschardet.min.js"></script>
@@ -18,23 +62,32 @@
             --text-dim: #94a3b8;
             --danger: #ef4444;
             --success: #22c55e;
+            --surface-soft: rgba(255,255,255,0.03);
             --scroll-track: #0d111d;
             --scroll-thumb: #2d334a;
         }
 
+        html {
+            scroll-behavior: smooth;
+        }
+
         html, body {
-            height: 100%;
             margin: 0;
-            overflow: hidden;
+            min-height: 100%;
             background: var(--bg);
-            font-family: 'Pretendard', system-ui, sans-serif;
+            font-family: 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
             color: var(--text);
+            word-break: keep-all;
+            line-break: auto;
         }
 
         body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            overflow-x: hidden;
+            overflow-y: auto;
+            background:
+                radial-gradient(circle at top left, rgba(99,102,241,0.18), transparent 32%),
+                radial-gradient(circle at top right, rgba(129,140,248,0.12), transparent 28%),
+                linear-gradient(180deg, #0b0f1a 0%, #0e1322 100%);
         }
 
         ::-webkit-scrollbar { width: 6px; }
@@ -42,17 +95,356 @@
         ::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
+        *, *::before, *::after { box-sizing: border-box; }
+
+        a { color: inherit; }
+
+        a, button, input, textarea, summary {
+            outline-color: var(--accent);
+            outline-offset: 3px;
+        }
+
+        a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible {
+            outline: 2px solid var(--accent);
+        }
+
+        .page-shell {
+            width: min(1120px, calc(100vw - 32px));
+            margin: 0 auto;
+            padding: 24px 0 40px;
+        }
+
+        .site-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            padding: 16px 20px;
+            margin-bottom: 18px;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: rgba(13,17,29,0.7);
+            backdrop-filter: blur(6px);
+        }
+
+        .brand-block {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .brand-name {
+            font-size: 1rem;
+            font-weight: 900;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            margin: 0;
+        }
+
+        .brand-subtitle {
+            margin: 0;
+            color: var(--text-dim);
+            font-size: 0.88rem;
+            word-break: keep-all;
+        }
+
+        .header-nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .header-nav a {
+            text-decoration: none;
+            color: var(--text-dim);
+            font-size: 0.88rem;
+            padding: 8px 12px;
+            border: 1px solid transparent;
+            border-radius: 999px;
+            word-break: keep-all;
+        }
+
+        .header-nav a:hover {
+            color: var(--text);
+            border-color: var(--border);
+            background: rgba(255,255,255,0.03);
+        }
+
+        .content-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .hero-panel,
+        .info-panel,
+        .policy-panel,
+        .footer-panel {
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: var(--surface-soft);
+        }
+
+        .hero-panel {
+            padding: 26px;
+            display: grid;
+            grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.85fr);
+            gap: 24px;
+        }
+
+        .hero-kicker {
+            margin: 0 0 10px;
+            color: var(--accent);
+            font-size: 0.82rem;
+            font-weight: 800;
+        }
+
+        .hero-copy h1 {
+            margin: 0;
+            font-size: clamp(2rem, 4vw, 3.8rem);
+            line-height: 1.08;
+            letter-spacing: -0.03em;
+            text-wrap: balance;
+        }
+
+        .hero-copy p {
+            margin: 14px 0 0;
+            max-width: 76ch;
+            color: var(--text-dim);
+            line-height: 1.8;
+            overflow-wrap: normal;
+        }
+
+        .hero-metrics {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .hero-metrics span,
+        .feature-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.03);
+            color: var(--text);
+            font-size: 0.84rem;
+        }
+
+        .hero-aside {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 18px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: rgba(8,12,22,0.6);
+        }
+
+        .hero-aside h2,
+        .section-title {
+            margin: 0;
+            font-size: 1.15rem;
+            letter-spacing: -0.02em;
+        }
+
+        .hero-aside p {
+            margin: 0;
+            color: var(--text-dim);
+            line-height: 1.7;
+            word-break: keep-all;
+            overflow-wrap: normal;
+        }
+
+        .quick-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .quick-list div {
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+
+        .section-block {
+            padding: 22px 24px;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: rgba(255,255,255,0.02);
+        }
+
+        .section-headline {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 18px;
+        }
+
+        .section-headline p {
+            margin: 0;
+            color: var(--text-dim);
+            line-height: 1.7;
+            max-width: 76ch;
+            word-break: keep-all;
+            overflow-wrap: normal;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 12px;
+        }
+
+        .feature-card {
+            padding: 16px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: rgba(13,17,29,0.72);
+        }
+
+        .feature-card h3 {
+            margin: 0 0 8px;
+            font-size: 1rem;
+        }
+
+        .feature-card p {
+            margin: 0;
+            color: var(--text-dim);
+            line-height: 1.7;
+            font-size: 0.94rem;
+            word-break: keep-all;
+            overflow-wrap: normal;
+        }
+
+        .support-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 12px;
+        }
+
+        .support-card {
+            padding: 16px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: rgba(13,17,29,0.72);
+        }
+
+        .support-card h3 {
+            margin: 0 0 8px;
+            font-size: 1rem;
+        }
+
+        .support-card p,
+        .support-card li {
+            color: var(--text-dim);
+            line-height: 1.75;
+            word-break: keep-all;
+            overflow-wrap: normal;
+        }
+
+        .support-card a {
+            text-decoration: none;
+            color: var(--text);
+        }
+
+        .support-card a:hover {
+            color: var(--accent);
+        }
+
+        .support-card ul {
+            margin: 10px 0 0;
+            padding-left: 18px;
+        }
+
+        .policy-panel h2,
+        .footer-panel h2 {
+            margin: 0 0 12px;
+            font-size: 1.3rem;
+        }
+
+        .policy-panel h3 {
+            margin: 18px 0 8px;
+            font-size: 1.02rem;
+        }
+
+        .policy-panel p,
+        .policy-panel li,
+        .footer-panel p {
+            color: var(--text-dim);
+            line-height: 1.8;
+            word-break: keep-all;
+            overflow-wrap: normal;
+        }
+
+        .policy-panel ul {
+            margin: 10px 0 0;
+            padding-left: 18px;
+        }
+
+        .contact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 12px;
+        }
+
+        .contact-card {
+            padding: 16px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: rgba(13,17,29,0.72);
+        }
+
+        .contact-card strong {
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .footer-panel {
+            padding: 18px 24px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .footer-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .footer-links a {
+            text-decoration: none;
+            color: var(--text-dim);
+            font-size: 0.88rem;
+        }
+
+        .footer-links a:hover {
+            color: var(--text);
+        }
+
         .container {
             background: var(--card);
-            width: 760px;
-            height: 920px;
+            width: 100%;
+            max-width: 760px;
+            min-height: 920px;
             display: flex;
             flex-direction: column;
             padding: 25px;
-            border-radius: 24px;
+            border-radius: 16px;
             border: 1px solid var(--border);
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
-            box-sizing: border-box;
+            box-shadow: none;
         }
 
         .header {
@@ -87,6 +479,7 @@
             align-items: center;
             gap: 6px;
             padding: 0;
+            word-break: keep-all;
         }
         .btn-advanced-toggle:hover { color: var(--text); }
         .btn-advanced-toggle .arrow { transition: 0.3s; font-size: 0.6rem; }
@@ -133,13 +526,15 @@
             min-height: 40px;
             max-height: 120px;
             overflow-y: auto;
+            word-break: keep-all;
+            overflow-wrap: normal;
         }
 
         .file-list-area {
             flex-grow: 1;
             overflow: hidden;
             background: #0d111d;
-            border-radius: 16px;
+            border-radius: 14px;
             border: 2px dashed var(--border);
             margin-bottom: 15px;
             display: flex;
@@ -163,6 +558,8 @@
         .cover-btn-group { display: flex; gap: 4px; justify-content: center; }
         .btn-cover { background: #2d334a; border: 1px solid var(--border); color: var(--text-dim); padding: 3px 8px; font-size: 0.65rem; border-radius: 4px; cursor: pointer; }
         .btn-cover.active { background: rgba(34,197,94,0.15); border-color: var(--success); color: var(--success); }
+        .btn-preview { background: transparent; border: 1px solid var(--border); color: var(--text-dim); padding: 3px 8px; font-size: 0.65rem; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+        .btn-preview:hover { border-color: var(--accent); color: var(--text); }
 
         .status-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.6rem; font-weight: 800; transition: 0.2s; }
         .status-badge.clickable { cursor: pointer; }
@@ -172,20 +569,477 @@
         .badge-ing { background: rgba(99,102,241,0.15); color: var(--primary); border: 1px solid var(--primary); }
         .badge-error { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid var(--danger); }
 
+        .detect-cell {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .detect-preview {
+            min-width: 68px;
+            padding: 5px 10px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: rgba(255,255,255,0.02);
+            color: var(--text-dim);
+            font-size: 0.66rem;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: 0.2s ease;
+        }
+
+        .detect-preview.detect-hit {
+            border-color: rgba(34,197,94,0.85);
+            color: var(--success);
+            background: rgba(34,197,94,0.08);
+        }
+
+        .detect-preview.detect-miss {
+            border-color: rgba(239,68,68,0.9);
+            color: var(--danger);
+            background: rgba(239,68,68,0.08);
+        }
+
+        .detect-preview.detect-wait {
+            border-color: var(--border);
+            color: var(--text-dim);
+        }
+
+        .detect-preview:hover {
+            filter: brightness(1.08);
+        }
+
+        .detect-preview:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            filter: none;
+        }
+
         .empty-msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--text-dim); font-size: 0.85rem; pointer-events: none; }
 
-        .controls { display: flex; gap: 10px; }
-        .btn-start { flex: 1; height: 50px; background: var(--primary); border: none; border-radius: 12px; font-weight: 800; cursor: pointer; color: white; font-size: 0.95rem; transition: 0.3s; }
-        .btn-start:disabled { background: #2d334a; cursor: not-allowed; }
-        .btn-stop { width: 70px; height: 50px; background: transparent; border: 2px solid var(--danger); border-radius: 12px; font-weight: 700; color: var(--danger); cursor: pointer; display: none; }
+        .process-panel {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 10px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: rgba(13,17,29,0.72);
+            margin-bottom: 15px;
+            align-items: stretch;
+        }
 
-        #status { margin-top: 12px; font-size: 0.8rem; text-align: center; color: var(--text-dim); min-height: 1.2rem; }
-        .progress-bar { height: 4px; background: #2d334a; border-radius: 2px; margin-top: 8px; overflow: hidden; display: none; }
+        .process-meta {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 6px;
+            min-height: 72px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: #0d111d;
+        }
+
+        .status-detail {
+            font-size: 0.78rem;
+            color: var(--text-dim);
+            line-height: 1.5;
+            word-break: keep-all;
+            overflow-wrap: normal;
+        }
+
+        .status-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-height: 18px;
+        }
+
+        .process-label {
+            font-size: 0.64rem;
+            color: var(--accent);
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .controls {
+            display: flex;
+            gap: 0;
+            align-items: stretch;
+            min-height: 72px;
+            padding: 0;
+            border: 0;
+            background: transparent;
+        }
+        .btn-start {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-start {
+            min-height: 72px;
+            background: var(--primary);
+            border: none;
+            border-radius: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            color: white;
+            font-size: 0.92rem;
+            transition: 0.3s;
+        }
+        .btn-start.is-stop {
+            background: transparent;
+            border: 2px solid var(--danger);
+            color: var(--danger);
+        }
+        .btn-start:disabled {
+            opacity: 1;
+            cursor: pointer;
+        }
+
+        #status { font-size: 0.94rem; text-align: left; color: var(--text); min-height: 1.2rem; font-weight: 800; }
+        .progress-bar {
+            height: 3px;
+            background: #2d334a;
+            border-radius: 2px;
+            overflow: hidden;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .progress-bar.visible {
+            opacity: 1;
+        }
         .progress-fill { width: 0%; height: 100%; background: var(--primary); transition: 0.3s; }
+
+        .preview-dialog {
+            width: min(760px, calc(100vw - 24px));
+            max-height: calc(100vh - 24px);
+            overflow: auto;
+            border: none;
+            padding: 0;
+            background: transparent;
+            color: inherit;
+            max-width: none;
+        }
+
+        .preview-dialog::backdrop {
+            background: rgba(2,6,23,0.7);
+            backdrop-filter: blur(8px);
+        }
+
+        .preview-dialog[data-preview-state="hit"] .preview-panel {
+            border-color: rgba(34,197,94,0.7);
+        }
+
+        .preview-dialog[data-preview-state="miss"] .preview-panel {
+            border-color: rgba(239,68,68,0.8);
+        }
+
+        .preview-dialog[data-preview-state="loading"] .preview-panel {
+            border-color: rgba(129,140,248,0.75);
+        }
+
+        .preview-dialog[data-preview-state="hit"] .preview-summary {
+            color: var(--success);
+        }
+
+        .preview-dialog[data-preview-state="miss"] .preview-summary {
+            color: var(--danger);
+        }
+
+        .preview-dialog[data-preview-state="loading"] .preview-summary {
+            color: var(--accent);
+        }
+
+        .preview-panel {
+            padding: 14px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: rgba(13,17,29,0.94);
+            box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+        }
+
+        .preview-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .preview-title {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .preview-title strong {
+            font-size: 0.92rem;
+        }
+
+        .preview-title span {
+            font-size: 0.76rem;
+            color: var(--text-dim);
+            word-break: keep-all;
+            overflow-wrap: normal;
+        }
+
+        .preview-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn-preview-action {
+            border: 1px solid var(--border);
+            background: #0d111d;
+            color: var(--text-dim);
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 0.72rem;
+            cursor: pointer;
+        }
+
+        .btn-preview-action:hover {
+            color: var(--text);
+            border-color: var(--accent);
+        }
+
+        .btn-preview-action:disabled,
+        .btn-preview:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .preview-summary {
+            margin: 0 0 10px;
+            font-size: 0.8rem;
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .preview-settings {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 0 0 10px;
+        }
+
+        .preview-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 9px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.03);
+            color: var(--text-dim);
+            font-size: 0.7rem;
+        }
+
+        .preview-chip strong {
+            color: var(--text);
+            font-weight: 800;
+        }
+
+        .preview-list {
+            display: grid;
+            gap: 8px;
+            max-height: 260px;
+            overflow: auto;
+        }
+
+        .preview-empty {
+            padding: 12px;
+            border: 1px dashed var(--border);
+            border-radius: 12px;
+            color: var(--text-dim);
+            font-size: 0.82rem;
+            line-height: 1.6;
+        }
+
+        .preview-item {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 9px 10px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: #0d111d;
+            color: var(--text);
+            font-size: 0.82rem;
+            line-height: 1.55;
+            word-break: keep-all;
+            overflow-wrap: normal;
+            cursor: pointer;
+        }
+
+        .preview-item:hover {
+            border-color: var(--accent);
+        }
+
+        .preview-item.copied {
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        @media (max-width: 900px) {
+            .page-shell {
+                width: min(100vw - 20px, 1120px);
+                padding-top: 14px;
+            }
+
+            .hero-panel {
+                grid-template-columns: 1fr;
+            }
+
+            .options-bar {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            .options-group {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .site-header,
+            .section-block,
+            .footer-panel {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+
+            .container {
+                min-height: 0;
+            }
+
+            .table-scroll-box {
+                overflow-x: auto;
+            }
+
+            .file-table {
+                min-width: 560px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .site-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .header-nav {
+                justify-content: flex-start;
+            }
+
+            .hero-panel {
+                padding: 18px;
+            }
+
+            .hero-copy h1 {
+                font-size: clamp(1.8rem, 9vw, 2.8rem);
+            }
+
+            .hero-copy p,
+            .section-headline p,
+            .hero-aside p {
+                font-size: 0.96rem;
+            }
+
+            .tool-section .section-headline p {
+                display: none;
+            }
+
+            .section-block {
+                padding: 18px 16px;
+            }
+
+            .feature-grid,
+            .support-grid,
+            .contact-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 16px;
+            }
+
+            .config-section {
+                padding: 12px;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .process-panel {
+                grid-template-columns: 1fr;
+            }
+
+            .controls,
+            .process-meta {
+                min-height: 0;
+            }
+
+            .preview-panel {
+                padding: 12px;
+            }
+
+            .preview-head {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .preview-actions {
+                justify-content: flex-start;
+            }
+
+            .file-list-area {
+                min-height: 180px;
+                flex-grow: 0;
+            }
+
+            .file-table {
+                min-width: 560px;
+            }
+
+            .table-scroll-box {
+                max-height: 170px;
+            }
+        }
     </style>
 </head>
 <body>
 
+<div class="page-shell">
+    <header class="site-header">
+        <div class="brand-block">
+            <p class="brand-name">EPUB STUDIO</p>
+            <p class="brand-subtitle">TXT를 EPUB으로 바꾸는 브라우저 기반 전자책 도구</p>
+        </div>
+        <nav class="header-nav" aria-label="페이지 섹션">
+            <a href="#tool">변환 도구</a>
+            <a href="#features">기능 소개</a>
+            <a href="./about.html">사이트 소개</a>
+            <a href="./privacy.html">개인정보처리방침</a>
+            <a href="./contact.html">문의</a>
+        </nav>
+    </header>
+
+    <main class="content-stack">
+        <section class="section-block tool-section" id="tool">
+            <div class="section-headline">
+                <p class="hero-kicker">브라우저에서 바로 쓰는 EPUB 변환기</p>
+                <h1 class="section-title">TXT 파일을 로컬 브라우저에서 EPUB으로 변환합니다</h1>
+                <p>공백 정제, 목차 추출, 표지 적용, 인코딩 자동 감지, ZIP 묶음 출력은 모두 브라우저 안에서 처리됩니다.</p>
+            </div>
+            <div style="display:flex; justify-content:center;">
 <div class="container">
     <div class="header">
         <h2><span>EPUB</span> STUDIO</h2>
@@ -196,9 +1050,8 @@
             <div class="options-group">
                 <label class="option-item"><input type="checkbox" id="optTrim" checked> 공백 정제</label>
                 <label class="option-item"><input type="checkbox" id="optToc" checked> 목차 추출</label>
-                <!-- 다중 패턴 옵션 해제 후 테스트 해보세요! -->
                 <label class="option-item" title="체크 시 '몇 화'와 '070' 등 서로 다른 형식의 챕터 기호가 섞여 있어도 모두 목차로 추출합니다.">
-                    <input type="checkbox" id="optMultiToc" checked> 🔀 다중 패턴 허용
+                    <input type="checkbox" id="optMultiToc"> 🔀 다중 패턴 허용
                 </label>
                 <label class="option-item"><input type="checkbox" id="optZip"> ZIP 일괄 압축</label>
             </div>
@@ -213,7 +1066,7 @@
 
             <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border);">
                 <div style="font-size: 0.75rem; color: var(--accent); font-weight: 700; margin-bottom: 8px;">🔬 파서 시뮬레이터 (엔진 테스트)</div>
-                <textarea id="testInput" rows="4" placeholder="야구단 신입이 너무 잘함 외전 100화&#10;외전 19장 우리들은 언제까지나(5)&#10;다중패턴 체크를 끄고 테스트해보세요."></textarea>
+                <textarea id="testInput" rows="4"></textarea>
                 <div style="display: flex; gap: 10px; margin-top: 8px;">
                     <button type="button" id="btnTestParser">테스트 실행</button>
                 </div>
@@ -221,6 +1074,40 @@
             </div>
         </div>
     </div>
+
+    <div class="process-panel">
+        <div class="controls">
+            <button type="button" class="btn-start" id="convertBtn">EPUB 변환 시작</button>
+        </div>
+        <div class="process-meta">
+            <div class="process-label">현재 상태</div>
+            <div class="status-stack">
+                <div id="status">대기 중</div>
+                <div class="status-detail" id="statusDetail">TXT 파일을 추가하면 변환을 시작할 수 있습니다.</div>
+                <div class="progress-bar" id="progBar"><div class="progress-fill" id="progFill"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <dialog class="preview-dialog" id="previewDialog">
+        <div class="preview-panel" id="previewPanel">
+            <div class="preview-head">
+                <div class="preview-title">
+                    <strong id="previewFileName">목차 미리보기</strong>
+                    <span id="previewFileMeta">파일을 선택하면 감지된 제목 후보를 보여줍니다.</span>
+                </div>
+                <div class="preview-actions">
+                    <button type="button" class="btn-preview-action" id="previewCopyBtn">복사</button>
+                    <button type="button" class="btn-preview-action" id="previewCloseBtn">닫기</button>
+                </div>
+            </div>
+            <div class="preview-summary" id="previewSummary"></div>
+            <div class="preview-settings" id="previewSettings"></div>
+            <div class="preview-list" id="previewList">
+                <div class="preview-empty">아직 미리보기 결과가 없습니다. 파일 목록에서 "목차 미리보기"를 누르세요.</div>
+            </div>
+        </div>
+    </dialog>
 
     <div class="file-list-area" id="dropZone">
         <div class="empty-msg" id="emptyMsg">텍스트 파일을 드래그하거나 클릭하여 추가하세요</div>
@@ -231,8 +1118,8 @@
                         <col style="width: auto;">
                         <col style="width: 125px;">
                         <col style="width: 85px;">
-                        <col style="width: 60px;">
-                        <col style="width: 75px;">
+                        <col style="width: 110px;">
+                        <col style="width: 120px;">
                         <col style="width: 45px;">
                     </colgroup>
                     <thead>
@@ -251,13 +1138,55 @@
         </div>
     </div>
     <input type="file" id="fileInput" multiple accept=".txt" style="display:none">
+</div>
+            </div>
+        </section>
 
-    <div class="controls">
-        <button type="button" class="btn-start" id="convertBtn">EPUB 변환 시작</button>
-        <button type="button" class="btn-stop" id="stopBtn">중단</button>
-    </div>
-    <div id="status">대기 중</div>
-    <div class="progress-bar" id="progBar"><div class="progress-fill" id="progFill"></div></div>
+        <section class="section-block" id="features">
+            <div class="section-headline">
+                <p class="hero-kicker">기능 소개</p>
+                <h2 class="section-title">실제로 제공하는 기능을 짧고 분명하게 보여줍니다</h2>
+                <p>도구의 용도를 검색엔진과 방문자가 바로 이해할 수 있도록, 현재 구현된 기능을 기준으로 핵심만 정리했습니다.</p>
+            </div>
+            <div class="feature-grid">
+                <article class="feature-card">
+                    <h3>TXT에서 EPUB으로 변환</h3>
+                    <p>여러 텍스트 파일을 한 번에 넣고 EPUB 파일로 변환합니다. 파일 단위로 상태를 확인할 수 있어 작업 흐름이 단순합니다.</p>
+                </article>
+                <article class="feature-card">
+                    <h3>공백 정제</h3>
+                    <p>무의미한 연속 빈 줄은 줄이고, 문단과 장면 전환에 필요한 여백은 살려 가독성을 유지합니다.</p>
+                </article>
+                <article class="feature-card">
+                    <h3>목차 추출</h3>
+                    <p>화, 회, Chapter, Episode 같은 챕터 표기를 감지해서 목차로 묶습니다. 다중 패턴 허용 옵션과 커스텀 정규식도 지원합니다.</p>
+                </article>
+                <article class="feature-card">
+                    <h3>표지 설정</h3>
+                    <p>도서명을 검색하거나, 클립보드의 이미지 또는 이미지 URL을 표지로 적용할 수 있습니다.</p>
+                </article>
+                <article class="feature-card">
+                    <h3>인코딩 자동 감지</h3>
+                    <p>UTF-8, CP949 같은 흔한 인코딩을 자동으로 판별해 깨짐을 줄입니다.</p>
+                </article>
+                <article class="feature-card">
+                    <h3>ZIP 일괄 압축</h3>
+                    <p>여러 EPUB 결과물을 하나의 ZIP 파일로 묶어 내려받을 수 있습니다.</p>
+                </article>
+            </div>
+        </section>
+
+        <footer class="footer-panel">
+            <p>© 2026 EPUB STUDIO. TXT에서 EPUB으로 변환하는 브라우저 도구.</p>
+            <div class="footer-links">
+                <a href="#tool">변환 도구</a>
+                <a href="#features">기능 소개</a>
+                <a href="./about.html">사이트 소개</a>
+                <a href="./privacy.html">개인정보처리방침</a>
+                <a href="./contact.html">문의</a>
+            </div>
+        </footer>
+    </main>
 </div>
 
 <script>
@@ -278,22 +1207,23 @@
                 case 'TOGGLE_ADVANCED': return { ...state, isAdvancedOpen: !state.isAdvancedOpen };
                 case 'ADD_FILES': return { ...state, files: [...state.files, ...action.payload] };
                 case 'REMOVE_FILE': return { ...state, files: state.files.filter(f => f.id !== action.payload) };
-                case 'CLEAR_FILES': return { ...state, files: [], progress: 0, statusText: "대기 중" };
+                case 'CLEAR_FILES': return { ...state, files: [], progress: 0, statusText: "대기 중", statusDetail: "TXT 파일을 추가하면 변환을 시작할 수 있습니다." };
                 case 'UPDATE_FILE_TITLE': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, customTitle: action.payload.title } : f) };
                 case 'UPDATE_FILE_COVER': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, coverBlob: action.payload.blob } : f) };
                 case 'UPDATE_FILE_VALIDITY': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, isValid: action.payload.isValid } : f) };
                 case 'UPDATE_FILE_STATUS': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, state: action.payload.status } : f) };
-                case 'START_PROCESSING': return { ...state, isProcessing: true, shouldStop: false, statusText: "변환 준비 중..." };
+                case 'START_PROCESSING': return { ...state, isProcessing: true, shouldStop: false, progress: 0, statusText: "변환 중", statusDetail: `0/${action.payload.totalCount} 완료` };
                 case 'SET_PROGRESS': return { ...state, progress: action.payload };
                 case 'SET_STATUS': return { ...state, statusText: action.payload };
+                case 'SET_STATUS_DETAIL': return { ...state, statusDetail: action.payload };
                 case 'STOP_PROCESSING': return { ...state, shouldStop: true };
-                case 'FINISH_PROCESSING': return { ...state, isProcessing: false, shouldStop: false, statusText: state.shouldStop ? "중단됨" : "모든 작업 완료!" };
+                case 'FINISH_PROCESSING': return { ...state, isProcessing: false, shouldStop: false, statusText: state.shouldStop ? "중단됨" : "완료" };
                 default: return state;
             }
         }
     }
 
-    const store = new Store({ files: [], isProcessing: false, shouldStop: false, progress: 0, statusText: "대기 중", isAdvancedOpen: false });
+    const store = new Store({ files: [], isProcessing: false, shouldStop: false, progress: 0, statusText: "대기 중", statusDetail: "TXT 파일을 추가하면 변환을 시작할 수 있습니다.", isAdvancedOpen: false });
 
     function el(tag, attributes = {}, ...children) {
         const element = document.createElement(tag);
@@ -315,6 +1245,16 @@
         return element;
     }
 
+    function triggerDownload(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.rel = 'noopener';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
     const dom = {
         fileInput: document.getElementById('fileInput'),
         dropZone: document.getElementById('dropZone'),
@@ -322,24 +1262,199 @@
         tableWrapper: document.getElementById('tableWrapper'),
         emptyMsg: document.getElementById('emptyMsg'),
         convertBtn: document.getElementById('convertBtn'),
-        stopBtn: document.getElementById('stopBtn'),
         regexInput: document.getElementById('regexInput'),
         optToc: document.getElementById('optToc'),
         optTrim: document.getElementById('optTrim'),
         optZip: document.getElementById('optZip'),
         optMultiToc: document.getElementById('optMultiToc'),
         statusText: document.getElementById('status'),
+        statusDetail: document.getElementById('statusDetail'),
         progFill: document.getElementById('progFill'),
         progBar: document.getElementById('progBar'),
         clearAllBtn: document.getElementById('clearAllBtn'),
         btnToggleAdvanced: document.getElementById('btnToggleAdvanced'),
         advancedArea: document.getElementById('advancedArea'),
+        previewDialog: document.getElementById('previewDialog'),
+        previewPanel: document.getElementById('previewPanel'),
+        previewFileName: document.getElementById('previewFileName'),
+        previewFileMeta: document.getElementById('previewFileMeta'),
+        previewSummary: document.getElementById('previewSummary'),
+        previewSettings: document.getElementById('previewSettings'),
+        previewList: document.getElementById('previewList'),
+        previewCopyBtn: document.getElementById('previewCopyBtn'),
+        previewCloseBtn: document.getElementById('previewCloseBtn'),
         testInput: document.getElementById('testInput'),
         btnTestParser: document.getElementById('btnTestParser'),
         testOutput: document.getElementById('testOutput')
     };
 
+    let currentPreviewLines = [];
+    let currentPreviewFileId = null;
+    let currentPreviewRequestId = 0;
+
     dom.btnToggleAdvanced.onclick = () => store.dispatch({ type: 'TOGGLE_ADVANCED' });
+    dom.previewCopyBtn.onclick = copyPreviewLines;
+    dom.previewCloseBtn.onclick = closePreviewDialog;
+    dom.previewDialog.addEventListener('cancel', (e) => {
+        e.preventDefault();
+        closePreviewDialog();
+    });
+    dom.optToc.addEventListener('change', handlePreviewOptionChange);
+    dom.optMultiToc.addEventListener('change', handlePreviewOptionChange);
+    dom.regexInput.addEventListener('change', handlePreviewOptionChange);
+
+    function getPreviewSettingChips() {
+        const chips = [
+            { label: '목차 추출', value: dom.optToc.checked ? '켬' : '끔' },
+            { label: '다중 패턴', value: dom.optMultiToc.checked ? '켬' : '끔' },
+            { label: '정규식', value: dom.regexInput.value.trim() ? '사용' : '기본' }
+        ];
+        return chips.map(chip => {
+            const elChip = document.createElement('span');
+            elChip.className = 'preview-chip';
+            elChip.innerHTML = `<strong>${chip.label}</strong> ${chip.value}`;
+            return elChip;
+        });
+    }
+
+    function renderPreviewSettings() {
+        dom.previewSettings.innerHTML = '';
+        getPreviewSettingChips().forEach(chip => dom.previewSettings.appendChild(chip));
+        const hint = document.createElement('span');
+        hint.className = 'preview-chip';
+        hint.textContent = '행 클릭 시 복사';
+        dom.previewSettings.appendChild(hint);
+    }
+
+    function handlePreviewOptionChange() {
+        renderList(store.state.files);
+        if (!dom.optToc.checked) {
+            closePreviewDialog();
+        } else if (dom.previewDialog.open && currentPreviewFileId) {
+            previewFileById(currentPreviewFileId);
+        } else if (dom.previewDialog.open) {
+            renderPreviewSettings();
+        }
+        if (store.state.files.length > 0 && !store.state.isProcessing) {
+            validateFiles();
+        }
+    }
+
+    function openPreviewDialog(title, meta, lines, previewState = null) {
+        currentPreviewLines = lines.slice();
+        dom.previewDialog.dataset.previewState = previewState || (lines.length ? 'hit' : 'miss');
+        if (!dom.previewDialog.open) dom.previewDialog.showModal();
+        dom.previewFileName.innerText = title || '목차 미리보기';
+        dom.previewFileMeta.innerText = meta || '';
+        dom.previewSummary.innerText = lines.length ? `총 ${lines.length}개 감지됨` : '감지된 제목이 없습니다.';
+        dom.previewList.innerHTML = '';
+        renderPreviewSettings();
+
+        if (!lines.length) {
+            const empty = document.createElement('div');
+            empty.className = 'preview-empty';
+            empty.textContent = '목차 후보가 감지되지 않았습니다. 현재 설정으로는 제목으로 판정되는 항목이 없습니다.';
+            dom.previewList.appendChild(empty);
+            dom.previewCopyBtn.disabled = true;
+        } else {
+            lines.forEach((line) => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'preview-item';
+                item.textContent = line;
+                item.title = '클릭하면 이 행만 복사합니다.';
+                item.addEventListener('click', () => copyPreviewLine(line, item));
+                dom.previewList.appendChild(item);
+            });
+            dom.previewCopyBtn.disabled = false;
+        }
+        dom.previewCopyBtn.innerText = '복사';
+    }
+
+    async function copyPreviewLine(line, itemEl) {
+        if (!line) return;
+        try {
+            await navigator.clipboard.writeText(line);
+            if (itemEl) {
+                itemEl.classList.add('copied');
+                setTimeout(() => itemEl.classList.remove('copied'), 900);
+            }
+        } catch (e) {
+            alert('선택한 행을 복사하지 못했습니다.');
+        }
+    }
+
+    function getFileStats(files) {
+        return files.reduce((acc, file) => {
+            acc.total += 1;
+            acc[file.state] = (acc[file.state] || 0) + 1;
+            return acc;
+        }, { total: 0, wait: 0, ing: 0, done: 0, error: 0 });
+    }
+
+    function closePreviewDialog() {
+        currentPreviewRequestId += 1;
+        if (dom.previewDialog.open) dom.previewDialog.close();
+        currentPreviewLines = [];
+        currentPreviewFileId = null;
+        delete dom.previewDialog.dataset.previewState;
+        dom.previewList.innerHTML = '<div class="preview-empty">아직 미리보기 결과가 없습니다. 파일 목록에서 "목차 미리보기"를 누르세요.</div>';
+        dom.previewSummary.innerText = '';
+        dom.previewSettings.innerHTML = '';
+        dom.previewCopyBtn.disabled = true;
+        dom.previewCopyBtn.innerText = '복사';
+    }
+
+    async function copyPreviewLines() {
+        if (!currentPreviewLines.length) return;
+        try {
+            await navigator.clipboard.writeText(currentPreviewLines.join('\n'));
+            dom.previewCopyBtn.innerText = '복사됨';
+            setTimeout(() => { dom.previewCopyBtn.innerText = '복사'; }, 1200);
+        } catch (e) {
+            alert('클립보드 복사에 실패했습니다.');
+        }
+    }
+
+    async function previewFileById(id) {
+        if (store.state.isProcessing) return;
+        if (!dom.optToc.checked) return;
+        const item = store.state.files.find(f => f.id === id);
+        if (!item) return;
+        currentPreviewFileId = id;
+        const requestId = ++currentPreviewRequestId;
+
+        try {
+            openPreviewDialog(item.customTitle || item.file.name, `${item.file.name} · ${item.encoding}`, [], 'loading');
+            dom.previewSummary.innerText = '분석 중...';
+            dom.previewList.innerHTML = '<div class="preview-empty">현재 설정으로 목차 후보를 찾는 중입니다.</div>';
+            dom.previewCopyBtn.disabled = true;
+
+            const text = await new Promise((res, rej) => {
+                const fr = new FileReader();
+                fr.onload = e => res(e.target.result);
+                fr.onerror = () => rej(new Error('File Read Failed'));
+                fr.readAsText(item.file, item.encoding);
+            });
+
+            parserWorker.postMessage({
+                type: 'PREVIEW_PARSER',
+                payload: {
+                    requestId,
+                    fileName: item.file.name,
+                    customTitle: item.customTitle,
+                    text,
+                    userRegex: dom.regexInput.value,
+                    useMultiToc: dom.optMultiToc.checked
+                }
+            });
+        } catch (error) {
+            openPreviewDialog(item.customTitle || item.file.name, `${item.file.name} · ${item.encoding}`, [], 'miss');
+            dom.previewSummary.innerText = '미리보기 실패';
+            dom.previewList.innerHTML = '<div class="preview-empty">파일을 읽는 도중 문제가 발생했습니다. 인코딩이나 브라우저 권한을 확인해 주세요.</div>';
+            dom.previewCopyBtn.disabled = true;
+        }
+    }
 
     dom.btnTestParser.onclick = () => {
         const text = dom.testInput.value;
@@ -355,11 +1470,23 @@
     };
 
     store.subscribe((state, action) => {
-        dom.convertBtn.disabled = state.isProcessing;
-        dom.stopBtn.style.display = (state.isProcessing && !state.shouldStop) ? 'block' : 'none';
-        dom.progBar.style.display = state.isProcessing ? 'block' : 'none';
+        dom.convertBtn.classList.toggle('is-stop', state.isProcessing);
+        dom.convertBtn.innerText = state.isProcessing ? '중단' : 'EPUB 변환 시작';
+        dom.progBar.classList.toggle('visible', state.isProcessing);
         dom.progFill.style.width = `${state.progress}%`;
         dom.statusText.innerText = state.statusText;
+        const stats = getFileStats(state.files);
+        let detail = state.statusDetail || '';
+        if (!state.isProcessing) {
+            if (stats.total === 0) {
+                detail = 'TXT 파일을 추가하면 변환을 시작할 수 있습니다.';
+            } else if (stats.done + stats.error >= stats.total) {
+                detail = `${stats.done}개 완료 · ${stats.error}개 오류`;
+            } else {
+                detail = `${stats.done}개 완료 · ${stats.error}개 오류 · ${stats.wait}개 대기`;
+            }
+        }
+        dom.statusDetail.innerText = detail;
         dom.emptyMsg.style.display = state.files.length ? 'none' : 'block';
         dom.tableWrapper.classList.toggle('active', state.files.length > 0);
 
@@ -371,7 +1498,7 @@
             dom.btnToggleAdvanced.classList.remove('open');
         }
 
-        if (['ADD_FILES', 'REMOVE_FILE', 'CLEAR_FILES', 'UPDATE_FILE_VALIDITY', 'UPDATE_FILE_STATUS', 'UPDATE_FILE_COVER'].includes(action.type)) {
+        if (['ADD_FILES', 'REMOVE_FILE', 'CLEAR_FILES', 'UPDATE_FILE_VALIDITY', 'UPDATE_FILE_STATUS', 'UPDATE_FILE_COVER', 'START_PROCESSING', 'FINISH_PROCESSING', 'STOP_PROCESSING'].includes(action.type)) {
             renderList(state.files);
         }
     });
@@ -381,17 +1508,31 @@
         files.forEach((item) => {
             const hasCover = !!item.coverBlob;
             const isClickable = ['done', 'error'].includes(item.state);
+            const canPreview = dom.optToc.checked && !store.state.isProcessing;
+            const detectState = item.isValid === 'ok' ? 'hit' : item.isValid === 'no' ? 'miss' : 'wait';
+            const detectBtn = el('button', {
+                className: `detect-preview detect-${detectState}`,
+                onClick: () => {
+                    if (canPreview) previewFileById(item.id);
+                }
+            }, '미리보기');
+            detectBtn.disabled = !canPreview;
+            detectBtn.title = dom.optToc.checked
+                ? (item.isValid === 'ok' ? '감지됨. 클릭하면 목차 미리보기를 엽니다.' : item.isValid === 'no' ? '감지되지 않음. 클릭하면 목차 미리보기를 엽니다.' : '클릭하면 목차 미리보기를 엽니다.')
+                : '목차 추출이 꺼져 있어 미리보기를 사용할 수 없습니다.';
 
             const row = el('tr', {},
                 el('td', { className: 'col-title' }, el('input', { type: 'text', className: 'title-input', value: item.customTitle, onInput: (e) => store.dispatch({ type: 'UPDATE_FILE_TITLE', payload: { id: item.id, title: e.target.value } }) })),
                 el('td', {},
                     el('div', { className: 'cover-btn-group' },
-                        el('button', { className: 'btn-cover', onClick: () => window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(item.customTitle)}`, '_blank') }, '검색'),
+                        el('button', { className: 'btn-cover', onClick: () => window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(item.customTitle)}`, '_blank', 'noopener,noreferrer') }, '검색'),
                         el('button', { className: 'btn-cover' + (hasCover ? ' active' : ''), onClick: () => readClipboardImage(item.id) }, '클립보드')
                     )
                 ),
                 el('td', {}, item.encoding),
-                el('td', {}, el('span', { style: { color: item.isValid === 'ok' ? 'var(--success)' : 'var(--danger)' } }, item.isValid === 'ok' ? '✓' : '!') ),
+                el('td', {},
+                    el('div', { className: 'detect-cell' }, detectBtn)
+                ),
                 el('td', {},
                     el('span', {
                         className: `status-badge badge-${item.state}` + (isClickable ? ' clickable' : ''),
@@ -446,91 +1587,110 @@
     const workerCode = `
         importScripts("https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js");
 
+        const BRACKET_TITLE_PATTERN = /^[<【〔\\[(]\\s*(?:(?:(?:외전|프롤로그|에필로그)\\s*)?(?:제\\s*)?\\d+\\s*[화회장막편부]|(?:Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\d+|(?:프롤로그|에필로그|외전|공지|작가(?:의\\s*말)?|자기\\s*소개|서장|종장|프로필)|\\d{1,5})(?:\\s*[-:.·]\\s*[^>】〕\\]\\)〉》」』]{1,20})?\\s*[>】〕\\]\\)〉》」』]$/i;
+
+        const TITLE_RULES = {
+            maxLineLength: 90,
+            strongStartPatterns: [
+                /^[<【〔\\[(=\\-~]?\\s*(?:외전|프롤로그|에필로그)?\\s*(?:제\\s*)?\\d+\\s*[화회장막편부](?:\\s|:|\\.|-|$)/i,
+                /^[<【〔\\[(]?\\s*(?:Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\d+/i,
+                /^[<【〔\\[(=\\-~]?\\s*[#＃]\\d+/,
+                /^0\\d{1,3}(?:\\s|$)/,
+                /^\\d+[-_]\\d+(?:\\s|$)/,
+                /^\\d+[.)](?:\\s|$)/,
+                /^\\[\\d+\\]/,
+                BRACKET_TITLE_PATTERN,
+            ],
+            sentenceSuffixPattern: /[다요네지음니까야라자고대군걸죠셔가냐어워확정예정발표출시전망돌입상승하락고][.?!~"”'’\\s,…·:;>\\]】〕〉》」』]*$/,
+            chapterSuffixPattern: /\\d+\\s*[화회장막편부](?:[이가을를은는에로와과의]|에서|으로|부터|까지|쯤|정도|분량|라는|란|만|도|면|아닌|인가|일까|인지)/,
+            bracketOpenPattern: /^[<【〔\\[(]/,
+            bracketClosePattern: /[>】〕\\]\\)〉》」』]/,
+            bracketTitlePattern: BRACKET_TITLE_PATTERN,
+            quotedStartPattern: /^[-—~]?\\s*["'”’「『“‘]/,
+            finalDotPattern: /[.?!]$/,
+            finalPunctuationPattern: /[.,!?;~]/,
+            titleNoisePattern: /(?:제\\s*)?\\d+\\s*[화회장막편부]/,
+            groupMatchers: [
+                { group: 'KOR', test: (t) => t.match(/(?:제\\s*)?\\d+\\s*([화회장막편부])(?:\\]|\\s|:|\\.|-|$)/), resolve: (_, match) => 'KOR_' + match[1] },
+                { group: 'ENG', test: (t) => t.match(/^(Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\d+/i), resolve: (_, match) => 'ENG_' + match[1].toUpperCase() },
+                { group: 'SPECIAL', test: (t) => /^(?:프롤로그|에필로그|외전|공지|작가의\\s*말|서장|종장|프로필)/.test(t) },
+                { group: 'BRACKET', test: (t) => BRACKET_TITLE_PATTERN.test(t) },
+                { group: 'SHARP', test: (t) => /^[#＃]\\d+/.test(t) },
+                { group: 'NUMBER', test: (t) => /^\\d+[-_.]\\d+(?:\\s|$)/.test(t) || /^\\d+[.)](?:\\s|$)/.test(t) || /^0\\d{1,3}(?:[.)]?\\s*$)/.test(t) || /^\\[\\d+\\]/.test(t) || /^\\d{1,5}$/.test(t) },
+            ],
+            bannedRegex: /((?:\\d+\\.\\d+)|(?:\\d+[\\/\\\\]\\d+))\\s*(?:캐럿|만|억|천|밀리언|빌리언|트릴리언|달러|원|퍼센트|%|미터|km|m|cm|mm|kg|g|초|분|시간|배|위|군|점|승|무|패|등급)|(?:총|약|단|무려|겨우|고작|단지)\\s*\\d+\\s*[장회화편부]|\\d+\\s*(?:년|월|일|시|분|초|주년|세기|년대|광복절|삼일절|기념일|명절|행사|당일|살|세|차|퍼센트|%|배|개|명|마리|번|회분|곱하기|층)/i
+        };
+
+        const cleanLine = (line) => line.replace(/[\\u200B-\\u200D\\uFEFF]/g, '').trim();
+        const matchesAny = (patterns, text) => patterns.some((pattern) => pattern.test(text));
+
         class ClusterParser {
             constructor(customRegexStr = null) {
                 this.customRegex = customRegexStr ? new RegExp(customRegexStr, 'i') : null;
-                this.bannedRegex = /((?:\\d+\\.\\d+)|(?:\\d+[\\/\\\\]\\d+))\\s*(?:캐럿|만|억|천|밀리언|빌리언|트릴리언|달러|원|퍼센트|%|미터|km|m|cm|mm|kg|g|초|분|시간|배|위|군|점|승|무|패|등급)|(?:총|약|단|무려|겨우|고작|단지)\\s*\\d+\\s*[장회화편부]|\\d+\\s*(?:년|월|일|시|분|초|주년|세기|년대|광복절|삼일절|기념일|명절|행사|당일|살|세|차|퍼센트|%|배|개|명|마리|번|회분|곱하기|층)/i;
+                this.rules = TITLE_RULES;
+                this.bannedRegex = TITLE_RULES.bannedRegex;
             }
 
-            analyze(lines, useMultiToc = false) {
-                const groupCounts = {};
-                const lineData = new Array(lines.length).fill(null);
+            normalizeLine(line) {
+                return cleanLine(line);
+            }
 
-                // --- 1단계: 유전자 판별 ---
-                for (let i = 0; i < lines.length; i++) {
-                    let t = lines[i].replace(/[\\u200B-\\u200D\\uFEFF]/g, '').trim();
-                    if (!t || t.length > 90) continue;
+            isStrongStart(text) {
+                return matchesAny(this.rules.strongStartPatterns, text);
+            }
 
-                    if (/^[<【〔\\[(]/.test(t) && /[!?.,~…>\\]】〕]$/.test(t)) {
-                        if (!/(?:제\\s*)?\\d+\\s*[화회장막편부]/i.test(t) && !/Chapter\\s*\\d+/i.test(t)) {
-                            if (/[!?]$/.test(t) || (t.match(/[.,!?;~]/g) || []).length >= 2) continue;
-                        }
-                    }
+            // 새로 추가할 제목 예외는 shouldSkipCandidate()와 groupMatchers에 넣으면 됩니다.
+            shouldSkipCandidate(text, isStrongStart) {
+                const isBracketed = this.rules.bracketOpenPattern.test(text) && this.rules.bracketClosePattern.test(text);
+                const isBracketTitle = this.rules.bracketTitlePattern.test(text);
 
-                    if (/^[-—~]?\\s*["'”’「『“‘]/.test(t)) continue;
+                if (isBracketed && !isBracketTitle) return true;
 
-                    // [핵심 변경] 외전이나 프롤로그가 앞에 붙어도 StrongStart로 쳐주도록 보강
-                    const isStrongStart =
-                        /^[<【〔\\[(=\\-~]?\\s*(?:외전|프롤로그|에필로그)?\\s*(?:제\\s*)?\\d+\\s*[화회장막편부](?:\\s|:|\\.|-|$)/i.test(t) ||
-                        /^[<【〔\\[(]?\\s*(?:Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\d+/i.test(t) ||
-                        /^[<【〔\\[(=\\-~]?\\s*[#＃]\\d+/.test(t) ||
-                        /^0\\d{1,3}(?:[.,)\\]]?(?:\\s|$)|[>\\]】〕〉》」』)])/.test(t) ||
-                        /^\\d+[-_]\\d+(?:[.,)\\]]?(?:\\s|$)|[>\\]】〕〉》」』)])/.test(t) ||
-                        /^\\d+[.)\\]](?:\\s|$)/.test(t) ||
-                        /^\\[\\d+\\]/.test(t);
+                if (this.rules.quotedStartPattern.test(text)) return true;
+                if (this.rules.chapterSuffixPattern.test(text)) return true;
 
-                    if (/\\d+\\s*[화회장막편부](?:[이가을를은는에로와과의]|에서|으로|부터|까지|쯤|정도|분량|라는|란|만|도|면|아닌|인가|일까|인지)/.test(t)) continue;
-
-                    if (/[다요네지음니까야라자고대군걸죠셔가냐어워확정예정발표출시전망돌입상승하락고][.?!~"”'’\\s,…·:;>\\]】〕〉》」』)]*$/.test(t)) {
-                        if (!isStrongStart && t.length > 10) continue;
-                        if (isStrongStart && t.length > 60) continue;
-                    }
-
-                    if (/^[<【〔\\[(]/.test(t) && /[>\\]】〕)]$/.test(t)) {
-                        if (t.length > 20 && (t.match(/[.,]/g) || []).length >= 1) continue;
-                    }
-
-                    const korMatchForFilter = t.match(/(?:제\\s*)?\\d+\\s*[화회장막편부]/);
-                    if (korMatchForFilter && !isStrongStart && korMatchForFilter.index > 15 && /[.?!]$/.test(t)) continue;
-
-                    if (this.bannedRegex.test(t) && !isStrongStart) continue;
-
-                    const prevE = (i === 0 || lines[i-1].trim() === "");
-                    const nextE = (i === lines.length-1 || lines[i+1].trim() === "");
-
-                    let matchedGroup = null;
-                    let match;
-
-                    // [핵심 해결] SPECIAL 우선순위 강등! KOR(숫자 챕터)를 가장 먼저 검사합니다.
-                    // 이렇게 하면 "외전 19장"이 SPECIAL 그룹으로 빠지는 걸 막고 "장" 계급으로 묶어 다중패턴 Off 시 탈락시킵니다.
-                    if ((match = t.match(/(?:제\\s*)?\\d+\\s*([화회장막편부])/))) {
-                        matchedGroup = 'KOR_' + match[1];
-                    } else if ((match = t.match(/^(?:Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\d+/i))) {
-                        matchedGroup = 'ENG_' + match[1].toUpperCase();
-                    }
-                    // 숫자 없는 찐 외전/프롤로그만 SPECIAL 그룹으로 생존
-                    else if (/^(?:프롤로그|에필로그|외전|공지|작가의\\s*말|서장|종장|프로필)/.test(t)) {
-                        matchedGroup = 'SPECIAL';
-                    } else if (/^[<【〔\\[].+?[>】〕\\]]/.test(t)) {
-                        matchedGroup = 'BRACKET';
-                    } else if (/^[#＃]\\d+/.test(t)) {
-                        matchedGroup = 'SHARP';
-                    } else if (/^\\d+[-_.]\\d+(?:\\s|[>\\]】〕〉》」』)]|$)/.test(t) || /^\\d+[.)\\]](?:\\s|$)/.test(t) || /^0\\d{1,3}[.)\\]]?(?:\\s|[>\\]】〕〉》」』)]|$)/.test(t) || /^\\[\\d+\\]/.test(t) || /^\\d{1,5}$/.test(t)) {
-                        matchedGroup = 'NUMBER';
-                    } else if (this.customRegex && this.customRegex.test(t)) {
-                        matchedGroup = 'CUSTOM';
-                    }
-
-                    if (matchedGroup) {
-                        if (!isStrongStart && matchedGroup !== 'SPECIAL' && matchedGroup !== 'BRACKET') {
-                            if (!prevE || !nextE) continue;
-                        }
-                        groupCounts[matchedGroup] = (groupCounts[matchedGroup] || 0) + 1;
-                        lineData[i] = matchedGroup;
-                    }
+                if (this.rules.sentenceSuffixPattern.test(text)) {
+                    if (!isStrongStart && text.length > 10) return true;
+                    if (isStrongStart && text.length > 60) return true;
                 }
 
-                // --- 2단계: 합격자 발표 ---
+                if (isBracketed && isBracketTitle) {
+                    if (text.length > 20 && (text.match(/[.,]/g) || []).length >= 1) return true;
+                }
+
+                const korMatchForFilter = text.match(this.rules.titleNoisePattern);
+                if (korMatchForFilter && !isStrongStart && korMatchForFilter.index > 15 && this.rules.finalDotPattern.test(text)) return true;
+
+                if (this.bannedRegex.test(text) && !isStrongStart) return true;
+                return false;
+            }
+
+            // 새 감지 케이스는 groupMatchers에 한 줄씩 추가하면 됩니다.
+            classifyLine(text) {
+                for (const rule of this.rules.groupMatchers) {
+                    const hit = rule.test(text);
+                    if (hit) return rule.resolve ? rule.resolve(text, hit) : rule.group;
+                }
+                if (this.customRegex && this.customRegex.test(text)) return 'CUSTOM';
+                return null;
+            }
+
+            getChapterNum(text) {
+                const match = text.match(/(?:제\\s*)?(\\d+)\\s*[화회장막편부](?:\\]|\\s|:|\\.|-|$)/) ||
+                    text.match(/(?:Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*(\\d+)/i) ||
+                    text.match(/[#＃](\\d+)/) ||
+                    text.match(/(?:^|[^a-zA-Z0-9가-힣])(\\d+)(?![.\\/\\\\]\\d)/);
+                return match ? parseInt(match[1], 10) : -1;
+            }
+
+            getGroupTier(group) {
+                if (group.startsWith('KOR') || group.startsWith('ENG')) return 3;
+                if (group === 'BRACKET' || group === 'SHARP') return 2;
+                if (group === 'NUMBER') return 1;
+                return 0;
+            }
+
+            buildActiveGroups(groupCounts, firstSeen, useMultiToc) {
                 const activeGroups = new Set(['SPECIAL']);
                 if (groupCounts['CUSTOM'] > 0) activeGroups.add('CUSTOM');
 
@@ -538,41 +1698,73 @@
                     for (const [group, count] of Object.entries(groupCounts)) {
                         if (group !== 'SPECIAL' && group !== 'CUSTOM' && count >= 1) activeGroups.add(group);
                     }
-                } else {
-                    let bestGroup = null; let bestCount = 0; let bestTier = -1;
-                    const getTier = (g) => {
-                        if (g.startsWith('KOR') || g.startsWith('ENG')) return 3;
-                        if (g === 'BRACKET' || g === 'SHARP') return 2;
-                        if (g === 'NUMBER') return 1;
-                        return 0;
-                    };
-                    for (const [group, count] of Object.entries(groupCounts)) {
-                        if (group !== 'SPECIAL' && group !== 'CUSTOM') {
-                            const tier = getTier(group);
-                            if (tier > bestTier) { bestTier = tier; bestCount = count; bestGroup = group; }
-                            else if (tier === bestTier && count > bestCount) { bestCount = count; bestGroup = group; }
-                        }
-                    }
-                    if (bestGroup && bestCount >= 1) activeGroups.add(bestGroup);
+                    return activeGroups;
                 }
+
+                let bestGroup = null;
+                let bestCount = -1;
+                let bestTier = -1;
+                let bestFirstSeen = Infinity;
+                for (const [group, count] of Object.entries(groupCounts)) {
+                    if (group === 'SPECIAL' || group === 'CUSTOM') continue;
+                    const seen = firstSeen[group] ?? Infinity;
+                    const tier = this.getGroupTier(group);
+                    if (
+                        count > bestCount ||
+                        (count === bestCount && tier > bestTier) ||
+                        (count === bestCount && tier === bestTier && seen < bestFirstSeen)
+                    ) {
+                        bestCount = count;
+                        bestTier = tier;
+                        bestFirstSeen = seen;
+                        bestGroup = group;
+                    }
+                }
+
+                if (bestGroup) activeGroups.add(bestGroup);
+                return activeGroups;
+            }
+
+            analyze(lines, useMultiToc = false) {
+                const groupCounts = {};
+                const firstSeen = {};
+                const lineData = new Array(lines.length).fill(null);
+
+                // --- 1단계: 유전자 판별 ---
+                for (let i = 0; i < lines.length; i++) {
+                    const t = this.normalizeLine(lines[i]);
+                    if (!t || t.length > this.rules.maxLineLength) continue;
+
+                    const isStrongStart = this.isStrongStart(t);
+                    if (this.shouldSkipCandidate(t, isStrongStart)) continue;
+
+                    const prevE = (i === 0 || lines[i-1].trim() === "");
+                    const nextE = (i === lines.length-1 || lines[i+1].trim() === "");
+
+                    const matchedGroup = this.classifyLine(t);
+
+                    if (matchedGroup) {
+                        if (!isStrongStart && matchedGroup !== 'SPECIAL' && matchedGroup !== 'BRACKET') {
+                            if (!prevE || !nextE) continue;
+                        }
+                        groupCounts[matchedGroup] = (groupCounts[matchedGroup] || 0) + 1;
+                        if (firstSeen[matchedGroup] === undefined) firstSeen[matchedGroup] = i;
+                        lineData[i] = matchedGroup;
+                    }
+                }
+
+                // --- 2단계: 합격자 발표 ---
+                const activeGroups = this.buildActiveGroups(groupCounts, firstSeen, useMultiToc);
 
                 const prelimIndices = [];
                 lineData.forEach((group, i) => {
                     if (group && activeGroups.has(group)) prelimIndices.push(i);
                 });
 
-                function getChapterNum(str) {
-                    let m = str.match(/(?:제\\s*)?(\\d+)\\s*[화회장막편부]/) ||
-                            str.match(/(?:Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*(\\d+)/i) ||
-                            str.match(/[#＃](\\d+)/) ||
-                            str.match(/(?:^|[^a-zA-Z0-9가-힣])(\\d+)(?![.\\/\\\\]\\d)/);
-                    return m ? parseInt(m[1], 10) : -1;
-                }
-
                 // --- 3단계: 샌드위치 필터 ---
                 let items = prelimIndices.map(idx => {
-                    let t = lines[idx].replace(/[\\u200B-\\u200D\\uFEFF]/g, '').trim();
-                    let num = getChapterNum(t);
+                    let t = this.normalizeLine(lines[idx]);
+                    let num = this.getChapterNum(t);
                     let group = lineData[idx];
                     let isAnchor = group.startsWith('KOR') || group.startsWith('ENG') || group === 'SHARP';
                     return { idx, t, num, group, isAnchor };
@@ -632,7 +1824,22 @@
                     }
                 }
 
-                return finalIndices;
+                const dedupedIndices = new Set();
+                const seenChapterKeys = new Set();
+
+                for (const item of items) {
+                    if (!finalIndices.has(item.idx)) continue;
+
+                    if (item.num !== -1) {
+                        const chapterKey = String(item.num);
+                        if (seenChapterKeys.has(chapterKey)) continue;
+                        seenChapterKeys.add(chapterKey);
+                    }
+
+                    dedupedIndices.add(item.idx);
+                }
+
+                return dedupedIndices;
             }
         }
 
@@ -650,6 +1857,23 @@
                     const resultLines = [];
                     validIndices.forEach(i => resultLines.push(lines[i]));
                     self.postMessage({ type: 'TEST_RESULT', payload: { resultLines, total: lines.length } });
+                }
+                else if (type === 'PREVIEW_PARSER') {
+                    const parser = new ClusterParser(payload.userRegex);
+                    const lines = safeSplit(payload.text);
+                    const validIndices = parser.analyze(lines, payload.useMultiToc);
+                    const resultLines = [];
+                    validIndices.forEach(i => resultLines.push(lines[i]));
+                    self.postMessage({
+                        type: 'PREVIEW_RESULT',
+                        payload: {
+                            requestId: payload.requestId,
+                            title: payload.customTitle || payload.fileName || '목차 미리보기',
+                            fileName: payload.fileName || '',
+                            meta: (payload.fileName || '') + (payload.fileName ? ' · ' : '') + lines.length + '줄',
+                            resultLines
+                        }
+                    });
                 }
                 else if (type === 'VALIDATE') {
                     const parser = new ClusterParser(payload.userRegex);
@@ -735,7 +1959,9 @@
     `;
 
     const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
-    const parserWorker = new Worker(URL.createObjectURL(workerBlob));
+    const workerUrl = URL.createObjectURL(workerBlob);
+    const parserWorker = new Worker(workerUrl);
+    URL.revokeObjectURL(workerUrl);
     const conversionResolvers = new Map();
 
     parserWorker.onerror = (err) => {
@@ -751,6 +1977,14 @@
             } else {
                 dom.testOutput.innerHTML = '<strong style="color:var(--success)">총 ' + payload.resultLines.length + '개 감지됨:</strong><div style="margin-top:8px;">' + payload.resultLines.map(l => '<div style="padding: 3px 0; border-bottom: 1px dashed #2d334a;">' + l.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>').join('') + '</div>';
             }
+        }
+        else if (type === 'PREVIEW_RESULT') {
+            if (payload.requestId !== currentPreviewRequestId) return;
+            openPreviewDialog(
+                payload.title || payload.fileName || '목차 미리보기',
+                payload.meta || '',
+                payload.resultLines || []
+            );
         }
         else if (type === 'VALIDATE_RESULT') {
             store.dispatch({ type: 'UPDATE_FILE_VALIDITY', payload });
@@ -819,15 +2053,22 @@
     }
 
     dom.convertBtn.onclick = async () => {
+        if (store.state.isProcessing) {
+            store.dispatch({ type: 'STOP_PROCESSING' });
+            store.dispatch({ type: 'SET_STATUS_DETAIL', payload: '중지 요청을 반영하는 중입니다.' });
+            return;
+        }
+
         const filesToProcess = store.state.files;
         if (!filesToProcess.length) return;
+        const totalCount = filesToProcess.length;
 
         const needsReset = filesToProcess.every(f => f.state === 'done' || f.state === 'error');
         if (needsReset) {
             filesToProcess.forEach(f => store.dispatch({ type: 'UPDATE_FILE_STATUS', payload: { id: f.id, status: 'wait' } }));
         }
 
-        store.dispatch({ type: 'START_PROCESSING' });
+        store.dispatch({ type: 'START_PROCESSING', payload: { totalCount } });
 
         const finalZip = dom.optZip.checked ? new JSZip() : null;
         const useMultiToc = dom.optMultiToc.checked;
@@ -871,29 +2112,26 @@
                 if (finalZip) {
                     finalZip.file(`${item.customTitle}.epub`, blob);
                 } else {
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob);
-                    a.download = `${item.customTitle}.epub`;
-                    a.click();
+                    triggerDownload(blob, `${item.customTitle}.epub`);
                 }
                 store.dispatch({ type: 'UPDATE_FILE_STATUS', payload: { id: item.id, status: 'done' } });
             } catch (e) {
                 store.dispatch({ type: 'UPDATE_FILE_STATUS', payload: { id: item.id, status: 'error' } });
             }
             store.dispatch({ type: 'SET_PROGRESS', payload: ((i + 1) / filesToProcess.length) * 100 });
+            const stats = getFileStats(store.state.files);
+            store.dispatch({ type: 'SET_STATUS_DETAIL', payload: `${stats.done}개 완료 · ${stats.error}개 오류` });
         }
 
         if (finalZip && !store.state.shouldStop) {
             const b = await finalZip.generateAsync({ type: "blob" });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(b);
-            a.download = `EPUB_COLLECTION.zip`;
-            a.click();
+            triggerDownload(b, `EPUB_COLLECTION.zip`);
         }
+        const finalStats = getFileStats(store.state.files);
+        store.dispatch({ type: 'SET_STATUS_DETAIL', payload: `${finalStats.done}개 완료 · ${finalStats.error}개 오류` });
         store.dispatch({ type: 'FINISH_PROCESSING' });
     };
 
-    dom.stopBtn.onclick = () => store.dispatch({ type: 'STOP_PROCESSING' });
     dom.clearAllBtn.onclick = () => { if (!store.state.isProcessing) store.dispatch({ type: 'CLEAR_FILES' }); };
 </script>
 </body>
