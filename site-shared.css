@@ -99,6 +99,41 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
     gap: 10px;
 }
 
+.lang-switch {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-left: 6px;
+}
+
+.lang-switch button {
+    border: 1px solid var(--border);
+    background: rgba(13,17,29,0.9);
+    color: var(--text-dim);
+    border-radius: 999px;
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    font-size: 1.05rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: 0.2s ease;
+    line-height: 1;
+}
+
+.lang-switch button:hover {
+    color: var(--text);
+    border-color: var(--accent);
+}
+
+.lang-switch button.active {
+    background: rgba(99,102,241,0.18);
+    color: var(--text);
+    border-color: rgba(129,140,248,0.55);
+}
+
 .header-nav a,
 .footer-links a {
     text-decoration: none;
