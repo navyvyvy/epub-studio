@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EPUB STUDIO | TXT를 EPUB으로 변환하는 브라우저 기반 도구</title>
-    <meta name="description" content="EPUB STUDIO는 TXT 파일을 브라우저에서 EPUB으로 일괄 변환하는 도구입니다. 공백 정제, 목차 추출, 표지 적용, 인코딩 자동 감지, ZIP 압축을 로컬에서 처리합니다.">
+    <meta name="description" content="EPUB STUDIO는 TXT 파일을 브라우저에서 EPUB으로 바꾸는 도구입니다. 공백 정리, 목차 추출, 표지 적용, 인코딩 자동 감지, ZIP 압축을 브라우저 안에서 처리합니다.">
     <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
     <meta name="theme-color" content="#0b0f1a">
     <meta name="google-adsense-account" content="ca-pub-6996920182245498">
@@ -12,11 +12,11 @@
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6996920182245498" crossorigin="anonymous"></script>
     <meta property="og:type" content="website">
     <meta property="og:title" content="EPUB STUDIO | TXT를 EPUB으로 변환하는 브라우저 기반 도구">
-    <meta property="og:description" content="브라우저 안에서 TXT 파일을 EPUB으로 변환합니다. 공백 정제, 목차 추출, 표지 적용, 인코딩 자동 감지, ZIP 압축을 지원합니다.">
+    <meta property="og:description" content="브라우저 안에서 TXT 파일을 EPUB으로 바꾸는 도구입니다. 공백 정리, 목차 추출, 표지 적용, 인코딩 자동 감지, ZIP 압축을 쓸 수 있습니다.">
     <meta property="og:url" content="">
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="EPUB STUDIO | TXT를 EPUB으로 변환하는 브라우저 기반 도구">
-    <meta name="twitter:description" content="브라우저에서 TXT 파일을 EPUB으로 변환하고, 공백 정제와 목차 추출을 한 번에 처리합니다.">
+    <meta name="twitter:description" content="브라우저에서 TXT 파일을 EPUB으로 바꾸고, 공백 정리와 목차 추출을 한 번에 처리합니다.">
     <link rel="canonical" id="canonicalLink" href="">
     <script>
         (function () {
@@ -32,7 +32,7 @@
                 "applicationCategory": "UtilitiesApplication",
                 "operatingSystem": "Web",
                 "inLanguage": "ko",
-                "description": "브라우저에서 TXT 파일을 EPUB으로 일괄 변환하는 웹 도구입니다.",
+                "description": "브라우저에서 TXT 파일을 EPUB으로 바꾸는 웹 도구입니다.",
                 "url": url,
                 "offers": {
                     "@type": "Offer",
@@ -1185,7 +1185,7 @@
     <header class="site-header">
         <div class="brand-block">
             <p class="brand-name">EPUB STUDIO</p>
-            <p class="brand-subtitle">TXT를 EPUB으로 바꾸는 브라우저 기반 전자책 도구</p>
+            <p class="brand-subtitle">브라우저에서 TXT를 EPUB으로 바꾸는 도구</p>
         </div>
         <nav class="header-nav" aria-label="페이지 섹션">
             <a href="#tool">변환 도구</a>
@@ -1199,9 +1199,9 @@
     <main class="content-stack">
         <section class="section-block tool-section" id="tool">
             <div class="section-headline">
-                <p class="hero-kicker">브라우저에서 바로 쓰는 EPUB 변환기</p>
-                <h1 class="section-title">TXT 파일을 로컬 브라우저에서 EPUB으로 변환합니다</h1>
-                <p>공백 정제, 목차 추출, 표지 적용, 인코딩 자동 감지, ZIP 묶음 출력은 모두 브라우저 안에서 처리됩니다.</p>
+                <p class="hero-kicker">브라우저에서 바로 쓰는 EPUB 도구</p>
+                <h1 class="section-title">TXT 파일을 브라우저에서 EPUB으로 바꿉니다</h1>
+                <p>공백 정리, 목차 추출, 표지 적용, 인코딩 자동 감지, ZIP 묶음 출력까지 모두 브라우저에서 처리합니다.</p>
             </div>
             <div style="display:flex; justify-content:center;">
 <div class="container">
@@ -1214,7 +1214,7 @@
             <div class="options-group">
                 <label class="option-item"><input type="checkbox" id="optTrim" checked> 공백 정제</label>
                 <label class="option-item"><input type="checkbox" id="optToc" checked> 목차 추출</label>
-                <label class="option-item" title="체크 시 '몇 화'와 '070' 등 서로 다른 형식의 챕터 기호가 섞여 있어도 모두 목차로 추출합니다.">
+                    <label class="option-item" title="체크하면 '몇 화'와 '070'처럼 형식이 다른 챕터 표기가 섞여 있어도 함께 목차로 잡습니다.">
                     <input type="checkbox" id="optMultiToc"> 🔀 다중 패턴 허용
                 </label>
                 <label class="option-item"><input type="checkbox" id="optZip"> ZIP 일괄 압축</label>
@@ -1234,7 +1234,7 @@
                 <div class="regex-test-row">
                     <button type="button" id="btnTestParser">테스트 실행</button>
                 </div>
-                <div id="testOutput" class="regex-output">감지된 제목이 이곳에 표시됩니다. (순위 결정전 최적화 엔진 가동)</div>
+                <div id="testOutput" class="regex-output">감지된 제목이 여기에 표시됩니다.</div>
             </div>
         </div>
     </div>
@@ -1247,7 +1247,7 @@
             <div class="process-label">현재 상태</div>
             <div class="status-stack">
                 <div id="status">대기 중</div>
-                <div class="status-detail" id="statusDetail">TXT 파일을 추가하면 변환을 시작할 수 있습니다.</div>
+                <div class="status-detail" id="statusDetail">TXT 파일을 넣으면 변환을 시작할 수 있습니다.</div>
                 <div class="progress-bar" id="progBar"><div class="progress-fill" id="progFill"></div></div>
             </div>
         </div>
@@ -1258,10 +1258,10 @@
             <div class="preview-head">
                 <div class="preview-title">
                     <strong id="previewFileName">목차 미리보기</strong>
-                    <span id="previewFileMeta">파일을 선택하면 감지된 제목 후보를 보여줍니다.</span>
+                    <span id="previewFileMeta">파일을 고르면 감지된 제목 후보를 보여줍니다.</span>
                 </div>
                 <div class="preview-actions">
-                    <label class="preview-toggle" title="다중 패턴을 바로 바꿔서 미리보기를 다시 계산합니다.">
+                    <label class="preview-toggle" title="다중 패턴을 바로 바꿔 미리보기를 다시 계산합니다.">
                         <input type="checkbox" id="previewMultiTocToggle">
                         <span>다중 패턴</span>
                     </label>
@@ -1271,13 +1271,13 @@
             </div>
             <div class="preview-summary" id="previewSummary"></div>
             <div class="preview-list" id="previewList">
-                <div class="preview-empty">아직 미리보기 결과가 없습니다. 파일 목록에서 "목차 미리보기"를 누르세요.</div>
+                <div class="preview-empty">아직 미리보기 결과가 없습니다. 파일 목록에서 목차 미리보기를 눌러보세요.</div>
             </div>
         </div>
     </dialog>
 
     <div class="file-list-area" id="dropZone">
-        <div class="empty-msg" id="emptyMsg">텍스트 파일을 드래그하거나 클릭하여 추가하세요</div>
+        <div class="empty-msg" id="emptyMsg">텍스트 파일을 드래그하거나 클릭해서 추가하세요</div>
         <div class="table-wrapper" id="tableWrapper">
             <div class="table-scroll-box">
                 <table class="file-table">
@@ -1312,43 +1312,43 @@
         <section class="section-block" id="features">
             <div class="section-headline">
                 <p class="hero-kicker">기능 소개</p>
-                <h2 class="section-title">제공 기능만 간단히 정리했습니다</h2>
-                <p>현재 구현된 기능만 간단히 정리했습니다.</p>
+                <h2 class="section-title">지금 들어 있는 기능만 추려 적었습니다</h2>
+                <p>지금 구현된 기능만 짧게 적었습니다.</p>
             </div>
             <div class="feature-grid">
                 <article class="feature-card">
                     <h3>TXT에서 EPUB으로 변환</h3>
-                    <p>여러 텍스트 파일을 한 번에 넣고 EPUB 파일로 변환합니다. 파일 단위로 상태를 확인할 수 있어 작업 흐름이 단순합니다.</p>
+                    <p>여러 텍스트 파일을 한 번에 넣고 EPUB으로 바꿀 수 있습니다. 파일별 상태도 바로 볼 수 있어 흐름이 단순합니다.</p>
                 </article>
                 <article class="feature-card">
                     <h3>공백 정제</h3>
-                    <p>무의미한 연속 빈 줄은 줄이고, 문단과 장면 전환에 필요한 여백은 살려 가독성을 유지합니다.</p>
+                    <p>불필요한 연속 빈 줄은 줄이고, 문단 사이의 여백은 너무 과하게 건드리지 않습니다.</p>
                 </article>
                 <article class="feature-card">
                     <h3>목차 추출</h3>
-                    <p>화, 회, Chapter, Episode 같은 표기를 감지해 목차로 묶습니다. 다중 패턴과 커스텀 정규식도 지원합니다.</p>
+                    <p>화, 회, Chapter, Episode 같은 표기를 감지해 목차로 묶습니다. 다중 패턴과 사용자 정규식도 쓸 수 있습니다.</p>
                 </article>
                 <article class="feature-card">
                     <h3>목차 미리보기</h3>
-                    <p>파일별 목차 후보를 바로 확인하고, 각 줄은 눌러 복사할 수 있습니다. 감지 상태는 색으로 구분됩니다.</p>
+                    <p>파일별 목차 후보를 바로 보고, 필요하면 각 줄을 눌러 복사할 수 있습니다. 감지 상태도 함께 보여줍니다.</p>
                 </article>
                 <article class="feature-card">
                     <h3>표지 설정</h3>
-                    <p>도서명을 검색하거나, 클립보드 이미지와 이미지 URL을 표지로 적용할 수 있습니다.</p>
+                    <p>제목을 검색하거나 클립보드에 있는 이미지와 이미지 URL을 표지로 붙일 수 있습니다.</p>
                 </article>
                 <article class="feature-card">
                     <h3>인코딩 자동 감지</h3>
-                    <p>UTF-8, CP949 같은 흔한 인코딩을 자동으로 판별해 깨짐을 줄입니다.</p>
+                    <p>UTF-8, CP949 같은 흔한 인코딩을 자동으로 읽어들여 깨짐을 줄입니다.</p>
                 </article>
                 <article class="feature-card">
                     <h3>ZIP 일괄 압축</h3>
-                    <p>여러 EPUB 결과물을 하나의 ZIP 파일로 묶어 내려받을 수 있습니다.</p>
+                    <p>여러 EPUB 결과물을 한 번에 ZIP으로 묶어 받을 수 있습니다.</p>
                 </article>
             </div>
         </section>
 
         <footer class="footer-panel">
-            <p>© 2026 EPUB STUDIO. TXT에서 EPUB으로 변환하는 브라우저 도구.</p>
+            <p>© 2026 EPUB STUDIO. TXT를 EPUB으로 바꾸는 브라우저 도구.</p>
             <div class="footer-links">
                 <a href="#tool">변환 도구</a>
                 <a href="#features">기능 소개</a>
