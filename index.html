@@ -956,6 +956,10 @@
             font-weight: 700;
         }
 
+        .preview-summary .preview-summary-excluded {
+            color: #fca5a5;
+        }
+
         .preview-list {
             display: grid;
             gap: 8px;
@@ -973,7 +977,10 @@
         }
 
         .preview-item {
-            display: block;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
             width: 100%;
             text-align: left;
             padding: 9px 10px;
@@ -995,6 +1002,66 @@
         .preview-item.copied {
             border-color: var(--success);
             color: var(--success);
+        }
+
+        .preview-item.is-excluded {
+            cursor: default;
+            opacity: 0.95;
+            border-color: rgba(239, 68, 68, 0.36);
+            background: rgba(239, 68, 68, 0.06);
+        }
+
+        .preview-item-text {
+            flex: 1;
+            min-width: 0;
+            text-align: left;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            color: inherit;
+            font: inherit;
+            line-height: inherit;
+            word-break: inherit;
+            overflow-wrap: inherit;
+            cursor: pointer;
+        }
+
+        .preview-item.is-excluded .preview-item-text {
+            color: #fca5a5;
+            text-decoration: line-through;
+        }
+
+        .preview-item.is-excluded .preview-item-action {
+            border-color: rgba(239, 68, 68, 0.42);
+            color: #fecaca;
+            background: rgba(239, 68, 68, 0.08);
+        }
+
+        .preview-item-action {
+            flex: 0 0 auto;
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #0b0f1a;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: 0.18s ease;
+        }
+
+        .preview-item-action:hover {
+            color: var(--text);
+            border-color: var(--accent);
+            transform: translateY(-1px);
+        }
+
+        .preview-action-icon {
+            width: 14px;
+            height: 14px;
+            display: block;
         }
 
         @media (max-width: 900px) {
@@ -1459,9 +1526,105 @@
         testOutput: document.getElementById('testOutput')
     };
 
-    let currentPreviewLines = [];
+    let currentPreviewItems = [];
     let currentPreviewFileId = null;
     let currentPreviewRequestId = 0;
+    const excludedPreviewLinesByFile = new Map();
+
+    function getExcludedPreviewLines(fileId) {
+        return excludedPreviewLinesByFile.get(fileId) || new Set();
+    }
+
+    function setExcludedPreviewLine(fileId, lineIndex, shouldExclude) {
+        if (!fileId && fileId !== 0) return;
+        let excluded = excludedPreviewLinesByFile.get(fileId);
+        if (!excluded && shouldExclude) {
+            excluded = new Set();
+            excludedPreviewLinesByFile.set(fileId, excluded);
+        }
+        if (!excluded) return;
+        if (shouldExclude) excluded.add(lineIndex);
+        else excluded.delete(lineIndex);
+        if (excluded.size === 0) excludedPreviewLinesByFile.delete(fileId);
+    }
+
+    function createPreviewActionIcon(kind) {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor');
+        svg.setAttribute('stroke-width', '2');
+        svg.setAttribute('stroke-linecap', 'round');
+        svg.setAttribute('stroke-linejoin', 'round');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.classList.add('preview-action-icon');
+        svg.innerHTML = kind === 'restore'
+            ? '<path d="M4 12a8 8 0 1 1 8 8"/><path d="M4 12h6"/><path d="M7 9l3 3-3 3"/>'
+            : '<path d="M6 6l12 12"/><path d="M18 6L6 18"/>';
+        return svg;
+    }
+
+    function updatePreviewCopyButtonState() {
+        const excluded = currentPreviewFileId ? getExcludedPreviewLines(currentPreviewFileId) : new Set();
+        const visibleCount = currentPreviewItems.filter((item) => !excluded.has(item.idx)).length;
+        dom.previewCopyBtn.disabled = visibleCount === 0;
+        dom.previewCopyBtn.innerText = window.EPUB_STUDIO_I18N.t('previewCopy');
+    }
+
+    function renderPreviewDialog() {
+        const excluded = currentPreviewFileId ? getExcludedPreviewLines(currentPreviewFileId) : new Set();
+        const visibleItems = currentPreviewItems.filter((item) => !excluded.has(item.idx));
+        const excludedCount = currentPreviewItems.length - visibleItems.length;
+
+        if (!currentPreviewItems.length) {
+            dom.previewDialog.dataset.previewState = 'miss';
+            dom.previewSummary.innerText = window.EPUB_STUDIO_I18N.t('previewNoResult');
+            dom.previewList.innerHTML = '<div class="preview-empty">' + window.EPUB_STUDIO_I18N.t('previewNoResult') + '</div>';
+            dom.previewCopyBtn.disabled = true;
+            dom.previewCopyBtn.innerText = window.EPUB_STUDIO_I18N.t('previewCopy');
+            return;
+        }
+
+        dom.previewDialog.dataset.previewState = visibleItems.length ? 'hit' : 'miss';
+        dom.previewSummary.innerHTML = window.EPUB_STUDIO_I18N.t('previewCount', { count: visibleItems.length }) + (excludedCount > 0 ? ' · <span class="preview-summary-excluded">' + window.EPUB_STUDIO_I18N.t('previewExcludedCount', { count: excludedCount }) + '</span>' : '');
+        dom.previewList.innerHTML = '';
+
+        currentPreviewItems.forEach((item) => {
+            const isExcluded = excluded.has(item.idx);
+            const row = document.createElement('div');
+            row.className = 'preview-item' + (isExcluded ? ' is-excluded' : '');
+
+            const lineButton = document.createElement('button');
+            lineButton.type = 'button';
+            lineButton.className = 'preview-item-text';
+            lineButton.textContent = item.text;
+            lineButton.addEventListener('click', () => copyPreviewLine(item.text, row));
+
+            const actionButton = document.createElement('button');
+            actionButton.type = 'button';
+            actionButton.className = 'preview-item-action';
+            const actionKey = isExcluded ? 'previewRestore' : 'previewExclude';
+            const actionLabel = window.EPUB_STUDIO_I18N.t(actionKey);
+            actionButton.title = actionLabel;
+            actionButton.setAttribute('aria-label', actionLabel);
+            actionButton.appendChild(createPreviewActionIcon(isExcluded ? 'restore' : 'exclude'));
+            actionButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setExcludedPreviewLine(currentPreviewFileId, item.idx, !isExcluded);
+                renderPreviewDialog();
+                if (currentPreviewFileId) {
+                    validateFileById(currentPreviewFileId);
+                }
+            });
+
+            row.appendChild(lineButton);
+            row.appendChild(actionButton);
+            dom.previewList.appendChild(row);
+        });
+
+        updatePreviewCopyButtonState();
+    }
 
     dom.btnToggleAdvanced.onclick = () => {
         store.dispatch({ type: 'TOGGLE_ADVANCED' });
@@ -1497,34 +1660,23 @@
         }
     }
 
-    function openPreviewDialog(title, meta, lines, previewState = null) {
-        currentPreviewLines = lines.slice();
-        dom.previewDialog.dataset.previewState = previewState || (lines.length ? 'hit' : 'miss');
+    function openPreviewDialog(title, meta, items, previewState = null) {
+        currentPreviewItems = Array.isArray(items) ? items.slice() : [];
         if (!dom.previewDialog.open) dom.previewDialog.showModal();
         dom.previewFileName.innerText = title || window.EPUB_STUDIO_I18N.t('previewTitle');
         dom.previewFileMeta.innerText = meta || '';
-        dom.previewSummary.innerText = lines.length ? window.EPUB_STUDIO_I18N.t('previewCount', { count: lines.length }) : window.EPUB_STUDIO_I18N.t('previewNoResult');
-        dom.previewList.innerHTML = '';
         dom.previewMultiTocToggle.checked = dom.optMultiToc.checked;
 
-        if (!lines.length) {
-            const empty = document.createElement('div');
-            empty.className = 'preview-empty';
-            empty.textContent = window.EPUB_STUDIO_I18N.t('previewNoResult');
-            dom.previewList.appendChild(empty);
+        if (previewState === 'loading') {
+            dom.previewDialog.dataset.previewState = 'loading';
+            dom.previewSummary.innerText = window.EPUB_STUDIO_I18N.t('previewLoading');
+            dom.previewList.innerHTML = '<div class="preview-empty">' + window.EPUB_STUDIO_I18N.t('previewScanning') + '</div>';
             dom.previewCopyBtn.disabled = true;
-        } else {
-            lines.forEach((line) => {
-                const item = document.createElement('button');
-                item.type = 'button';
-                item.className = 'preview-item';
-                item.textContent = line;
-                item.addEventListener('click', () => copyPreviewLine(line, item));
-                dom.previewList.appendChild(item);
-            });
-            dom.previewCopyBtn.disabled = false;
+            dom.previewCopyBtn.innerText = window.EPUB_STUDIO_I18N.t('previewCopy');
+            return;
         }
-        dom.previewCopyBtn.innerText = window.EPUB_STUDIO_I18N.t('previewCopy');
+
+        renderPreviewDialog();
     }
 
     async function copyPreviewLine(line, itemEl) {
@@ -1551,7 +1703,7 @@
     function closePreviewDialog() {
         currentPreviewRequestId += 1;
         if (dom.previewDialog.open) dom.previewDialog.close();
-        currentPreviewLines = [];
+        currentPreviewItems = [];
         currentPreviewFileId = null;
         delete dom.previewDialog.dataset.previewState;
         dom.previewList.innerHTML = '<div class="preview-empty">' + window.EPUB_STUDIO_I18N.t('previewEmpty') + '</div>';
@@ -1562,9 +1714,11 @@
     }
 
     async function copyPreviewLines() {
-        if (!currentPreviewLines.length) return;
+        const excluded = currentPreviewFileId ? getExcludedPreviewLines(currentPreviewFileId) : new Set();
+        const visibleLines = currentPreviewItems.filter((item) => !excluded.has(item.idx)).map((item) => item.text);
+        if (!visibleLines.length) return;
         try {
-            await navigator.clipboard.writeText(currentPreviewLines.join('\n'));
+            await navigator.clipboard.writeText(visibleLines.join('\n'));
             dom.previewCopyBtn.innerText = window.EPUB_STUDIO_I18N.t('previewCopy');
             setTimeout(() => { dom.previewCopyBtn.innerText = window.EPUB_STUDIO_I18N.t('previewCopy'); }, 1200);
         } catch (e) {
@@ -1582,9 +1736,6 @@
 
         try {
             openPreviewDialog(item.customTitle || item.file.name, `${item.file.name} · ${item.encoding}`, [], 'loading');
-            dom.previewSummary.innerText = window.EPUB_STUDIO_I18N.t('previewLoading');
-            dom.previewList.innerHTML = '<div class="preview-empty">' + window.EPUB_STUDIO_I18N.t('previewScanning') + '</div>';
-            dom.previewCopyBtn.disabled = true;
 
             const text = await new Promise((res, rej) => {
                 const fr = new FileReader();
@@ -1626,6 +1777,13 @@
     };
 
     store.subscribe((state, action) => {
+        if (action.type === 'REMOVE_FILE') {
+            excludedPreviewLinesByFile.delete(action.payload);
+            if (currentPreviewFileId === action.payload) closePreviewDialog();
+        } else if (action.type === 'CLEAR_FILES') {
+            excludedPreviewLinesByFile.clear();
+            closePreviewDialog();
+        }
         dom.convertBtn.classList.toggle('is-stop', state.isProcessing);
         dom.convertBtn.innerText = state.isProcessing ? window.EPUB_STUDIO_I18N.t('convertStop') : window.EPUB_STUDIO_I18N.t('convertStart');
         dom.progBar.classList.toggle('visible', state.isProcessing);
@@ -2018,8 +2176,8 @@
                     const parser = new ClusterParser(payload.userRegex);
                     const lines = safeSplit(payload.text);
                     const validIndices = parser.analyze(lines, payload.useMultiToc);
-                    const resultLines = [];
-                    validIndices.forEach(i => resultLines.push(lines[i]));
+                    const resultItems = [];
+                    validIndices.forEach(i => resultItems.push({ idx: i, text: lines[i] }));
                     self.postMessage({
                         type: 'PREVIEW_RESULT',
                         payload: {
@@ -2027,7 +2185,7 @@
                             title: payload.customTitle || payload.fileName || '목차 미리보기',
                             fileName: payload.fileName || '',
                             meta: (payload.fileName || '') + (payload.fileName ? ' · ' : '') + lines.length + '줄',
-                            resultLines
+                            resultItems
                         }
                     });
                 }
@@ -2035,14 +2193,21 @@
                     const parser = new ClusterParser(payload.userRegex);
                     const lines = safeSplit(payload.text);
                     const validIndices = parser.analyze(lines, payload.useMultiToc);
+                    if (payload.excludedIndices && payload.excludedIndices.length) {
+                        for (const idx of payload.excludedIndices) validIndices.delete(idx);
+                    }
                     self.postMessage({ type: 'VALIDATE_RESULT', payload: { id: payload.id, isValid: validIndices.size > 0 ? 'ok' : 'no' } });
                 }
                 else if (type === 'CONVERT') {
                     const { id, title, content, useTrim, useAutoToc, useMultiToc, userRegex, coverBuffer } = payload;
                     const parser = new ClusterParser(userRegex);
                     const rawLines = safeSplit(content);
+                    const excludedIndices = new Set(payload.excludedIndices || []);
 
                     const validIndices = useAutoToc ? parser.analyze(rawLines, useMultiToc) : new Set();
+                    if (excludedIndices.size > 0) {
+                        for (const idx of excludedIndices) validIndices.delete(idx);
+                    }
                     const chapters = [];
                     let currentChapter = { title: "시작", lines: [] };
                     let consecutiveEmptyLines = 0;
@@ -2139,7 +2304,7 @@
             openPreviewDialog(
                 payload.title || payload.fileName || window.EPUB_STUDIO_I18N.t('previewTitle'),
                 payload.meta || '',
-                payload.resultLines || []
+                payload.resultItems || []
             );
         }
         else if (type === 'VALIDATE_RESULT') {
@@ -2195,16 +2360,30 @@
         validateFiles();
     }
 
+    async function validateFileById(id) {
+        const item = store.state.files.find((file) => file.id === id);
+        if (!item) return;
+        const text = await new Promise((r, rej) => {
+            const fr = new FileReader();
+            fr.onload = e => r(e.target.result.substring(0, 15000));
+            fr.onerror = () => rej();
+            fr.readAsText(item.file, item.encoding);
+        });
+        parserWorker.postMessage({
+            type: 'VALIDATE',
+            payload: {
+                id: item.id,
+                text,
+                userRegex: dom.regexInput.value,
+                useMultiToc: dom.optMultiToc.checked,
+                excludedIndices: Array.from(getExcludedPreviewLines(item.id))
+            }
+        });
+    }
+
     async function validateFiles() {
         for (let item of store.state.files) {
-            if (item.isValid !== 'none') continue;
-            const text = await new Promise((r, rej) => {
-                const fr = new FileReader();
-                fr.onload = e => r(e.target.result.substring(0, 15000));
-                fr.onerror = () => rej();
-                fr.readAsText(item.file, item.encoding);
-            });
-            parserWorker.postMessage({ type: 'VALIDATE', payload: { id: item.id, text, userRegex: dom.regexInput.value, useMultiToc: dom.optMultiToc.checked } });
+            await validateFileById(item.id);
         }
     }
 
@@ -2260,7 +2439,8 @@
                             useAutoToc: dom.optToc.checked,
                             useMultiToc,
                             userRegex: dom.regexInput.value,
-                            coverBuffer: coverBuf
+                            coverBuffer: coverBuf,
+                            excludedIndices: Array.from(getExcludedPreviewLines(item.id))
                         }
                     }, coverBuf ? [coverBuf] : []);
                 });
