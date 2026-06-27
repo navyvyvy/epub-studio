@@ -727,7 +727,7 @@
         get lang() {
             return current.lang;
         },
-        t: getString,
+        t: (key, vars = {}) => getString(key, current.lang, vars),
         setLanguage,
         detectLanguage,
         page: detectPage()

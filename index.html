@@ -53,7 +53,7 @@
     <!-- 외부 라이브러리 로드 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jschardet/3.0.0/jschardet.min.js"></script>
-    <script src="./i18n.js"></script>
+    <script src="./i18n.js?v=20260628"></script>
     <style>
         :root {
             --bg: #0b0f1a;
@@ -1361,8 +1361,6 @@
 </div>
 
 <script>
-    const T = (key, vars = {}) => window.EPUB_STUDIO_I18N ? window.EPUB_STUDIO_I18N.t(key, vars) : key;
-
     class Store {
         constructor(initialState) {
             this.state = initialState;
@@ -1380,23 +1378,23 @@
                 case 'TOGGLE_ADVANCED': return { ...state, isAdvancedOpen: !state.isAdvancedOpen };
                 case 'ADD_FILES': return { ...state, files: [...state.files, ...action.payload] };
                 case 'REMOVE_FILE': return { ...state, files: state.files.filter(f => f.id !== action.payload) };
-                case 'CLEAR_FILES': return { ...state, files: [], progress: 0, statusText: T('statusIdle'), statusDetail: T('statusIdleDetail') };
+                case 'CLEAR_FILES': return { ...state, files: [], progress: 0, statusText: window.EPUB_STUDIO_I18N.t('statusIdle'), statusDetail: window.EPUB_STUDIO_I18N.t('statusIdleDetail') };
                 case 'UPDATE_FILE_TITLE': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, customTitle: action.payload.title } : f) };
                 case 'UPDATE_FILE_COVER': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, coverBlob: action.payload.blob } : f) };
                 case 'UPDATE_FILE_VALIDITY': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, isValid: action.payload.isValid } : f) };
                 case 'UPDATE_FILE_STATUS': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, state: action.payload.status } : f) };
-                case 'START_PROCESSING': return { ...state, isProcessing: true, shouldStop: false, progress: 0, statusText: T('statusProcessing'), statusDetail: T('statusProgress', { done: 0, total: action.payload.totalCount }) };
+                case 'START_PROCESSING': return { ...state, isProcessing: true, shouldStop: false, progress: 0, statusText: window.EPUB_STUDIO_I18N.t('statusProcessing'), statusDetail: window.EPUB_STUDIO_I18N.t('statusProgress', { done: 0, total: action.payload.totalCount }) };
                 case 'SET_PROGRESS': return { ...state, progress: action.payload };
                 case 'SET_STATUS': return { ...state, statusText: action.payload };
                 case 'SET_STATUS_DETAIL': return { ...state, statusDetail: action.payload };
                 case 'STOP_PROCESSING': return { ...state, shouldStop: true };
-                case 'FINISH_PROCESSING': return { ...state, isProcessing: false, shouldStop: false, statusText: state.shouldStop ? T('statusStopped') : T('statusDone') };
+                case 'FINISH_PROCESSING': return { ...state, isProcessing: false, shouldStop: false, statusText: state.shouldStop ? window.EPUB_STUDIO_I18N.t('statusStopped') : window.EPUB_STUDIO_I18N.t('statusDone') };
                 default: return state;
             }
         }
     }
 
-    const store = new Store({ files: [], isProcessing: false, shouldStop: false, progress: 0, statusText: T('statusIdle'), statusDetail: T('statusIdleDetail'), isAdvancedOpen: false });
+    const store = new Store({ files: [], isProcessing: false, shouldStop: false, progress: 0, statusText: window.EPUB_STUDIO_I18N.t('statusIdle'), statusDetail: window.EPUB_STUDIO_I18N.t('statusIdleDetail'), isAdvancedOpen: false });
 
     function el(tag, attributes = {}, ...children) {
         const element = document.createElement(tag);
@@ -1467,7 +1465,6 @@
 
     dom.btnToggleAdvanced.onclick = () => {
         store.dispatch({ type: 'TOGGLE_ADVANCED' });
-        window.EPUB_STUDIO_I18N?.setLanguage(window.EPUB_STUDIO_I18N.lang, false);
     };
     dom.previewCopyBtn.onclick = copyPreviewLines;
     dom.previewCloseBtn.onclick = closePreviewDialog;
@@ -1504,16 +1501,16 @@
         currentPreviewLines = lines.slice();
         dom.previewDialog.dataset.previewState = previewState || (lines.length ? 'hit' : 'miss');
         if (!dom.previewDialog.open) dom.previewDialog.showModal();
-        dom.previewFileName.innerText = title || T('previewTitle');
+        dom.previewFileName.innerText = title || window.EPUB_STUDIO_I18N.t('previewTitle');
         dom.previewFileMeta.innerText = meta || '';
-        dom.previewSummary.innerText = lines.length ? T('previewCount', { count: lines.length }) : T('previewNoResult');
+        dom.previewSummary.innerText = lines.length ? window.EPUB_STUDIO_I18N.t('previewCount', { count: lines.length }) : window.EPUB_STUDIO_I18N.t('previewNoResult');
         dom.previewList.innerHTML = '';
         dom.previewMultiTocToggle.checked = dom.optMultiToc.checked;
 
         if (!lines.length) {
             const empty = document.createElement('div');
             empty.className = 'preview-empty';
-            empty.textContent = T('previewNoResult');
+            empty.textContent = window.EPUB_STUDIO_I18N.t('previewNoResult');
             dom.previewList.appendChild(empty);
             dom.previewCopyBtn.disabled = true;
         } else {
@@ -1527,7 +1524,7 @@
             });
             dom.previewCopyBtn.disabled = false;
         }
-        dom.previewCopyBtn.innerText = T('previewCopy');
+        dom.previewCopyBtn.innerText = window.EPUB_STUDIO_I18N.t('previewCopy');
     }
 
     async function copyPreviewLine(line, itemEl) {
@@ -1539,7 +1536,7 @@
                 setTimeout(() => itemEl.classList.remove('copied'), 900);
             }
         } catch (e) {
-            alert(T('copyFail'));
+            alert(window.EPUB_STUDIO_I18N.t('copyFail'));
         }
     }
 
@@ -1557,21 +1554,21 @@
         currentPreviewLines = [];
         currentPreviewFileId = null;
         delete dom.previewDialog.dataset.previewState;
-        dom.previewList.innerHTML = '<div class="preview-empty">' + T('previewEmpty') + '</div>';
+        dom.previewList.innerHTML = '<div class="preview-empty">' + window.EPUB_STUDIO_I18N.t('previewEmpty') + '</div>';
         dom.previewSummary.innerText = '';
         dom.previewMultiTocToggle.checked = dom.optMultiToc.checked;
         dom.previewCopyBtn.disabled = true;
-        dom.previewCopyBtn.innerText = T('previewCopy');
+        dom.previewCopyBtn.innerText = window.EPUB_STUDIO_I18N.t('previewCopy');
     }
 
     async function copyPreviewLines() {
         if (!currentPreviewLines.length) return;
         try {
             await navigator.clipboard.writeText(currentPreviewLines.join('\n'));
-            dom.previewCopyBtn.innerText = T('previewCopy');
-            setTimeout(() => { dom.previewCopyBtn.innerText = T('previewCopy'); }, 1200);
+            dom.previewCopyBtn.innerText = window.EPUB_STUDIO_I18N.t('previewCopy');
+            setTimeout(() => { dom.previewCopyBtn.innerText = window.EPUB_STUDIO_I18N.t('previewCopy'); }, 1200);
         } catch (e) {
-            alert(T('copyFail'));
+            alert(window.EPUB_STUDIO_I18N.t('copyFail'));
         }
     }
 
@@ -1585,8 +1582,8 @@
 
         try {
             openPreviewDialog(item.customTitle || item.file.name, `${item.file.name} · ${item.encoding}`, [], 'loading');
-            dom.previewSummary.innerText = T('previewLoading');
-            dom.previewList.innerHTML = '<div class="preview-empty">' + T('previewScanning') + '</div>';
+            dom.previewSummary.innerText = window.EPUB_STUDIO_I18N.t('previewLoading');
+            dom.previewList.innerHTML = '<div class="preview-empty">' + window.EPUB_STUDIO_I18N.t('previewScanning') + '</div>';
             dom.previewCopyBtn.disabled = true;
 
             const text = await new Promise((res, rej) => {
@@ -1609,8 +1606,8 @@
             });
         } catch (error) {
             openPreviewDialog(item.customTitle || item.file.name, `${item.file.name} · ${item.encoding}`, [], 'miss');
-            dom.previewSummary.innerText = T('previewNoResult');
-            dom.previewList.innerHTML = '<div class="preview-empty">' + T('previewError') + '</div>';
+            dom.previewSummary.innerText = window.EPUB_STUDIO_I18N.t('previewNoResult');
+            dom.previewList.innerHTML = '<div class="preview-empty">' + window.EPUB_STUDIO_I18N.t('previewError') + '</div>';
             dom.previewCopyBtn.disabled = true;
         }
     }
@@ -1621,16 +1618,16 @@
         const useMultiToc = dom.optMultiToc.checked;
 
         if (!text.trim()) {
-            dom.testOutput.innerHTML = '<span style="color:var(--danger)">' + T('test.noInput') + '</span>';
+            dom.testOutput.innerHTML = '<span style="color:var(--danger)">' + window.EPUB_STUDIO_I18N.t('test.noInput') + '</span>';
             return;
         }
-        dom.testOutput.innerHTML = T('test.analyzing');
+        dom.testOutput.innerHTML = window.EPUB_STUDIO_I18N.t('test.analyzing');
         parserWorker.postMessage({ type: 'TEST_PARSER', payload: { text, userRegex: regex, useMultiToc } });
     };
 
     store.subscribe((state, action) => {
         dom.convertBtn.classList.toggle('is-stop', state.isProcessing);
-        dom.convertBtn.innerText = state.isProcessing ? T('convertStop') : T('convertStart');
+        dom.convertBtn.innerText = state.isProcessing ? window.EPUB_STUDIO_I18N.t('convertStop') : window.EPUB_STUDIO_I18N.t('convertStart');
         dom.progBar.classList.toggle('visible', state.isProcessing);
         dom.progFill.style.width = `${state.progress}%`;
         dom.statusText.innerText = state.statusText;
@@ -1638,11 +1635,11 @@
         let detail = state.statusDetail || '';
         if (!state.isProcessing) {
             if (stats.total === 0) {
-                detail = T('statusIdleDetail');
+                detail = window.EPUB_STUDIO_I18N.t('statusIdleDetail');
             } else if (stats.done + stats.error >= stats.total) {
-                detail = T('statusSummary', { done: stats.done, error: stats.error });
+                detail = window.EPUB_STUDIO_I18N.t('statusSummary', { done: stats.done, error: stats.error });
             } else {
-                detail = T('statusSummaryWait', { done: stats.done, error: stats.error, wait: stats.wait });
+                detail = window.EPUB_STUDIO_I18N.t('statusSummaryWait', { done: stats.done, error: stats.error, wait: stats.wait });
             }
         }
         dom.statusDetail.innerText = detail;
@@ -1674,18 +1671,18 @@
                 onClick: () => {
                     if (canPreview) previewFileById(item.id);
                 }
-            }, T('tablePreview'));
+            }, window.EPUB_STUDIO_I18N.t('tablePreview'));
             detectBtn.disabled = !canPreview;
             detectBtn.title = dom.optToc.checked
-                ? T('tablePreview')
-                : T('previewScanning');
+                ? window.EPUB_STUDIO_I18N.t('tablePreview')
+                : window.EPUB_STUDIO_I18N.t('previewScanning');
 
             const row = el('tr', {},
                 el('td', { className: 'col-title' }, el('input', { type: 'text', className: 'title-input', value: item.customTitle, onInput: (e) => store.dispatch({ type: 'UPDATE_FILE_TITLE', payload: { id: item.id, title: e.target.value } }) })),
                 el('td', {},
                     el('div', { className: 'cover-btn-group' },
-                        el('button', { className: 'btn-cover', onClick: () => window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(item.customTitle)}`, '_blank', 'noopener,noreferrer') }, T('tableSearch')),
-                        el('button', { className: 'btn-cover' + (hasCover ? ' active' : ''), onClick: () => readClipboardImage(item.id) }, T('tableClipboard'))
+                        el('button', { className: 'btn-cover', onClick: () => window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(item.customTitle)}`, '_blank', 'noopener,noreferrer') }, window.EPUB_STUDIO_I18N.t('tableSearch')),
+                        el('button', { className: 'btn-cover' + (hasCover ? ' active' : ''), onClick: () => readClipboardImage(item.id) }, window.EPUB_STUDIO_I18N.t('tableClipboard'))
                     )
                 ),
                 el('td', {}, item.encoding),
@@ -1695,13 +1692,13 @@
                 el('td', {},
                     el('span', {
                         className: `status-badge badge-${item.state}` + (isClickable ? ' clickable' : ''),
-                        title: isClickable ? T('statusReady') : '',
+                        title: isClickable ? window.EPUB_STUDIO_I18N.t('statusReady') : '',
                         onClick: () => {
                             if (!store.state.isProcessing && isClickable) {
                                 store.dispatch({ type: 'UPDATE_FILE_STATUS', payload: { id: item.id, status: 'wait' } });
                             }
                         }
-                    }, T('fileState.' + item.state))
+                    }, window.EPUB_STUDIO_I18N.t('fileState.' + item.state))
                 ),
                 el('td', {}, el('button', { className: 'btn-header-action', onClick: () => store.dispatch({ type: 'REMOVE_FILE', payload: item.id }) }, '✕'))
             );
@@ -1710,7 +1707,7 @@
     }
 
     async function readClipboardImage(id) {
-        store.dispatch({ type: 'SET_STATUS', payload: T('clipboard.reading') });
+        store.dispatch({ type: 'SET_STATUS', payload: window.EPUB_STUDIO_I18N.t('clipboard.reading') });
         try {
             const items = await navigator.clipboard.read();
             for (const item of items) {
@@ -1718,25 +1715,25 @@
                 if (imageType) {
                     const blob = await item.getType(imageType);
                     store.dispatch({ type: 'UPDATE_FILE_COVER', payload: { id, blob } });
-                    store.dispatch({ type: 'SET_STATUS', payload: T('clipboard.imageApplied') });
+                    store.dispatch({ type: 'SET_STATUS', payload: window.EPUB_STUDIO_I18N.t('clipboard.imageApplied') });
                     return;
                 }
             }
             const text = await navigator.clipboard.readText();
             if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
-                store.dispatch({ type: 'SET_STATUS', payload: T('clipboard.downloading') });
+                store.dispatch({ type: 'SET_STATUS', payload: window.EPUB_STUDIO_I18N.t('clipboard.downloading') });
                 const res = await fetch(text);
                 if (!res.ok) throw new Error();
                 const blob = await res.blob();
                 store.dispatch({ type: 'UPDATE_FILE_COVER', payload: { id, blob } });
-                store.dispatch({ type: 'SET_STATUS', payload: T('clipboard.cached') });
+                store.dispatch({ type: 'SET_STATUS', payload: window.EPUB_STUDIO_I18N.t('clipboard.cached') });
                 return;
             }
-            alert(T('clipboard.invalid'));
-            store.dispatch({ type: 'SET_STATUS', payload: T('clipboard.invalid') });
+            alert(window.EPUB_STUDIO_I18N.t('clipboard.invalid'));
+            store.dispatch({ type: 'SET_STATUS', payload: window.EPUB_STUDIO_I18N.t('clipboard.invalid') });
         } catch (e) {
-            alert(T('clipboard.fail'));
-            store.dispatch({ type: 'SET_STATUS', payload: T('clipboard.fail') });
+            alert(window.EPUB_STUDIO_I18N.t('clipboard.fail'));
+            store.dispatch({ type: 'SET_STATUS', payload: window.EPUB_STUDIO_I18N.t('clipboard.fail') });
         }
     }
 
@@ -2125,22 +2122,22 @@
 
     parserWorker.onerror = (err) => {
         console.error("Worker Global Error:", err);
-        dom.testOutput.innerHTML = '<span style="color:var(--danger)">' + T('test.engineError', { error: err.message }) + '</span>';
+        dom.testOutput.innerHTML = '<span style="color:var(--danger)">' + window.EPUB_STUDIO_I18N.t('test.engineError', { error: err.message }) + '</span>';
     };
 
     parserWorker.onmessage = (e) => {
         const { type, payload } = e.data;
         if (type === 'TEST_RESULT') {
             if (payload.resultLines.length === 0) {
-                dom.testOutput.innerHTML = '<span style="color:var(--danger)">' + T('test.noResults') + '</span>';
+                dom.testOutput.innerHTML = '<span style="color:var(--danger)">' + window.EPUB_STUDIO_I18N.t('test.noResults') + '</span>';
             } else {
-                dom.testOutput.innerHTML = '<strong style="color:var(--success)">' + T('test.resultCount', { count: payload.resultLines.length }) + '</strong><div style="margin-top:8px;">' + payload.resultLines.map(l => '<div style="padding: 3px 0; border-bottom: 1px dashed #2d334a;">' + l.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>').join('') + '</div>';
+                dom.testOutput.innerHTML = '<strong style="color:var(--success)">' + window.EPUB_STUDIO_I18N.t('test.resultCount', { count: payload.resultLines.length }) + '</strong><div style="margin-top:8px;">' + payload.resultLines.map(l => '<div style="padding: 3px 0; border-bottom: 1px dashed #2d334a;">' + l.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>').join('') + '</div>';
             }
         }
         else if (type === 'PREVIEW_RESULT') {
             if (payload.requestId !== currentPreviewRequestId) return;
             openPreviewDialog(
-                payload.title || payload.fileName || T('previewTitle'),
+                payload.title || payload.fileName || window.EPUB_STUDIO_I18N.t('previewTitle'),
                 payload.meta || '',
                 payload.resultLines || []
             );
@@ -2160,7 +2157,7 @@
                 conversionResolvers.get(payload.id).reject(new Error(payload.error));
                 conversionResolvers.delete(payload.id);
             } else if (!payload.id) {
-                dom.testOutput.innerHTML = '<span style="color:var(--danger)">' + T('test.parserError', { error: payload.error }) + '</span>';
+                dom.testOutput.innerHTML = '<span style="color:var(--danger)">' + window.EPUB_STUDIO_I18N.t('test.parserError', { error: payload.error }) + '</span>';
             }
         }
     };
@@ -2214,7 +2211,7 @@
     dom.convertBtn.onclick = async () => {
         if (store.state.isProcessing) {
             store.dispatch({ type: 'STOP_PROCESSING' });
-            store.dispatch({ type: 'SET_STATUS_DETAIL', payload: T('statusDetail.stopped') });
+            store.dispatch({ type: 'SET_STATUS_DETAIL', payload: window.EPUB_STUDIO_I18N.t('statusDetail.stopped') });
             return;
         }
 
@@ -2279,7 +2276,7 @@
             }
             store.dispatch({ type: 'SET_PROGRESS', payload: ((i + 1) / filesToProcess.length) * 100 });
             const stats = getFileStats(store.state.files);
-            store.dispatch({ type: 'SET_STATUS_DETAIL', payload: T('statusSummary', { done: stats.done, error: stats.error }) });
+            store.dispatch({ type: 'SET_STATUS_DETAIL', payload: window.EPUB_STUDIO_I18N.t('statusSummary', { done: stats.done, error: stats.error }) });
         }
 
         if (finalZip && !store.state.shouldStop) {
@@ -2287,7 +2284,7 @@
             triggerDownload(b, `EPUB_COLLECTION.zip`);
         }
         const finalStats = getFileStats(store.state.files);
-        store.dispatch({ type: 'SET_STATUS_DETAIL', payload: T('statusSummary', { done: finalStats.done, error: finalStats.error }) });
+        store.dispatch({ type: 'SET_STATUS_DETAIL', payload: window.EPUB_STUDIO_I18N.t('statusSummary', { done: finalStats.done, error: finalStats.error }) });
         store.dispatch({ type: 'FINISH_PROCESSING' });
     };
 
