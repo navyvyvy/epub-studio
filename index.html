@@ -1564,6 +1564,19 @@
         return svg;
     }
 
+    async function readFileText(file, encoding, maxBytes = null) {
+        const slice = maxBytes ? file.slice(0, maxBytes) : file;
+        const buffer = await slice.arrayBuffer();
+        const normalized = String(encoding || 'UTF-8').toLowerCase();
+        const label = normalized === 'cp949' ? 'windows-949' : normalized;
+        try {
+            return new TextDecoder(label).decode(buffer);
+        } catch (_) {
+            const fallback = label === 'windows-949' ? 'euc-kr' : 'utf-8';
+            return new TextDecoder(fallback).decode(buffer);
+        }
+    }
+
     function updatePreviewCopyButtonState() {
         const excluded = currentPreviewFileId ? getExcludedPreviewLines(currentPreviewFileId) : new Set();
         const visibleCount = currentPreviewItems.filter((item) => !excluded.has(item.idx)).length;
@@ -1737,12 +1750,7 @@
         try {
             openPreviewDialog(item.customTitle || item.file.name, `${item.file.name} · ${item.encoding}`, [], 'loading');
 
-            const text = await new Promise((res, rej) => {
-                const fr = new FileReader();
-                fr.onload = e => res(e.target.result);
-                fr.onerror = () => rej(new Error('File Read Failed'));
-                fr.readAsText(item.file, item.encoding);
-            });
+            const text = await readFileText(item.file, item.encoding);
 
             parserWorker.postMessage({
                 type: 'PREVIEW_PARSER',
@@ -2363,12 +2371,7 @@
     async function validateFileById(id) {
         const item = store.state.files.find((file) => file.id === id);
         if (!item) return;
-        const text = await new Promise((r, rej) => {
-            const fr = new FileReader();
-            fr.onload = e => r(e.target.result.substring(0, 15000));
-            fr.onerror = () => rej();
-            fr.readAsText(item.file, item.encoding);
-        });
+        const text = await readFileText(item.file, item.encoding, 15000);
         parserWorker.postMessage({
             type: 'VALIDATE',
             payload: {
@@ -2418,12 +2421,7 @@
             store.dispatch({ type: 'UPDATE_FILE_STATUS', payload: { id: item.id, status: 'ing' } });
 
             try {
-                const text = await new Promise((res, rej) => {
-                    const fr = new FileReader();
-                    fr.onload = e => res(e.target.result);
-                    fr.onerror = () => rej(new Error("File Read Failed"));
-                    fr.readAsText(item.file, item.encoding);
-                });
+                const text = await readFileText(item.file, item.encoding);
 
                 const coverBuf = item.coverBlob ? await item.coverBlob.arrayBuffer() : null;
 
