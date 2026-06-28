@@ -1567,13 +1567,26 @@
     async function readFileText(file, encoding, maxBytes = null) {
         const slice = maxBytes ? file.slice(0, maxBytes) : file;
         const buffer = await slice.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let label = '';
+        let offset = 0;
+        if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
+            label = 'utf-8';
+            offset = 3;
+        } else if (bytes.length >= 2 && bytes[0] === 0xFF && bytes[1] === 0xFE) {
+            label = 'utf-16le';
+            offset = 2;
+        } else if (bytes.length >= 2 && bytes[0] === 0xFE && bytes[1] === 0xFF) {
+            label = 'utf-16be';
+            offset = 2;
+        }
         const normalized = String(encoding || 'UTF-8').toLowerCase();
-        const label = normalized === 'cp949' ? 'windows-949' : normalized;
+        if (!label) label = normalized === 'cp949' ? 'windows-949' : normalized;
         try {
-            return new TextDecoder(label).decode(buffer);
+            return new TextDecoder(label).decode(buffer.slice(offset));
         } catch (_) {
-            const fallback = label === 'windows-949' ? 'euc-kr' : 'utf-8';
-            return new TextDecoder(fallback).decode(buffer);
+            const fallback = label === 'windows-949' ? 'euc-kr' : (label === 'utf-16be' ? 'utf-16le' : 'utf-8');
+            return new TextDecoder(fallback).decode(buffer.slice(offset));
         }
     }
 
