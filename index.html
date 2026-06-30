@@ -1923,6 +1923,12 @@
         importScripts("https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js");
 
         const BRACKET_TITLE_PATTERN = /^[<【〔\\[(]\\s*(?:(?:(?:외전|프롤로그|에필로그)\\s*)?(?:제\\s*)?\\d+\\s*[화회장막편부]|(?:Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\d+|(?:프롤로그|에필로그|외전|공지|작가(?:의\\s*말)?|자기\\s*소개|서장|종장|프로필)|\\d{1,5})(?:\\s*[-:.·]\\s*[^>】〕\\]\\)〉》」』]{1,20})?\\s*[>】〕\\]\\)〉》」』]$/i;
+        const COVER_TYPES = {
+            'image/jpeg': { file: 'cover.jpg', media: 'image/jpeg' },
+            'image/png': { file: 'cover.png', media: 'image/png' },
+            'image/gif': { file: 'cover.gif', media: 'image/gif' },
+            'image/svg+xml': { file: 'cover.svg', media: 'image/svg+xml' }
+        };
 
         const TITLE_RULES = {
             maxLineLength: 90,
@@ -2178,7 +2184,7 @@
             }
         }
 
-        const esc = (s) => s.replace(/[<>&"']/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":"&apos;"}[m]));
+        const esc = (s) => String(s).replace(/[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]/g, '').replace(/[<>&"']/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":"&apos;"}[m]));
 
         self.onmessage = async function(e) {
             try {
@@ -2220,7 +2226,7 @@
                     self.postMessage({ type: 'VALIDATE_RESULT', payload: { id: payload.id, isValid: validIndices.size > 0 ? 'ok' : 'no' } });
                 }
                 else if (type === 'CONVERT') {
-                    const { id, title, content, useTrim, useAutoToc, useMultiToc, userRegex, coverBuffer } = payload;
+                    const { id, title, content, useTrim, useAutoToc, useMultiToc, userRegex, coverBuffer, coverType } = payload;
                     const parser = new ClusterParser(userRegex);
                     const rawLines = safeSplit(content);
                     const excludedIndices = new Set(payload.excludedIndices || []);
@@ -2262,11 +2268,12 @@
                     const oebps = zip.folder("OEBPS");
                     const manifest = [], spine = [], nav = [], ncx = [];
 
-                    if (coverBuffer) {
-                        oebps.folder("images").file("cover.jpg", coverBuffer);
-                        oebps.file("cover.xhtml", '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ko"><head><title>Cover</title><style>body { margin: 0; padding: 0; text-align: center; background-color: #0d111d; } img { max-width: 100%; max-height: 100vh; object-fit: contain; margin: 0 auto; }</style></head><body><img src="images/cover.jpg" alt="Cover" /></body></html>');
+                    const coverInfo = coverBuffer ? COVER_TYPES[String(coverType || '').toLowerCase()] : null;
+                    if (coverInfo) {
+                        oebps.folder("images").file(coverInfo.file, coverBuffer);
+                        oebps.file("cover.xhtml", '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ko"><head><title>Cover</title><style>body { margin: 0; padding: 0; text-align: center; background-color: #0d111d; } img { max-width: 100%; max-height: 100vh; object-fit: contain; margin: 0 auto; }</style></head><body><img src="images/' + coverInfo.file + '" alt="Cover" /></body></html>');
                         manifest.push('<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>');
-                        manifest.push('<item id="cover-img" href="images/cover.jpg" media-type="image/jpeg" properties="cover-image"/>');
+                        manifest.push('<item id="cover-img" href="images/' + coverInfo.file + '" media-type="' + coverInfo.media + '" properties="cover-image"/>');
                         spine.push('<itemref idref="cover"/>');
                     }
 
@@ -2283,11 +2290,11 @@
                         ncx.push("<navPoint id=\\"n" + idx + "\\" playOrder=\\"" + (idx + 1) + "\\"><navLabel><text>" + safeTitle + "</text></navLabel><content src=\\"" + fname + "\\"/></navPoint>");
                     });
 
-                    oebps.file("nav.xhtml", '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><body><nav epub:type="toc"><h1>목차</h1><ol>' + nav.join('\\n') + '</ol></nav></body></html>');
+                    oebps.file("nav.xhtml", '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="ko"><head><title>목차</title></head><body><nav epub:type="toc"><h1>목차</h1><ol>' + nav.join('\\n') + '</ol></nav></body></html>');
                     oebps.file("toc.ncx", '<?xml version="1.0" encoding="UTF-8"?><ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1"><head><meta name="dtb:uid" content="uuid"/></head><docTitle><text>' + esc(title) + '</text></docTitle><navMap>' + ncx.join('\\n') + '</navMap></ncx>');
 
                     const randomId = Math.random().toString(36).substring(2, 15);
-                    const coverMeta = coverBuffer ? '<meta name="cover" content="cover-img"/>' : '';
+                    const coverMeta = coverInfo ? '<meta name="cover" content="cover-img"/>' : '';
 
                     oebps.file("content.opf", '<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">u' + randomId + '</dc:identifier><dc:title>' + esc(title) + '</dc:title><dc:language>ko</dc:language>' + coverMeta + '<meta property="dcterms:modified">' + new Date().toISOString().replace(/\\.\\d+Z$/, "Z") + '</meta></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>' + manifest.join('\\n') + '</manifest><spine toc="ncx">' + spine.join('\\n') + '</spine></package>');
 
@@ -2437,6 +2444,7 @@
                 const text = await readFileText(item.file, item.encoding);
 
                 const coverBuf = item.coverBlob ? await item.coverBlob.arrayBuffer() : null;
+                const coverType = item.coverBlob ? item.coverBlob.type : '';
 
                 const blob = await new Promise((resolve, reject) => {
                     conversionResolvers.set(item.id, { resolve, reject });
@@ -2451,6 +2459,7 @@
                             useMultiToc,
                             userRegex: dom.regexInput.value,
                             coverBuffer: coverBuf,
+                            coverType,
                             excludedIndices: Array.from(getExcludedPreviewLines(item.id))
                         }
                     }, coverBuf ? [coverBuf] : []);
