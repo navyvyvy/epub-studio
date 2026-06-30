@@ -2185,6 +2185,7 @@
         }
 
         const esc = (s) => String(s).replace(/[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]/g, '').replace(/[<>&"']/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":"&apos;"}[m]));
+        const MAX_CHAPTER_LINES = 450;
 
         self.onmessage = async function(e) {
             try {
@@ -2277,17 +2278,30 @@
                         spine.push('<itemref idref="cover"/>');
                     }
 
+                    let fileIndex = 0;
                     chapters.forEach((ch, idx) => {
-                        const fname = "ch_" + idx + ".xhtml";
                         const safeTitle = esc(ch.title);
-                        const bodyHtml = ch.lines.map(l => l ? "<p>" + esc(l) + "</p>" : "<p><br/></p>").join('\\n');
+                        const chunks = [];
+                        for (let start = 0; start < ch.lines.length || start === 0; start += MAX_CHAPTER_LINES) {
+                            chunks.push(ch.lines.slice(start, start + MAX_CHAPTER_LINES));
+                        }
 
-                        oebps.file(fname, '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ko"><head><title>' + safeTitle + '</title><style>body { font-family: sans-serif; line-height: 1.7; padding: 5% 7%; word-break: break-all; } h2 { border-bottom: 1px solid #eee; padding-bottom: 10px; font-size: 1.25em; color: #333; } p { margin: 0.8em 0; text-indent: 0.5em; }</style></head><body><h2>' + safeTitle + '</h2>' + bodyHtml + '</body></html>');
+                        chunks.forEach((lines, partIdx) => {
+                            const itemId = "c" + fileIndex;
+                            const fname = "ch_" + fileIndex + ".xhtml";
+                            const pageTitle = partIdx ? safeTitle + " (" + (partIdx + 1) + ")" : safeTitle;
+                            const heading = partIdx ? "" : "<h2>" + safeTitle + "</h2>";
+                            const bodyHtml = lines.map(l => l ? "<p>" + esc(l) + "</p>" : "<p><br/></p>").join('\\n');
 
-                        manifest.push("<item id=\\"c" + idx + "\\" href=\\"" + fname + "\\" media-type=\\"application/xhtml+xml\\"/>");
-                        spine.push("<itemref idref=\\"c" + idx + "\\"/>");
-                        nav.push("<li><a href=\\"" + fname + "\\">" + safeTitle + "</a></li>");
-                        ncx.push("<navPoint id=\\"n" + idx + "\\" playOrder=\\"" + (idx + 1) + "\\"><navLabel><text>" + safeTitle + "</text></navLabel><content src=\\"" + fname + "\\"/></navPoint>");
+                            oebps.file(fname, '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ko"><head><title>' + pageTitle + '</title><style>body { font-family: sans-serif; line-height: 1.7; padding: 5% 7%; word-break: break-all; } h2 { border-bottom: 1px solid #eee; padding-bottom: 10px; font-size: 1.25em; color: #333; } p { margin: 0.8em 0; text-indent: 0.5em; }</style></head><body>' + heading + bodyHtml + '</body></html>');
+                            manifest.push('<item id="' + itemId + '" href="' + fname + '" media-type="application/xhtml+xml"/>');
+                            spine.push('<itemref idref="' + itemId + '"/>');
+                            if (partIdx === 0) {
+                                nav.push("<li><a href=\\"" + fname + "\\">" + safeTitle + "</a></li>");
+                                ncx.push("<navPoint id=\\"n" + idx + "\\" playOrder=\\"" + (idx + 1) + "\\"><navLabel><text>" + safeTitle + "</text></navLabel><content src=\\"" + fname + "\\"/></navPoint>");
+                            }
+                            fileIndex++;
+                        });
                     });
 
                     oebps.file("nav.xhtml", '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="ko"><head><title>목차</title></head><body><nav epub:type="toc"><h1>목차</h1><ol>' + nav.join('\\n') + '</ol></nav></body></html>');
