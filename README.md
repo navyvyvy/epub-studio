@@ -91,6 +91,14 @@ EPUB Studio는 브라우저에서 `TXT` 파일을 `EPUB`으로 바꾸는 웹 도
 - JSZip
 - jschardet
 
+## 검사
+
+별도 패키지 설치 없이 핵심 파서와 EPUB 생성 회귀 검사를 실행할 수 있습니다.
+
+```powershell
+node --test tests/smoke.test.mjs
+```
+
 ## 참고
 
 - 처음 들어왔을 때 바로 변환 흐름이 보이도록 구성했습니다.

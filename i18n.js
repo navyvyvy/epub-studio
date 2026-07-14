@@ -1,6 +1,5 @@
 (() => {
     const STORAGE_KEY = 'epub-studio-lang';
-    const SUPPORTED = new Set(['ko', 'en']);
     const PAGE = (() => {
         const file = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
         if (file === 'about.html') return 'about';
@@ -21,6 +20,7 @@
                 langKo: '한국어',
                 langEn: 'English',
                 langSwitcherLabel: '언어 전환',
+                navLabel: '페이지 섹션',
                 copyright: '© 2026 EPUB STUDIO.'
             },
                 index: {
@@ -35,12 +35,10 @@
                 heroKicker: '브라우저에서 바로 쓰는 EPUB 도구',
                 heroTitle: 'TXT 파일을 브라우저에서 EPUB으로 바꿉니다',
                 heroDesc: '공백 정리, 목차 추출, 표지 적용, 인코딩 자동 감지, ZIP 묶음 출력까지 모두 브라우저에서 처리합니다.',
-                toolKicker: '브라우저에서 바로 쓰는 EPUB 도구',
-                toolTitle: 'TXT 파일을 브라우저에서 EPUB으로 바꿉니다',
-                toolDesc: '공백 정리, 목차 추출, 표지 적용, 인코딩 자동 감지, ZIP 묶음 출력까지 모두 브라우저에서 처리합니다.',
                 optTrim: '공백 정제',
                 optToc: '목차 추출',
                 optMultiToc: '다중 패턴 허용',
+                optMultiTocTitle: "체크하면 '몇 화'와 '070'처럼 형식이 다른 챕터 표기가 섞여 있어도 함께 목차로 잡습니다.",
                 optZip: 'ZIP 일괄 압축',
                 advancedToggle: '고급 설정',
                 regexLabel: '목차 추출 커스텀 정규식',
@@ -104,8 +102,6 @@
                     error: '오류'
                 },
                 statusDetail: {
-                    idle: 'TXT 파일을 추가하면 변환을 시작할 수 있습니다.',
-                    processing: '변환 중...',
                     stopped: '중단 요청을 처리하는 중입니다.'
                 },
                 clipboard: {
@@ -113,6 +109,7 @@
                     imageApplied: '클립보드 이미지 적용 완료',
                     downloading: '이미지 다운로드 중...',
                     cached: '원격 이미지 저장 완료',
+                    unsupported: '지원하지 않는 이미지 형식입니다. JPG, PNG, GIF 또는 SVG를 사용해 주세요.',
                     invalid: '클립보드에 쓸 만한 이미지나 주소가 없습니다.',
                     fail: '클립보드를 읽지 못했습니다. 브라우저 권한이나 CORS 제한을 확인해 주세요.'
                 },
@@ -205,6 +202,7 @@
                 langKo: 'Korean',
                 langEn: 'English',
                 langSwitcherLabel: 'Language switcher',
+                navLabel: 'Page sections',
                 copyright: '© 2026 EPUB STUDIO.'
             },
             index: {
@@ -219,12 +217,10 @@
                 heroKicker: 'A browser-native EPUB converter',
                 heroTitle: 'Convert TXT files to EPUB in your local browser',
                 heroDesc: 'Whitespace cleanup, table of contents extraction, cover application, automatic encoding detection, and ZIP output all run inside the browser.',
-                toolKicker: 'A browser-native EPUB converter',
-                toolTitle: 'Convert TXT files to EPUB in your local browser',
-                toolDesc: 'Whitespace cleanup, table of contents extraction, cover application, automatic encoding detection, and ZIP output all run inside the browser.',
                 optTrim: 'Trim whitespace',
                 optToc: 'Extract TOC',
                 optMultiToc: 'Allow multi-patterns',
+                optMultiTocTitle: 'Include different chapter formats, such as numbered episodes and 070-style headings, in the same table of contents.',
                 optZip: 'Batch ZIP',
                 advancedToggle: 'Advanced settings',
                 regexLabel: 'Custom regex for TOC extraction',
@@ -288,8 +284,6 @@
                     error: 'Error'
                 },
                 statusDetail: {
-                    idle: 'Add TXT files to start converting.',
-                    processing: 'Processing...',
                     stopped: 'Applying the stop request.'
                 },
                 clipboard: {
@@ -297,6 +291,7 @@
                     imageApplied: 'Clipboard image applied',
                     downloading: 'Downloading image...',
                     cached: 'Image cached from clipboard',
+                    unsupported: 'Unsupported image format. Use JPG, PNG, GIF, or SVG.',
                     invalid: 'No valid image or URL was found in the clipboard.',
                     fail: 'Unable to read the clipboard. Check browser permissions or a CORS-limited URL.'
                 },
@@ -389,12 +384,7 @@
         const value = String(input).toLowerCase();
         if (value.startsWith('ko')) return 'ko';
         if (value.startsWith('en')) return 'en';
-        if (SUPPORTED.has(value)) return value;
         return null;
-    }
-
-    function detectPage() {
-        return PAGE;
     }
 
     function detectLanguage() {
@@ -419,7 +409,7 @@
     }
 
     function getString(key, lang = current.lang, vars = {}) {
-        const page = TEXT[lang]?.[detectPage()] || {};
+        const page = TEXT[lang]?.[PAGE] || {};
         const common = TEXT[lang]?.common || {};
         const resolve = (source, path) => String(path).split('.').reduce((acc, part) => {
             if (!acc || typeof acc !== 'object') return undefined;
@@ -485,7 +475,7 @@
     }
 
     function setHeadText() {
-        const page = TEXT[current.lang][detectPage()] || {};
+        const page = TEXT[current.lang][PAGE] || {};
         const head = page.head || {};
         if (head.title) document.title = head.title;
 
@@ -505,8 +495,7 @@
 
         const canonical = document.querySelector('link[rel="canonical"]');
         if (canonical) {
-            const base = new URL(location.href);
-            base.searchParams.delete('lang');
+            const base = new URL(makeUrl(current.lang));
             base.hash = '';
             canonical.href = base.href;
         }
@@ -534,6 +523,17 @@
 
         const ogUrl = document.querySelector('meta[property="og:url"]');
         if (ogUrl) ogUrl.setAttribute('content', makeUrl(current.lang));
+
+        const schemaTag = document.getElementById('siteJsonLd');
+        if (schemaTag) {
+            try {
+                const schema = JSON.parse(schemaTag.textContent);
+                schema.inLanguage = current.lang;
+                schema.description = head.description || schema.description;
+                schema.url = makeUrl(current.lang);
+                schemaTag.textContent = JSON.stringify(schema);
+            } catch (_) {}
+        }
     }
 
     function makeUrl(lang, href = location.href) {
@@ -559,9 +559,14 @@
 
     function updateSwitcherState() {
         document.querySelectorAll('.lang-switch button').forEach((button) => {
+            const label = getString(button.dataset.lang === 'ko' ? 'langKo' : 'langEn');
             button.classList.toggle('active', button.dataset.lang === current.lang);
             button.setAttribute('aria-pressed', String(button.dataset.lang === current.lang));
+            button.title = label;
+            button.setAttribute('aria-label', label);
         });
+        const switcher = document.querySelector('.lang-switch');
+        if (switcher) switcher.setAttribute('aria-label', getString('langSwitcherLabel'));
     }
 
     function injectSwitcher() {
@@ -591,6 +596,8 @@
     function applyCommonText() {
         setText('.brand-subtitle', 'brandSubtitle');
         setOrdered('header .header-nav a', ['navTool', 'navFeatures', 'navAbout', 'navPrivacy', 'navContact']);
+        const nav = document.querySelector('header .header-nav');
+        if (nav) nav.setAttribute('aria-label', getString('navLabel'));
     }
 
     function applyFooterLinks(keys) {
@@ -605,6 +612,8 @@
         ['optTrim', 'optToc', 'optMultiToc', 'optZip'].forEach((id, index) => {
             setLabel(id, ['optTrim', 'optToc', 'optMultiToc', 'optZip'][index]);
         });
+        const multiLabel = document.getElementById('optMultiToc')?.closest('label');
+        if (multiLabel) multiLabel.title = getString('optMultiTocTitle');
 
         setButton('btnToggleAdvanced', 'advancedToggle');
         setText('#regexLabel', 'regexLabel');
@@ -736,7 +745,7 @@
         t: (key, vars = {}) => getString(key, current.lang, vars),
         setLanguage,
         detectLanguage,
-        page: detectPage()
+        page: PAGE
     };
 
     window.EPUB_STUDIO_I18N = api;

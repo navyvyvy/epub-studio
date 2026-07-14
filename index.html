@@ -54,43 +54,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jschardet/3.0.0/jschardet.min.js"></script>
     <script src="./i18n.js?v=20260628"></script>
+    <link rel="stylesheet" href="./site-shared.css">
     <style>
         :root {
-            --bg: #0b0f1a;
-            --card: #161b2c;
-            --primary: #6366f1;
-            --accent: #818cf8;
-            --border: #2d334a;
-            --text: #f8fafc;
-            --text-dim: #94a3b8;
             --danger: #ef4444;
             --success: #22c55e;
-            --surface-soft: rgba(255,255,255,0.03);
-            --scroll-track: #0d111d;
-            --scroll-thumb: #2d334a;
-        }
-
-        html {
-            scroll-behavior: smooth;
-        }
-
-        html, body {
-            margin: 0;
-            min-height: 100%;
-            background: var(--bg);
-            font-family: 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
-            color: var(--text);
-            word-break: keep-all;
-            line-break: auto;
-        }
-
-        body {
-            overflow-x: hidden;
-            overflow-y: auto;
-            background:
-                radial-gradient(circle at top left, rgba(99,102,241,0.18), transparent 32%),
-                radial-gradient(circle at top right, rgba(129,140,248,0.12), transparent 28%),
-                linear-gradient(180deg, #0b0f1a 0%, #0e1322 100%);
         }
 
         ::-webkit-scrollbar { width: 6px; }
@@ -98,238 +66,16 @@
         ::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
-        *, *::before, *::after { box-sizing: border-box; }
-
-        a { color: inherit; }
-
         a, button, input, textarea, summary {
             outline-color: var(--accent);
             outline-offset: 3px;
         }
-
-        a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible {
-            outline: 2px solid var(--accent);
-        }
-
-        .page-shell {
-            width: min(1120px, calc(100vw - 32px));
-            margin: 0 auto;
-            padding: 24px 0 40px;
-        }
-
-        .site-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 20px;
-            padding: 16px 20px;
-            margin-bottom: 18px;
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            background: rgba(13,17,29,0.7);
-            backdrop-filter: blur(6px);
-        }
-
-        .brand-block {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .brand-name {
-            font-size: 1rem;
-            font-weight: 900;
-            letter-spacing: 0.14em;
-            text-transform: uppercase;
-            margin: 0;
-        }
-
-        .brand-subtitle {
-            margin: 0;
-            color: var(--text-dim);
-            font-size: 0.88rem;
-            word-break: keep-all;
-        }
-
-        .header-nav {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-
-        .lang-switch {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding-left: 6px;
-        }
-
-        .lang-switch button {
-            border: 1px solid var(--border);
-            background: rgba(13,17,29,0.9);
-            color: var(--text-dim);
-            border-radius: 999px;
-            padding: 8px 11px;
-            font-size: 0.78rem;
-            font-weight: 800;
-            cursor: pointer;
-            transition: 0.2s ease;
-        }
-
-        .lang-switch button:hover {
-            color: var(--text);
-            border-color: var(--accent);
-        }
-
-        .lang-switch button.active {
-            background: rgba(99,102,241,0.18);
-            color: var(--text);
-            border-color: rgba(129,140,248,0.55);
-        }
-
-        .header-nav a {
-            text-decoration: none;
-            color: var(--text-dim);
-            font-size: 0.88rem;
-            padding: 8px 12px;
-            border: 1px solid transparent;
-            border-radius: 999px;
-            word-break: keep-all;
-        }
-
-        .header-nav a:hover {
-            color: var(--text);
-            border-color: var(--border);
-            background: rgba(255,255,255,0.03);
-        }
-
-        .content-stack {
-            display: flex;
-            flex-direction: column;
-            gap: 18px;
-        }
-
-        .hero-panel,
-        .info-panel,
-        .policy-panel,
-        .footer-panel {
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            background: var(--surface-soft);
-        }
-
-        .hero-panel {
-            padding: 26px;
-            display: grid;
-            grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.85fr);
-            gap: 24px;
-        }
-
-        .hero-kicker {
-            margin: 0 0 10px;
-            color: var(--accent);
-            font-size: 0.82rem;
-            font-weight: 800;
-        }
-
-        .hero-copy h1 {
-            margin: 0;
-            font-size: clamp(2rem, 4vw, 3.8rem);
-            line-height: 1.08;
-            letter-spacing: -0.03em;
-            text-wrap: balance;
-        }
-
-        .hero-copy p {
-            margin: 14px 0 0;
-            max-width: 76ch;
-            color: var(--text-dim);
-            line-height: 1.8;
-            overflow-wrap: normal;
-        }
-
-        .hero-metrics {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 18px;
-        }
-
-        .hero-metrics span,
-        .feature-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 12px;
-            border-radius: 999px;
-            border: 1px solid var(--border);
-            background: rgba(255,255,255,0.03);
-            color: var(--text);
-            font-size: 0.84rem;
-        }
-
-        .hero-aside {
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            gap: 16px;
-            padding: 18px;
-            border-radius: 14px;
-            border: 1px solid var(--border);
-            background: rgba(8,12,22,0.6);
-        }
-
-        .hero-aside h2,
         .section-title {
-            margin: 0;
             font-size: 1.15rem;
-            letter-spacing: -0.02em;
-        }
-
-        .hero-aside p {
-            margin: 0;
-            color: var(--text-dim);
-            line-height: 1.7;
-            word-break: keep-all;
-            overflow-wrap: normal;
-        }
-
-        .quick-list {
-            display: grid;
-            gap: 10px;
-        }
-
-        .quick-list div {
-            padding: 10px 12px;
-            border-radius: 12px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--border);
-            color: var(--text-dim);
-            line-height: 1.5;
-        }
-
-        .section-block {
-            padding: 22px 24px;
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            background: rgba(255,255,255,0.02);
-        }
-
-        .section-headline {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin-bottom: 18px;
         }
 
         .section-headline p {
-            margin: 0;
-            color: var(--text-dim);
-            line-height: 1.7;
             max-width: 76ch;
-            word-break: keep-all;
-            overflow-wrap: normal;
         }
 
         .feature-grid {
@@ -357,114 +103,6 @@
             font-size: 0.94rem;
             word-break: keep-all;
             overflow-wrap: normal;
-        }
-
-        .support-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 12px;
-        }
-
-        .support-card {
-            padding: 16px;
-            border-radius: 14px;
-            border: 1px solid var(--border);
-            background: rgba(13,17,29,0.72);
-        }
-
-        .support-card h3 {
-            margin: 0 0 8px;
-            font-size: 1rem;
-        }
-
-        .support-card p,
-        .support-card li {
-            color: var(--text-dim);
-            line-height: 1.75;
-            word-break: keep-all;
-            overflow-wrap: normal;
-        }
-
-        .support-card a {
-            text-decoration: none;
-            color: var(--text);
-        }
-
-        .support-card a:hover {
-            color: var(--accent);
-        }
-
-        .support-card ul {
-            margin: 10px 0 0;
-            padding-left: 18px;
-        }
-
-        .policy-panel h2,
-        .footer-panel h2 {
-            margin: 0 0 12px;
-            font-size: 1.3rem;
-        }
-
-        .policy-panel h3 {
-            margin: 18px 0 8px;
-            font-size: 1.02rem;
-        }
-
-        .policy-panel p,
-        .policy-panel li,
-        .footer-panel p {
-            color: var(--text-dim);
-            line-height: 1.8;
-            word-break: keep-all;
-            overflow-wrap: normal;
-        }
-
-        .policy-panel ul {
-            margin: 10px 0 0;
-            padding-left: 18px;
-        }
-
-        .contact-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 12px;
-        }
-
-        .contact-card {
-            padding: 16px;
-            border-radius: 14px;
-            border: 1px solid var(--border);
-            background: rgba(13,17,29,0.72);
-        }
-
-        .contact-card strong {
-            display: block;
-            margin-bottom: 6px;
-        }
-
-        .footer-panel {
-            padding: 18px 24px;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .footer-links {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .footer-links a {
-            text-decoration: none;
-            color: var(--text-dim);
-            font-size: 0.88rem;
-        }
-
-        .footer-links a:hover {
-            color: var(--text);
         }
 
         .container {
@@ -564,25 +202,6 @@
         }
         .regex-area.open { display: grid; gap: 14px; }
 
-        .regex-block {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .regex-label {
-            font-size: 0.75rem;
-            color: var(--accent);
-            font-weight: 700;
-        }
-
-        .regex-helper {
-            font-size: 0.74rem;
-            color: var(--accent);
-            font-weight: 700;
-            margin: 0 0 8px;
-        }
-
         .regex-test-row {
             display: flex;
             flex-wrap: wrap;
@@ -671,9 +290,6 @@
         .cover-btn-group { display: flex; gap: 4px; justify-content: center; }
         .btn-cover { background: #2d334a; border: 1px solid var(--border); color: var(--text-dim); padding: 3px 8px; font-size: 0.65rem; border-radius: 4px; cursor: pointer; }
         .btn-cover.active { background: rgba(34,197,94,0.15); border-color: var(--success); color: var(--success); }
-        .btn-preview { background: transparent; border: 1px solid var(--border); color: var(--text-dim); padding: 3px 8px; font-size: 0.65rem; border-radius: 4px; cursor: pointer; white-space: nowrap; }
-        .btn-preview:hover { border-color: var(--accent); color: var(--text); }
-
         .status-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.6rem; font-weight: 800; transition: 0.2s; }
         .status-badge.clickable { cursor: pointer; }
         .status-badge.clickable:hover { filter: brightness(1.3); transform: scale(1.05); }
@@ -792,8 +408,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-        .btn-start {
             min-height: 72px;
             background: var(--primary);
             border: none;
@@ -943,8 +557,7 @@
             border-color: var(--accent);
         }
 
-        .btn-preview-action:disabled,
-        .btn-preview:disabled {
+        .btn-preview-action:disabled {
             opacity: 0.45;
             cursor: not-allowed;
         }
@@ -1065,15 +678,6 @@
         }
 
         @media (max-width: 900px) {
-            .page-shell {
-                width: min(100vw - 20px, 1120px);
-                padding-top: 14px;
-            }
-
-            .hero-panel {
-                grid-template-columns: 1fr;
-            }
-
             .options-bar {
                 flex-direction: row;
                 flex-wrap: wrap;
@@ -1090,13 +694,6 @@
 
             .btn-advanced-toggle {
                 justify-self: center;
-            }
-
-            .site-header,
-            .section-block,
-            .footer-panel {
-                padding-left: 16px;
-                padding-right: 16px;
             }
 
             .container {
@@ -1124,11 +721,6 @@
 
             .section-headline {
                 margin-bottom: 14px;
-            }
-
-            .hero-panel {
-                padding: 18px;
-                gap: 18px;
             }
 
             .container {
@@ -1160,26 +752,7 @@
         }
 
         @media (max-width: 640px) {
-            .site-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .header-nav {
-                justify-content: flex-start;
-            }
-
-            .hero-panel {
-                padding: 18px;
-            }
-
-            .hero-copy h1 {
-                font-size: clamp(1.8rem, 9vw, 2.8rem);
-            }
-
-            .hero-copy p,
-            .section-headline p,
-            .hero-aside p {
+            .section-headline p {
                 font-size: 0.96rem;
             }
 
@@ -1187,13 +760,7 @@
                 display: none;
             }
 
-            .section-block {
-                padding: 18px 16px;
-            }
-
-            .feature-grid,
-            .support-grid,
-            .contact-grid {
+            .feature-grid {
                 grid-template-columns: 1fr;
             }
 
@@ -1445,23 +1012,24 @@
                 case 'TOGGLE_ADVANCED': return { ...state, isAdvancedOpen: !state.isAdvancedOpen };
                 case 'ADD_FILES': return { ...state, files: [...state.files, ...action.payload] };
                 case 'REMOVE_FILE': return { ...state, files: state.files.filter(f => f.id !== action.payload) };
-                case 'CLEAR_FILES': return { ...state, files: [], progress: 0, statusText: window.EPUB_STUDIO_I18N.t('statusIdle'), statusDetail: window.EPUB_STUDIO_I18N.t('statusIdleDetail') };
+                case 'CLEAR_FILES': return { ...state, files: [], progress: 0, statusKey: 'statusIdle', statusDetailKey: 'statusIdleDetail', statusDetailVars: {} };
                 case 'UPDATE_FILE_TITLE': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, customTitle: action.payload.title } : f) };
                 case 'UPDATE_FILE_COVER': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, coverBlob: action.payload.blob } : f) };
                 case 'UPDATE_FILE_VALIDITY': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, isValid: action.payload.isValid } : f) };
                 case 'UPDATE_FILE_STATUS': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, state: action.payload.status } : f) };
-                case 'START_PROCESSING': return { ...state, isProcessing: true, shouldStop: false, progress: 0, statusText: window.EPUB_STUDIO_I18N.t('statusProcessing'), statusDetail: window.EPUB_STUDIO_I18N.t('statusProgress', { done: 0, total: action.payload.totalCount }) };
+                case 'START_PROCESSING': return { ...state, isProcessing: true, shouldStop: false, progress: 0, statusKey: 'statusProcessing', statusDetailKey: 'statusProgress', statusDetailVars: { done: 0, total: action.payload.totalCount } };
                 case 'SET_PROGRESS': return { ...state, progress: action.payload };
-                case 'SET_STATUS': return { ...state, statusText: action.payload };
-                case 'SET_STATUS_DETAIL': return { ...state, statusDetail: action.payload };
+                case 'SET_STATUS': return { ...state, statusKey: action.payload };
+                case 'SET_STATUS_DETAIL': return { ...state, statusDetailKey: action.payload.key, statusDetailVars: action.payload.vars || {} };
                 case 'STOP_PROCESSING': return { ...state, shouldStop: true };
-                case 'FINISH_PROCESSING': return { ...state, isProcessing: false, shouldStop: false, statusText: state.shouldStop ? window.EPUB_STUDIO_I18N.t('statusStopped') : window.EPUB_STUDIO_I18N.t('statusDone') };
+                case 'FINISH_PROCESSING': return { ...state, isProcessing: false, shouldStop: false, statusKey: state.shouldStop ? 'statusStopped' : 'statusDone' };
+                case 'REFRESH_LANGUAGE': return { ...state };
                 default: return state;
             }
         }
     }
 
-    const store = new Store({ files: [], isProcessing: false, shouldStop: false, progress: 0, statusText: window.EPUB_STUDIO_I18N.t('statusIdle'), statusDetail: window.EPUB_STUDIO_I18N.t('statusIdleDetail'), isAdvancedOpen: false });
+    const store = new Store({ files: [], isProcessing: false, shouldStop: false, progress: 0, statusKey: 'statusIdle', statusDetailKey: 'statusIdleDetail', statusDetailVars: {}, isAdvancedOpen: false });
 
     function el(tag, attributes = {}, ...children) {
         const element = document.createElement(tag);
@@ -1492,6 +1060,18 @@
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
+
+    function getEpubFilename(title, usedNames = null) {
+        const base = String(title || '').trim().replace(/[\\/:*?"<>|]/g, '_') || 'untitled';
+        let filename = `${base}.epub`;
+        if (!usedNames) return filename;
+        let suffix = 2;
+        while (usedNames.has(filename.toLowerCase())) filename = `${base} (${suffix++}).epub`;
+        usedNames.add(filename.toLowerCase());
+        return filename;
+    }
+
+    const SUPPORTED_COVER_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml']);
 
     const dom = {
         fileInput: document.getElementById('fileInput'),
@@ -1809,9 +1389,9 @@
         dom.convertBtn.innerText = state.isProcessing ? window.EPUB_STUDIO_I18N.t('convertStop') : window.EPUB_STUDIO_I18N.t('convertStart');
         dom.progBar.classList.toggle('visible', state.isProcessing);
         dom.progFill.style.width = `${state.progress}%`;
-        dom.statusText.innerText = state.statusText;
+        dom.statusText.innerText = window.EPUB_STUDIO_I18N.t(state.statusKey);
         const stats = getFileStats(state.files);
-        let detail = state.statusDetail || '';
+        let detail = state.statusDetailKey ? window.EPUB_STUDIO_I18N.t(state.statusDetailKey, state.statusDetailVars) : '';
         if (!state.isProcessing) {
             if (stats.total === 0) {
                 detail = window.EPUB_STUDIO_I18N.t('statusIdleDetail');
@@ -1833,10 +1413,12 @@
             dom.btnToggleAdvanced.classList.remove('open');
         }
 
-        if (['ADD_FILES', 'REMOVE_FILE', 'CLEAR_FILES', 'UPDATE_FILE_VALIDITY', 'UPDATE_FILE_STATUS', 'UPDATE_FILE_COVER', 'START_PROCESSING', 'FINISH_PROCESSING', 'STOP_PROCESSING'].includes(action.type)) {
+        if (['ADD_FILES', 'REMOVE_FILE', 'CLEAR_FILES', 'UPDATE_FILE_VALIDITY', 'UPDATE_FILE_STATUS', 'UPDATE_FILE_COVER', 'START_PROCESSING', 'FINISH_PROCESSING', 'STOP_PROCESSING', 'REFRESH_LANGUAGE'].includes(action.type)) {
             renderList(state.files);
         }
     });
+
+    window.addEventListener('epub-langchange', () => store.dispatch({ type: 'REFRESH_LANGUAGE' }));
 
     function renderList(files) {
         dom.fileTbody.innerHTML = '';
@@ -1886,33 +1468,43 @@
     }
 
     async function readClipboardImage(id) {
-        store.dispatch({ type: 'SET_STATUS', payload: window.EPUB_STUDIO_I18N.t('clipboard.reading') });
+        store.dispatch({ type: 'SET_STATUS', payload: 'clipboard.reading' });
         try {
             const items = await navigator.clipboard.read();
             for (const item of items) {
-                const imageType = item.types.find(type => type.startsWith('image/'));
+                const imageType = item.types.find(type => SUPPORTED_COVER_TYPES.has(type.toLowerCase()));
                 if (imageType) {
                     const blob = await item.getType(imageType);
                     store.dispatch({ type: 'UPDATE_FILE_COVER', payload: { id, blob } });
-                    store.dispatch({ type: 'SET_STATUS', payload: window.EPUB_STUDIO_I18N.t('clipboard.imageApplied') });
+                    store.dispatch({ type: 'SET_STATUS', payload: 'clipboard.imageApplied' });
                     return;
                 }
             }
+            if (items.some(item => item.types.some(type => type.startsWith('image/')))) {
+                alert(window.EPUB_STUDIO_I18N.t('clipboard.unsupported'));
+                store.dispatch({ type: 'SET_STATUS', payload: 'clipboard.unsupported' });
+                return;
+            }
             const text = await navigator.clipboard.readText();
             if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
-                store.dispatch({ type: 'SET_STATUS', payload: window.EPUB_STUDIO_I18N.t('clipboard.downloading') });
+                store.dispatch({ type: 'SET_STATUS', payload: 'clipboard.downloading' });
                 const res = await fetch(text);
                 if (!res.ok) throw new Error();
                 const blob = await res.blob();
+                if (!SUPPORTED_COVER_TYPES.has(blob.type.toLowerCase())) {
+                    alert(window.EPUB_STUDIO_I18N.t('clipboard.unsupported'));
+                    store.dispatch({ type: 'SET_STATUS', payload: 'clipboard.unsupported' });
+                    return;
+                }
                 store.dispatch({ type: 'UPDATE_FILE_COVER', payload: { id, blob } });
-                store.dispatch({ type: 'SET_STATUS', payload: window.EPUB_STUDIO_I18N.t('clipboard.cached') });
+                store.dispatch({ type: 'SET_STATUS', payload: 'clipboard.cached' });
                 return;
             }
             alert(window.EPUB_STUDIO_I18N.t('clipboard.invalid'));
-            store.dispatch({ type: 'SET_STATUS', payload: window.EPUB_STUDIO_I18N.t('clipboard.invalid') });
+            store.dispatch({ type: 'SET_STATUS', payload: 'clipboard.invalid' });
         } catch (e) {
             alert(window.EPUB_STUDIO_I18N.t('clipboard.fail'));
-            store.dispatch({ type: 'SET_STATUS', payload: window.EPUB_STUDIO_I18N.t('clipboard.fail') });
+            store.dispatch({ type: 'SET_STATUS', payload: 'clipboard.fail' });
         }
     }
 
@@ -2227,10 +1819,11 @@
                     self.postMessage({ type: 'VALIDATE_RESULT', payload: { id: payload.id, isValid: validIndices.size > 0 ? 'ok' : 'no' } });
                 }
                 else if (type === 'CONVERT') {
-                    const { id, title, content, useTrim, useAutoToc, useMultiToc, userRegex, coverBuffer, coverType } = payload;
+                    const { id, title, content, useTrim, useAutoToc, useMultiToc, userRegex, coverBuffer, coverType, language } = payload;
                     const parser = new ClusterParser(userRegex);
                     const rawLines = safeSplit(content);
                     const excludedIndices = new Set(payload.excludedIndices || []);
+                    const bookLanguage = language === 'en' ? 'en' : 'ko';
 
                     const validIndices = useAutoToc ? parser.analyze(rawLines, useMultiToc) : new Set();
                     if (excludedIndices.size > 0) {
@@ -2272,7 +1865,7 @@
                     const coverInfo = coverBuffer ? COVER_TYPES[String(coverType || '').toLowerCase()] : null;
                     if (coverInfo) {
                         oebps.folder("images").file(coverInfo.file, coverBuffer);
-                        oebps.file("cover.xhtml", '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ko"><head><title>Cover</title><style>body { margin: 0; padding: 0; text-align: center; background-color: #0d111d; } img { max-width: 100%; max-height: 100vh; object-fit: contain; margin: 0 auto; }</style></head><body><img src="images/' + coverInfo.file + '" alt="Cover" /></body></html>');
+                        oebps.file("cover.xhtml", '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xml:lang="' + bookLanguage + '"><head><title>Cover</title><style>body { margin: 0; padding: 0; text-align: center; background-color: #0d111d; } img { max-width: 100%; max-height: 100vh; object-fit: contain; margin: 0 auto; }</style></head><body><img src="images/' + coverInfo.file + '" alt="Cover" /></body></html>');
                         manifest.push('<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>');
                         manifest.push('<item id="cover-img" href="images/' + coverInfo.file + '" media-type="' + coverInfo.media + '" properties="cover-image"/>');
                         spine.push('<itemref idref="cover"/>');
@@ -2293,7 +1886,7 @@
                             const heading = partIdx ? "" : "<h2>" + safeTitle + "</h2>";
                             const bodyHtml = lines.map(l => l ? "<p>" + esc(l) + "</p>" : "<p><br/></p>").join('\\n');
 
-                            oebps.file(fname, '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ko"><head><title>' + pageTitle + '</title><style>body { font-family: sans-serif; line-height: 1.7; padding: 5% 7%; word-break: break-all; } h2 { border-bottom: 1px solid #eee; padding-bottom: 10px; font-size: 1.25em; color: #333; } p { margin: 0.8em 0; text-indent: 0.5em; }</style></head><body>' + heading + bodyHtml + '</body></html>');
+                            oebps.file(fname, '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xml:lang="' + bookLanguage + '"><head><title>' + pageTitle + '</title><style>body { font-family: sans-serif; line-height: 1.7; padding: 5% 7%; word-break: break-all; } h2 { border-bottom: 1px solid #eee; padding-bottom: 10px; font-size: 1.25em; color: #333; } p { margin: 0.8em 0; text-indent: 0.5em; }</style></head><body>' + heading + bodyHtml + '</body></html>');
                             manifest.push('<item id="' + itemId + '" href="' + fname + '" media-type="application/xhtml+xml"/>');
                             spine.push('<itemref idref="' + itemId + '"/>');
                             if (partIdx === 0) {
@@ -2304,13 +1897,12 @@
                         });
                     });
 
-                    oebps.file("nav.xhtml", '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="ko"><head><title>목차</title></head><body><nav epub:type="toc"><h1>목차</h1><ol>' + nav.join('\\n') + '</ol></nav></body></html>');
-                    oebps.file("toc.ncx", '<?xml version="1.0" encoding="UTF-8"?><ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1"><head><meta name="dtb:uid" content="uuid"/></head><docTitle><text>' + esc(title) + '</text></docTitle><navMap>' + ncx.join('\\n') + '</navMap></ncx>');
-
-                    const randomId = Math.random().toString(36).substring(2, 15);
+                    const bookId = "u" + Math.random().toString(36).substring(2, 15);
+                    oebps.file("nav.xhtml", '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="' + bookLanguage + '"><head><title>목차</title></head><body><nav epub:type="toc"><h1>목차</h1><ol>' + nav.join('\\n') + '</ol></nav></body></html>');
+                    oebps.file("toc.ncx", '<?xml version="1.0" encoding="UTF-8"?><ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1"><head><meta name="dtb:uid" content="' + bookId + '"/></head><docTitle><text>' + esc(title) + '</text></docTitle><navMap>' + ncx.join('\\n') + '</navMap></ncx>');
                     const coverMeta = coverInfo ? '<meta name="cover" content="cover-img"/>' : '';
 
-                    oebps.file("content.opf", '<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">u' + randomId + '</dc:identifier><dc:title>' + esc(title) + '</dc:title><dc:language>ko</dc:language>' + coverMeta + '<meta property="dcterms:modified">' + new Date().toISOString().replace(/\\.\\d+Z$/, "Z") + '</meta></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>' + manifest.join('\\n') + '</manifest><spine toc="ncx">' + spine.join('\\n') + '</spine></package>');
+                    oebps.file("content.opf", '<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">' + bookId + '</dc:identifier><dc:title>' + esc(title) + '</dc:title><dc:language>' + bookLanguage + '</dc:language>' + coverMeta + '<meta property="dcterms:modified">' + new Date().toISOString().replace(/\\.\\d+Z$/, "Z") + '</meta></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>' + manifest.join('\\n') + '</manifest><spine toc="ncx">' + spine.join('\\n') + '</spine></package>');
 
                     const blob = await zip.generateAsync({ type: "blob", mimeType: "application/epub+zip", compression: "DEFLATE" });
                     self.postMessage({ type: 'CONVERT_RESULT', payload: { id, blob } });
@@ -2326,9 +1918,13 @@
     const parserWorker = new Worker(workerUrl);
     URL.revokeObjectURL(workerUrl);
     const conversionResolvers = new Map();
+    let workerFailed = false;
 
     parserWorker.onerror = (err) => {
+        workerFailed = true;
         console.error("Worker Global Error:", err);
+        for (const { reject } of conversionResolvers.values()) reject(new Error(err.message || 'Worker error'));
+        conversionResolvers.clear();
         dom.testOutput.innerHTML = '<span style="color:var(--danger)">' + window.EPUB_STUDIO_I18N.t('test.engineError', { error: err.message }) + '</span>';
     };
 
@@ -2405,7 +2001,7 @@
     async function validateFileById(id) {
         const item = store.state.files.find((file) => file.id === id);
         if (!item) return;
-        const text = await readFileText(item.file, item.encoding, 15000);
+        const text = await readFileText(item.file, item.encoding);
         parserWorker.postMessage({
             type: 'VALIDATE',
             payload: {
@@ -2427,7 +2023,7 @@
     dom.convertBtn.onclick = async () => {
         if (store.state.isProcessing) {
             store.dispatch({ type: 'STOP_PROCESSING' });
-            store.dispatch({ type: 'SET_STATUS_DETAIL', payload: window.EPUB_STUDIO_I18N.t('statusDetail.stopped') });
+            store.dispatch({ type: 'SET_STATUS_DETAIL', payload: { key: 'statusDetail.stopped' } });
             return;
         }
 
@@ -2443,6 +2039,7 @@
         store.dispatch({ type: 'START_PROCESSING', payload: { totalCount } });
 
         const finalZip = dom.optZip.checked ? new JSZip() : null;
+        const usedZipNames = new Set();
         const useMultiToc = dom.optMultiToc.checked;
 
         for (let i = 0; i < filesToProcess.length; i++) {
@@ -2455,6 +2052,7 @@
             store.dispatch({ type: 'UPDATE_FILE_STATUS', payload: { id: item.id, status: 'ing' } });
 
             try {
+                if (workerFailed) throw new Error('Worker unavailable');
                 const text = await readFileText(item.file, item.encoding);
 
                 const coverBuf = item.coverBlob ? await item.coverBlob.arrayBuffer() : null;
@@ -2474,15 +2072,16 @@
                             userRegex: dom.regexInput.value,
                             coverBuffer: coverBuf,
                             coverType,
+                            language: window.EPUB_STUDIO_I18N.lang,
                             excludedIndices: Array.from(getExcludedPreviewLines(item.id))
                         }
                     }, coverBuf ? [coverBuf] : []);
                 });
 
                 if (finalZip) {
-                    finalZip.file(`${item.customTitle}.epub`, blob);
+                    finalZip.file(getEpubFilename(item.customTitle, usedZipNames), blob);
                 } else {
-                    triggerDownload(blob, `${item.customTitle}.epub`);
+                    triggerDownload(blob, getEpubFilename(item.customTitle));
                 }
                 store.dispatch({ type: 'UPDATE_FILE_STATUS', payload: { id: item.id, status: 'done' } });
             } catch (e) {
@@ -2490,7 +2089,7 @@
             }
             store.dispatch({ type: 'SET_PROGRESS', payload: ((i + 1) / filesToProcess.length) * 100 });
             const stats = getFileStats(store.state.files);
-            store.dispatch({ type: 'SET_STATUS_DETAIL', payload: window.EPUB_STUDIO_I18N.t('statusSummary', { done: stats.done, error: stats.error }) });
+            store.dispatch({ type: 'SET_STATUS_DETAIL', payload: { key: 'statusSummary', vars: { done: stats.done, error: stats.error } } });
         }
 
         if (finalZip && !store.state.shouldStop) {
@@ -2498,7 +2097,7 @@
             triggerDownload(b, `EPUB_COLLECTION.zip`);
         }
         const finalStats = getFileStats(store.state.files);
-        store.dispatch({ type: 'SET_STATUS_DETAIL', payload: window.EPUB_STUDIO_I18N.t('statusSummary', { done: finalStats.done, error: finalStats.error }) });
+        store.dispatch({ type: 'SET_STATUS_DETAIL', payload: { key: 'statusSummary', vars: { done: finalStats.done, error: finalStats.error } } });
         store.dispatch({ type: 'FINISH_PROCESSING' });
     };
 
