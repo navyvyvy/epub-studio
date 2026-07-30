@@ -875,7 +875,7 @@
 
         <div class="regex-area" id="advancedArea">
             <div id="regexLabel" style="font-size: 0.75rem; color: var(--accent); font-weight: 700;">목차 추출 커스텀 정규식</div>
-            <input type="text" id="regexInput" value="^\s*(([<【〔]\s*(\d+[\.\s화수]|제?\s*\d+[화수]|자기\s*소개|프롤로그|에필로그|공지|작가).*?[>】〕])|제?\s*\d+[화회수](?![이가을를은는의])(?:\s.{1,70})?$|(?:Chapter|Stage|Episode|Ep|Part)\s*\d+.*?|^[#＃]\d+.*?$|(?!\d*\.?\d+\s*(?:년|월|일|시|분|초|주년|세기|년대|광복절|삼일절|기념일|명절|행사|당일|미터|km|m|cm|mm|kg|g|살|세|차|퍼센트|%|배|개|명|마리|번|회분|곱하기|x|\*|위|원|달러|유로|엔|만|천|백|십|억|조|캐럿|빌리언|트릴리언|층|군|팀|점|승|무|패|등급))\d*\.?\d+(?:[\s화회수]|\.(?!\d)).{1,70}(?<![고다자죠요]\.)$|\(\d+\)$)\s*$">
+            <input type="text" id="regexInput" value="^\s*(([<【〔]\s*(\d+[\.\s화수]|제?\s*\d+[화수]|자기\s*소개|프롤로그|에필로그|공지|작가).*?[>】〕])|제?\s*\d+[화회수](?![이가을를은는의])(?:\s.{1,70})?$|(?:Chapter|Stage|Episode|Ep|Part)\s*\d+.*?|^[#＃]\s*\d+.*?$|(?!\d*\.?\d+\s*(?:년|월|일|시|분|초|주년|세기|년대|광복절|삼일절|기념일|명절|행사|당일|미터|km|m|cm|mm|kg|g|살|세|차|퍼센트|%|배|개|명|마리|번|회분|곱하기|x|\*|위|원|달러|유로|엔|만|천|백|십|억|조|캐럿|빌리언|트릴리언|층|군|팀|점|승|무|패|등급))\d*\.?\d+(?:[\s화회수]|\.(?!\d)).{1,70}(?<![고다자죠요]\.)$|\(\d+\)$)\s*$">
 
             <div class="regex-test-panel">
                 <div id="testLabel" style="font-size: 0.75rem; color: var(--accent); font-weight: 700; margin-bottom: 8px;">🔬 파서 시뮬레이터 (엔진 테스트)</div>
@@ -1550,7 +1550,7 @@
     const workerCode = `
         importScripts("https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js");
 
-        const BRACKET_TITLE_PATTERN = /^[<【〔\\[(]\\s*(?:(?:(?:외전|프롤로그|에필로그)\\s*)?(?:제\\s*)?\\d+\\s*[화회장막편부수]|(?:Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\d+|(?:프롤로그|에필로그|외전|공지|작가(?:의\\s*말)?|자기\\s*소개|서장|종장|프로필)|\\d{1,5})(?:\\s*[-:.·]\\s*[^>】〕\\]\\)〉》」』]{1,20})?\\s*[>】〕\\]\\)〉》」』]$/i;
+        const BRACKET_TITLE_PATTERN = /^[<【〔\\[(]\\s*(?:(?:(?:외전|프롤로그|에필로그)\\s*)?(?:제\\s*)?\\d+\\s*[화회장막편부수]|(?:Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\.?\\s*\\d+|(?:프롤로그|에필로그|외전|후기|공지|작가(?:의\\s*말)?|자기\\s*소개|서장|종장|프로필)|\\d{1,5})(?:\\s*[-:.·]\\s*[^>】〕\\]\\)〉》」』]{1,20})?\\s*[>】〕\\]\\)〉》」』]$/i;
         const COVER_TYPES = {
             'image/jpeg': { file: 'cover.jpg', media: 'image/jpeg' },
             'image/png': { file: 'cover.png', media: 'image/png' },
@@ -1562,11 +1562,11 @@
             maxLineLength: 90,
             strongStartPatterns: [
                 /^[<【〔\\[(=\\-~◈]?\\s*(?:외전|프롤로그|에필로그)?\\s*(?:제\\s*)?\\d+\\s*[화회장막편부수](?:\\s|:|\\.|-|$)/i,
-                /^[<【〔\\[(]?\\s*(?:Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\d+/i,
-                /^[<【〔\\[(=\\-~]?\\s*[#＃]\\d+/,
+                /^[<【〔\\[(]?\\s*(?:Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\.?\\s*\\d+/i,
+                /^[<【〔\\[(=\\-~]?\\s*[#＃]\\s*\\d+/,
                 /^0\\d{1,3}(?:\\s|$)/,
                 /^\\d+[-_]\\d+(?:\\s|$)/,
-                /^\\d+[.)](?:\\s|$)/,
+                /^\\d+[.)](?!\\d)/,
                 /^\\[\\d+\\]/,
                 BRACKET_TITLE_PATTERN,
             ],
@@ -1582,10 +1582,10 @@
             groupMatchers: [
                 { group: 'KOR', test: (t) => t.match(/^[<【〔\\[(=\\-~◈]?\\s*(?:외전|프롤로그|에필로그)?\\s*(?:제\\s*)?\\d+\\s*([화회장막편부수])(?:\\]|\\s|:|\\.|-|$)/), resolve: (_, match) => 'KOR_' + match[1] },
                 { group: 'KOR_SUFFIX', test: (t) => t.match(/^[^.!?。！？]{1,50}\\s+(?:제\\s*)?\\d+\\s*([화회장막편부수])\\.?$/), resolve: (_, match) => 'KOR_SUFFIX_' + match[1] },
-                { group: 'ENG', test: (t) => t.match(/^(Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\d+/i), resolve: (_, match) => 'ENG_' + match[1].toUpperCase() },
-                { group: 'SPECIAL', test: (t) => /^(?:프롤로그|에필로그|외전|공지|작가의\\s*말|서장|종장|프로필)(?=$|\\s|\\d|[:.\\-])/.test(t) && !/[.?!。！？]$/.test(t) },
+                { group: 'ENG', test: (t) => t.match(/^(Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\.?\\s*\\d+/i), resolve: (_, match) => 'ENG_' + match[1].toUpperCase() },
+                { group: 'SPECIAL', test: (t) => /^(?:[<【〔\\[(]\\s*)?(?:프롤로그|에필로그|외전|후기|공지|작가의\\s*말|서장|종장|프로필)(?:\\s*[>】〕\\])〉》」』])?(?=$|\\s|\\d|[:.\\-])/.test(t) && !/[.?!。！？]$/.test(t) },
                 { group: 'BRACKET', test: (t) => BRACKET_TITLE_PATTERN.test(t) },
-                { group: 'SHARP', test: (t) => /^[#＃]\\d+/.test(t) },
+                { group: 'SHARP', test: (t) => /^[#＃]\\s*\\d+/.test(t) },
                 { group: 'NUMBER', test: (t) => /^\\d+[-_.]\\d+(?:\\s|$)/.test(t) || /^\\d+[.)](?!\\d)/.test(t) || /^0\\d{1,3}(?:[.)]?\\s*$)/.test(t) || /^\\[\\d+\\]/.test(t) || /^\\d{1,5}$/.test(t) },
             ],
             bannedRegex: /((?:\\d+\\.\\d+)|(?:\\d+[\\/\\\\]\\d+))\\s*(?:캐럿|만|억|천|밀리언|빌리언|트릴리언|달러|원|퍼센트|%|미터|km|m|cm|mm|kg|g|초|분|시간|배|위|군|점|승|무|패|등급)|(?:총|약|단|무려|겨우|고작|단지)\\s*\\d+\\s*[장회화편부]|\\d+\\s*(?:년|월|일|시|분|초|주년|세기|년대|광복절|삼일절|기념일|명절|행사|당일|살|세|차|퍼센트|%|배|개|명|마리|번|회분|곱하기|층)/i
@@ -1624,6 +1624,27 @@
             }
             return [0];
         };
+        const getContinuousSequenceIndexes = (items) => {
+            let best = [];
+            for (let start = 0; start < items.length; start++) {
+                const indexes = [start];
+                const usedGroups = new Set([items[start].group]);
+                const skippedGroups = new Set();
+                let expected = items[start].number + 1;
+                for (let i = start + 1; i < items.length; i++) {
+                    const item = items[i];
+                    if (item.number === expected && (!skippedGroups.has(item.group) || usedGroups.has(item.group))) {
+                        indexes.push(i);
+                        usedGroups.add(item.group);
+                        expected++;
+                    } else if (!usedGroups.has(item.group)) {
+                        skippedGroups.add(item.group);
+                    }
+                }
+                if (indexes.length > best.length) best = indexes;
+            }
+            return best;
+        };
         const getFilenameChapterRange = (fileName) => {
             const baseName = String(fileName || '').replace(/\\.[^.]+$/, '');
             const matches = Array.from(baseName.matchAll(/(?:^|[^\\d])(\\d{1,5})\\s*[-~–—]\\s*(\\d{1,5})(?!\\d)/g));
@@ -1655,8 +1676,7 @@
 
             lines.forEach((line, idx) => {
                 const text = cleanLine(line);
-                const isIsolated = (idx === 0 || !cleanLine(lines[idx - 1])) && (idx === lines.length - 1 || !cleanLine(lines[idx + 1]));
-                if (!text || text.length > DISCOVERED_TITLE_MAX_LENGTH || !isIsolated) return;
+                if (!text || text.length > DISCOVERED_TITLE_MAX_LENGTH) return;
                 const isStrongStart = parser.isStrongStart(text);
                 if (parser.shouldSkipCandidate(text, isStrongStart)) return;
                 if (!isStrongStart && parser.rules.titleNoisePattern.test(text)) return;
@@ -1692,6 +1712,7 @@
 
             // 새로 추가할 제목 예외는 shouldSkipCandidate()와 groupMatchers에 넣으면 됩니다.
             shouldSkipCandidate(text, isStrongStart) {
+                if (/^[<【〔\\[(]?\\s*작가의\\s*말\\s*[>】〕\\])〉》」』]?\\s*$/.test(text)) return true;
                 const isBracketed = this.rules.bracketOpenPattern.test(text) && this.rules.bracketClosePattern.test(text);
                 const isBracketTitle = this.rules.bracketTitlePattern.test(text);
 
@@ -1729,8 +1750,8 @@
 
             getChapterNum(text) {
                 const match = text.match(/(?:제\\s*)?(\\d+)\\s*[화회장막편부수](?:\\]|\\s|:|\\.|-|$)/) ||
-                    text.match(/(?:Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*(\\d+)/i) ||
-                    text.match(/[#＃](\\d+)/) ||
+                    text.match(/(?:Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\.?\\s*(\\d+)/i) ||
+                    text.match(/[#＃]\\s*(\\d+)/) ||
                     text.match(/(?:^|[^a-zA-Z0-9가-힣])(\\d+)(?![.\\/\\\\]\\d)/);
                 return match ? parseInt(match[1], 10) : -1;
             }
@@ -1844,6 +1865,20 @@
                     lineData.forEach((group, idx) => {
                         if (group?.startsWith('KOR_SUFFIX_')) lineData[idx] = group.replace('KOR_SUFFIX_', 'KOR_');
                     });
+
+                    const candidates = lineData.flatMap((group, idx) => {
+                        if (!group || group === 'SPECIAL') return [];
+                        const text = this.normalizeLine(lines[idx]);
+                        const hasExplicitChapterNumber = group.startsWith('KOR') || group === 'SHARP';
+                        if ((text.match(/\\d{1,5}/g) || []).length !== 1 && !hasExplicitChapterNumber) return [];
+                        const number = this.getChapterNum(text);
+                        return number === -1 ? [] : [{ idx, group, number }];
+                    });
+                    const sequence = getContinuousSequenceIndexes(candidates).map((index) => candidates[index]);
+                    if (sequence.length >= 2 && new Set(sequence.map((item) => item.group)).size > 1) {
+                        const mergedGroup = 'SEQUENCE_' + sequence[0].idx;
+                        for (const item of sequence) lineData[item.idx] = mergedGroup;
+                    }
                 }
                 const candidateGroups = lineData.slice();
                 const numericGroups = new Map();
@@ -1858,7 +1893,7 @@
                 });
                 for (const [group, groupItems] of numericGroups) {
                     if (groupItems.length < 2) {
-                        if (group !== 'SPECIAL' && !discoveredTitleIndices.has(groupItems[0].idx)) {
+                        if (group !== 'SPECIAL' && group !== 'SHARP' && !discoveredTitleIndices.has(groupItems[0].idx)) {
                             orphanNumericItems.push({ ...groupItems[0], group });
                             lineData[groupItems[0].idx] = null;
                         }
@@ -2269,7 +2304,7 @@
         }
     };
 
-    dom.dropZone.onclick = (e) => { if (!e.target.closest('.file-table')) dom.fileInput.click(); };
+    dom.dropZone.onclick = (e) => { if (!e.composedPath().includes(dom.tableWrapper)) dom.fileInput.click(); };
     dom.dropZone.ondragover = (e) => { e.preventDefault(); dom.dropZone.classList.add('drag-over'); };
     dom.dropZone.ondragleave = () => dom.dropZone.classList.remove('drag-over');
     dom.dropZone.ondrop = (e) => { e.preventDefault(); dom.dropZone.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); };

@@ -132,6 +132,26 @@ test('decorated Korean chapter titles keep their leading symbol', async () => {
     }
 });
 
+test('hash-prefixed chapter titles allow fullwidth marks, spaces, and a single item', async () => {
+    const cases = [
+        ['＃1화', ['＃1화']],
+        ['＃ 1화 시작\n본문\n＃ 2화 계속', ['＃ 1화 시작', '＃ 2화 계속']],
+        ['#1화 시작\n본문\n#2화 계속', ['#1화 시작', '#2화 계속']]
+    ];
+
+    for (const [content, expected] of cases) {
+        for (const useMultiToc of [false, true]) {
+            const { context, messages } = loadWorker();
+            await context.self.onmessage({ data: {
+                type: 'TEST_PARSER',
+                payload: { text: content, userRegex: '', preserveCustomMatches: false, useMultiToc }
+            } });
+
+            assert.deepEqual(Array.from(messages[0].payload.resultLines), expected);
+        }
+    }
+});
+
 test('numbered prose between consecutive titles is not a title candidate', async () => {
     const content = [
         '◈ 31화 진실을 향한 발걸음 (0)',
@@ -194,6 +214,37 @@ test('special-title words inside prose do not enter the TOC', async () => {
     }
 });
 
+test('authors notes are excluded while afterwords remain in the TOC', async () => {
+    const content = [
+        '1화 시작',
+        '작가의 말',
+        '[작가의 말]',
+        '후기',
+        '[후기]',
+        '2화 계속'
+    ].join('\n\n');
+
+    for (const useMultiToc of [false, true]) {
+        const { context, messages } = loadWorker();
+        await context.self.onmessage({ data: {
+            type: 'TEST_PARSER',
+            payload: {
+                text: content,
+                userRegex: defaultTitleRegex,
+                preserveCustomMatches: false,
+                useMultiToc
+            }
+        } });
+
+        assert.deepEqual(Array.from(messages[0].payload.resultLines), [
+            '1화 시작',
+            '후기',
+            '[후기]',
+            '2화 계속'
+        ]);
+    }
+});
+
 test('automatic discovery converts unknown sequential title formats', async () => {
     const { context, messages } = loadWorker();
     const content = 'Story@001 :: Alpha\n\nbody\n\nStory@002 :: Beta\n\nbody\n\nStory@003 :: Gamma';
@@ -223,6 +274,45 @@ test('automatic discovery converts unknown sequential title formats', async () =
 
     const ncx = messages[1].payload.blob.files.get('OEBPS/toc.ncx');
     assert.equal((ncx.match(/<navPoint /g) || []).length, 3);
+});
+
+test('EP dot numbering is detected between body lines', async () => {
+    const content = 'EP.1 시작\n본문\nEP.2 계속\n본문\nEP.5 재개';
+
+    for (const useMultiToc of [false, true]) {
+        const { context, messages } = loadWorker();
+        await context.self.onmessage({ data: {
+            type: 'TEST_PARSER',
+            payload: { text: content, userRegex: '', preserveCustomMatches: false, useMultiToc }
+        } });
+
+        assert.deepEqual(Array.from(messages[0].payload.resultLines), [
+            'EP.1 시작',
+            'EP.2 계속',
+            'EP.5 재개'
+        ]);
+    }
+});
+
+test('automatic discovery scans repeated sequential patterns without blank lines', async () => {
+    const { context, messages } = loadWorker();
+    await context.self.onmessage({ data: {
+        type: 'PREVIEW_PARSER',
+        payload: {
+            requestId: 1,
+            fileName: 'sample.txt',
+            text: 'ARC@1 :: 시작\n본문\nARC@2 :: 계속\n본문\nARC@3 :: 마침',
+            userRegex: '',
+            preserveCustomMatches: false,
+            useMultiToc: false
+        }
+    } });
+
+    assert.deepEqual(Array.from(messages[0].payload.resultItems, (item) => item.text), [
+        'ARC@1 :: 시작',
+        'ARC@2 :: 계속',
+        'ARC@3 :: 마침'
+    ]);
 });
 
 test('blank-separated Korean units are detected automatically', async () => {
@@ -395,6 +485,7 @@ test('same title pattern keeps later titles after a number gap', async () => {
         ['11. 시작\n\n12. 계속\n\n15. 재개\n\n16. 다음', ['11. 시작', '12. 계속', '15. 재개', '16. 다음']],
         ['제11화 시작\n\n제12화 계속\n\n제15화 재개\n\n제16화 다음', ['제11화 시작', '제12화 계속', '제15화 재개', '제16화 다음']],
         ['3. 시작\n\n4. 계속\n\n7. 재개', ['3. 시작', '4. 계속', '7. 재개']],
+        ['3.시작\n본문\n4.계속\n본문\n7.재개', ['3.시작', '4.계속', '7.재개']],
         ['제3화 시작\n\n제4화 계속\n\n제7화 재개', ['제3화 시작', '제4화 계속', '제7화 재개']]
     ];
 
@@ -640,6 +731,37 @@ test('multi-pattern mode keeps equal chapter numbers from different title groups
     assert.deepEqual(Array.from(messages[0].payload.resultLines), expected);
 });
 
+test('single-pattern mode merges different formats when chapter numbers continue', async () => {
+    const continuous = '1. 시작\n본문\n2. 계속\n본문\n＃3화 전환\n본문\n＃4화 계속';
+    const separate = '1. 시작\n본문\n2. 계속\n본문\n＃10화 전환\n본문\n＃11화 계속';
+
+    for (const [content, expected] of [
+        [continuous, ['1. 시작', '2. 계속', '＃3화 전환', '＃4화 계속']],
+        [
+            '＃109화 영웅의 길\n본문\n＃110화 전령\n본문\n111화 외계인 (1)',
+            ['＃109화 영웅의 길', '＃110화 전령', '111화 외계인 (1)']
+        ],
+        [
+            '＃109화 영웅의 길\n1. 일반 문장\n＃110화 전령\n2. 일반 문장\n111화 외계인 (1)',
+            ['＃109화 영웅의 길', '＃110화 전령', '111화 외계인 (1)']
+        ],
+        [separate, ['1. 시작', '2. 계속']]
+    ]) {
+        const { context, messages } = loadWorker();
+        await context.self.onmessage({ data: {
+            type: 'TEST_PARSER',
+            payload: {
+                text: content,
+                userRegex: '',
+                preserveCustomMatches: false,
+                useMultiToc: false
+            }
+        } });
+
+        assert.deepEqual(Array.from(messages[0].payload.resultLines), expected);
+    }
+});
+
 test('automatic sequencing chooses the increasing numeric column', async () => {
     const { context, messages } = loadWorker();
     await context.self.onmessage({ data: {
@@ -715,6 +837,29 @@ test('automatic patterns do not join known titles from repetition alone', async 
     } });
 
     assert.deepEqual(Array.from(messages[0].payload.resultLines), ['1화 시작', '2화 계속']);
+});
+
+test('file-table clicks do not reopen the picker during a row rerender', () => {
+    const handlerBody = html.match(/dom\.dropZone\.onclick = \(e\) => \{([^}]*)\};/)[1];
+    const tableWrapper = {};
+    let pickerClicks = 0;
+    const dom = {
+        tableWrapper,
+        fileInput: { click() { pickerClicks++; } }
+    };
+    const handler = Function('dom', `return (e) => {${handlerBody}}`)(dom);
+
+    handler({
+        target: { closest() { return null; } },
+        composedPath() { return [{}, tableWrapper, {}]; }
+    });
+    assert.equal(pickerClicks, 0);
+
+    handler({
+        target: { closest() { return null; } },
+        composedPath() { return [{}, {}]; }
+    });
+    assert.equal(pickerClicks, 1);
 });
 
 test('EPUB metadata stays consistent and long chapters are split', async () => {
