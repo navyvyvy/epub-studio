@@ -824,6 +824,183 @@ test('automatic discovery rejects non-sequential and non-title lines', async () 
     assert.equal(messages[0].payload.resultItems.length, 0);
 });
 
+test('parenthesized number suffixes are offered as a selectable multi-pattern fallback', async () => {
+    const content = '내집 마련의 꿈(1)\n본문\n내집 마련의 꿈(2)';
+
+    for (const useMultiToc of [false, true]) {
+        const { context, messages } = loadWorker();
+        await context.self.onmessage({ data: {
+            type: 'PREVIEW_PARSER',
+            payload: {
+                requestId: 1,
+                fileName: 'sample.txt',
+                text: content,
+                userRegex: defaultTitleRegex,
+                preserveCustomMatches: false,
+                useMultiToc
+            }
+        } });
+
+        assert.deepEqual(Array.from(messages[0].payload.resultItems), []);
+        assert.deepEqual(
+            Array.from(messages[0].payload.fallbackItems || [], (item) => item.text),
+            useMultiToc ? ['내집 마련의 꿈(1)', '내집 마련의 꿈(2)'] : []
+        );
+    }
+
+    const singleton = loadWorker();
+    await singleton.context.self.onmessage({ data: {
+        type: 'PREVIEW_PARSER',
+        payload: {
+            requestId: 1,
+            fileName: 'sample.txt',
+            text: '내집 마련의 꿈(2)',
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: true
+        }
+    } });
+    assert.deepEqual(Array.from(singleton.messages[0].payload.fallbackItems, (item) => item.text), ['내집 마련의 꿈(2)']);
+
+    const prose = loadWorker();
+    await prose.context.self.onmessage({ data: {
+        type: 'PREVIEW_PARSER',
+        payload: {
+            requestId: 1,
+            fileName: 'sample.txt',
+            text: '오늘은 집으로 돌아가야 한다.(2)',
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: true
+        }
+    } });
+    assert.deepEqual(Array.from(prose.messages[0].payload.fallbackItems || []), []);
+});
+
+test('parenthesized fallback remains selectable alongside regular titles', async () => {
+    const { context, messages } = loadWorker();
+    const content = '제1화 시작\n본문\n내집 마련의 꿈(2)\n본문\n제2화 계속';
+    await context.self.onmessage({ data: {
+        type: 'PREVIEW_PARSER',
+        payload: {
+            requestId: 1,
+            fileName: 'sample.txt',
+            text: content,
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: true
+        }
+    } });
+
+    assert.deepEqual(Array.from(messages[0].payload.resultItems, (item) => item.text), ['제1화 시작', '제2화 계속']);
+    assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), ['내집 마련의 꿈(2)']);
+
+    await context.self.onmessage({ data: {
+        type: 'CONVERT',
+        payload: {
+            id: 'mixed-book',
+            title: 'Mixed Book',
+            fileName: 'sample.txt',
+            content,
+            useTrim: true,
+            useAutoToc: true,
+            useMultiToc: true,
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            coverBuffer: null,
+            coverType: '',
+            language: 'ko',
+            selectedFallbackIndices: [2],
+            excludedIndices: []
+        }
+    } });
+
+    const ncx = messages[1].payload.blob.files.get('OEBPS/toc.ncx');
+    assert.equal((ncx.match(/<navPoint /g) || []).length, 3);
+    assert.match(ncx, /내집 마련의 꿈\(2\)/);
+});
+
+test('parenthesized candidate count includes matching lines already detected as titles', async () => {
+    const { context, messages } = loadWorker();
+    await context.self.onmessage({ data: {
+        type: 'PREVIEW_PARSER',
+        payload: {
+            requestId: 1,
+            fileName: 'sample.txt',
+            text: '제1화 시작(1)\n본문\n100억을 벌었다(2)\n본문\n제2화 계속(2)',
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: true
+        }
+    } });
+
+    assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), [
+        '제1화 시작(1)',
+        '100억을 벌었다(2)',
+        '제2화 계속(2)'
+    ]);
+});
+
+test('selected parenthesized fallback titles are applied to validation and conversion', async () => {
+    const content = '내집 마련의 꿈(1)\n본문\n내집 마련의 꿈(2)';
+    const { context, messages } = loadWorker();
+
+    await context.self.onmessage({ data: {
+        type: 'VALIDATE',
+        payload: {
+            id: 'fallback-book',
+            fileName: 'sample.txt',
+            text: content,
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: true,
+            selectedFallbackIndices: [],
+            excludedIndices: []
+        }
+    } });
+    assert.equal(messages[0].payload.isValid, 'no');
+
+    await context.self.onmessage({ data: {
+        type: 'VALIDATE',
+        payload: {
+            id: 'fallback-book',
+            fileName: 'sample.txt',
+            text: content,
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: true,
+            selectedFallbackIndices: [0, 2],
+            excludedIndices: []
+        }
+    } });
+    assert.equal(messages[1].payload.isValid, 'ok');
+
+    await context.self.onmessage({ data: {
+        type: 'CONVERT',
+        payload: {
+            id: 'fallback-book',
+            title: 'Fallback Book',
+            fileName: 'sample.txt',
+            content,
+            useTrim: true,
+            useAutoToc: true,
+            useMultiToc: true,
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            coverBuffer: null,
+            coverType: '',
+            language: 'ko',
+            selectedFallbackIndices: [0, 2],
+            excludedIndices: []
+        }
+    } });
+
+    const ncx = messages[2].payload.blob.files.get('OEBPS/toc.ncx');
+    assert.equal((ncx.match(/<navPoint /g) || []).length, 2);
+    assert.match(ncx, /내집 마련의 꿈\(1\)/);
+    assert.match(ncx, /내집 마련의 꿈\(2\)/);
+});
+
 test('automatic patterns do not join known titles from repetition alone', async () => {
     const { context, messages } = loadWorker();
     await context.self.onmessage({ data: {

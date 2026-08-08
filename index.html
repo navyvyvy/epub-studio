@@ -485,6 +485,10 @@
             border-color: rgba(129,140,248,0.75);
         }
 
+        .preview-dialog[data-preview-state="candidate"] .preview-panel {
+            border-color: rgba(245,158,11,0.75);
+        }
+
         .preview-dialog[data-preview-state="hit"] .preview-summary {
             color: var(--success);
         }
@@ -495,6 +499,10 @@
 
         .preview-dialog[data-preview-state="loading"] .preview-summary {
             color: var(--accent);
+        }
+
+        .preview-dialog[data-preview-state="candidate"] .preview-summary {
+            color: #fbbf24;
         }
 
         .preview-panel {
@@ -588,10 +596,14 @@
             color: #fca5a5;
         }
 
+        .preview-summary .preview-summary-candidate {
+            color: #fbbf24;
+        }
+
         .preview-list {
             display: grid;
             gap: 8px;
-            max-height: 260px;
+            max-height: min(62vh, 620px);
             overflow: auto;
         }
 
@@ -663,6 +675,41 @@
             border-color: rgba(239, 68, 68, 0.42);
             color: #fecaca;
             background: rgba(239, 68, 68, 0.08);
+        }
+
+        .preview-candidate {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin: 0 0 10px;
+            padding: 9px 10px;
+            border: 1px solid rgba(245, 158, 11, 0.45);
+            border-radius: 10px;
+            background: rgba(245, 158, 11, 0.07);
+        }
+
+        .preview-candidate[hidden] {
+            display: none;
+        }
+
+        .preview-candidate.is-selected {
+            border-color: rgba(34, 197, 94, 0.5);
+            background: rgba(34, 197, 94, 0.07);
+        }
+
+        .preview-candidate-copy {
+            display: grid;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .preview-candidate-copy small {
+            color: var(--text-dim);
+            font-size: 0.72rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .preview-item-action {
@@ -875,7 +922,7 @@
 
         <div class="regex-area" id="advancedArea">
             <div id="regexLabel" style="font-size: 0.75rem; color: var(--accent); font-weight: 700;">목차 추출 커스텀 정규식</div>
-            <input type="text" id="regexInput" value="^\s*(([<【〔]\s*(\d+[\.\s화수]|제?\s*\d+[화수]|자기\s*소개|프롤로그|에필로그|공지|작가).*?[>】〕])|제?\s*\d+[화회수](?![이가을를은는의])(?:\s.{1,70})?$|(?:Chapter|Stage|Episode|Ep|Part)\s*\d+.*?|^[#＃]\s*\d+.*?$|(?!\d*\.?\d+\s*(?:년|월|일|시|분|초|주년|세기|년대|광복절|삼일절|기념일|명절|행사|당일|미터|km|m|cm|mm|kg|g|살|세|차|퍼센트|%|배|개|명|마리|번|회분|곱하기|x|\*|위|원|달러|유로|엔|만|천|백|십|억|조|캐럿|빌리언|트릴리언|층|군|팀|점|승|무|패|등급))\d*\.?\d+(?:[\s화회수]|\.(?!\d)).{1,70}(?<![고다자죠요]\.)$|\(\d+\)$)\s*$">
+            <input type="text" id="regexInput" value="^\s*(([<【〔]\s*(\d+[\.\s화수]|제?\s*\d+[화수]|자기\s*소개|프롤로그|에필로그|공지|작가).*?[>】〕])|제?\s*\d+[화회수](?![이가을를은는의])(?:\s.{1,70})?$|(?:Chapter|Stage|Episode|Ep|Part)\s*\d+.*?|^[#＃]\s*\d+.*?$|(?!\d*\.?\d+\s*(?:년|월|일|시|분|초|주년|세기|년대|광복절|삼일절|기념일|명절|행사|당일|미터|km|m|cm|mm|kg|g|살|세|차|퍼센트|%|배|개|명|마리|번|회분|곱하기|x|\*|위|원|달러|유로|엔|만|천|백|십|억|조|캐럿|빌리언|트릴리언|층|군|팀|점|승|무|패|등급))\d*\.?\d+(?:[\s화회수]|\.(?!\d)).{1,70}(?<![고다자죠요]\.)$)\s*$">
 
             <div class="regex-test-panel">
                 <div id="testLabel" style="font-size: 0.75rem; color: var(--accent); font-weight: 700; margin-bottom: 8px;">🔬 파서 시뮬레이터 (엔진 테스트)</div>
@@ -919,6 +966,7 @@
                 </div>
             </div>
             <div class="preview-summary" id="previewSummary"></div>
+            <div class="preview-candidate" id="previewCandidate" hidden></div>
             <div class="preview-list" id="previewList">
                 <div class="preview-empty">아직 미리보기 결과가 없습니다. 파일 목록에서 목차 미리보기를 눌러보세요.</div>
             </div>
@@ -979,7 +1027,7 @@
                 </article>
                 <article class="feature-card">
                     <h3>목차 미리보기</h3>
-                    <p>파일별 목차 후보를 바로 보고, 필요하면 각 줄을 눌러 복사할 수 있습니다. 감지 상태도 함께 보여줍니다.</p>
+                    <p>감지된 목차를 확인하고 필요 없는 줄은 뺄 수 있습니다. 다중 패턴에서는 자동 감지와 다른 형식도 별도 후보로 확인해 추가할 수 있습니다.</p>
                 </article>
                 <article class="feature-card">
                     <h3>표지 설정</h3>
@@ -1113,6 +1161,7 @@
         previewFileMeta: document.getElementById('previewFileMeta'),
         previewSummary: document.getElementById('previewSummary'),
         previewMultiTocToggle: document.getElementById('previewMultiTocToggle'),
+        previewCandidate: document.getElementById('previewCandidate'),
         previewList: document.getElementById('previewList'),
         previewCopyBtn: document.getElementById('previewCopyBtn'),
         previewCloseBtn: document.getElementById('previewCloseBtn'),
@@ -1122,9 +1171,11 @@
     };
 
     let currentPreviewItems = [];
+    let currentPreviewFallbackItems = [];
     let currentPreviewFileId = null;
     let currentPreviewRequestId = 0;
     const excludedPreviewLinesByFile = new Map();
+    const selectedFallbackLinesByFile = new Map();
 
     function getExcludedPreviewLines(fileId) {
         return excludedPreviewLinesByFile.get(fileId) || new Set();
@@ -1143,6 +1194,16 @@
         if (excluded.size === 0) excludedPreviewLinesByFile.delete(fileId);
     }
 
+    function getSelectedFallbackLines(fileId) {
+        return selectedFallbackLinesByFile.get(fileId) || new Set();
+    }
+
+    function setFallbackSelection(fileId, items, shouldSelect) {
+        if (!fileId && fileId !== 0) return;
+        if (shouldSelect) selectedFallbackLinesByFile.set(fileId, new Set(items.map((item) => item.idx)));
+        else selectedFallbackLinesByFile.delete(fileId);
+    }
+
     function createPreviewActionIcon(kind) {
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('viewBox', '0 0 24 24');
@@ -1155,7 +1216,9 @@
         svg.classList.add('preview-action-icon');
         svg.innerHTML = kind === 'restore'
             ? '<path d="M4 12a8 8 0 1 1 8 8"/><path d="M4 12h6"/><path d="M7 9l3 3-3 3"/>'
-            : '<path d="M6 6l12 12"/><path d="M18 6L6 18"/>';
+            : kind === 'add'
+                ? '<path d="M12 5v14"/><path d="M5 12h14"/>'
+                : '<path d="M6 6l12 12"/><path d="M18 6L6 18"/>';
         return svg;
     }
 
@@ -1186,31 +1249,91 @@
     }
 
     function updatePreviewCopyButtonState() {
-        const excluded = currentPreviewFileId ? getExcludedPreviewLines(currentPreviewFileId) : new Set();
-        const visibleCount = currentPreviewItems.filter((item) => !excluded.has(item.idx)).length;
-        dom.previewCopyBtn.disabled = visibleCount === 0;
+        dom.previewCopyBtn.disabled = getActivePreviewItems().length === 0;
         dom.previewCopyBtn.innerText = window.EPUB_STUDIO_I18N.t('previewCopy');
+    }
+
+    function getSelectedPreviewItems() {
+        const selectedFallback = currentPreviewFileId ? getSelectedFallbackLines(currentPreviewFileId) : new Set();
+        const itemsByIndex = new Map(currentPreviewItems.map((item) => [item.idx, item]));
+        currentPreviewFallbackItems.forEach((item) => {
+            if (selectedFallback.has(item.idx) && !itemsByIndex.has(item.idx)) itemsByIndex.set(item.idx, item);
+        });
+        return Array.from(itemsByIndex.values()).sort((a, b) => a.idx - b.idx);
+    }
+
+    function getActivePreviewItems() {
+        const excluded = currentPreviewFileId ? getExcludedPreviewLines(currentPreviewFileId) : new Set();
+        return getSelectedPreviewItems().filter((item) => !excluded.has(item.idx));
     }
 
     function renderPreviewDialog() {
         const excluded = currentPreviewFileId ? getExcludedPreviewLines(currentPreviewFileId) : new Set();
-        const visibleItems = currentPreviewItems.filter((item) => !excluded.has(item.idx));
-        const excludedCount = currentPreviewItems.length - visibleItems.length;
+        const selectedFallback = currentPreviewFileId ? getSelectedFallbackLines(currentPreviewFileId) : new Set();
+        const hasFallback = currentPreviewFallbackItems.length > 0;
+        const isFallbackSelected = hasFallback && currentPreviewFallbackItems.some((item) => selectedFallback.has(item.idx));
+        const displayItems = getSelectedPreviewItems();
+        const visibleItems = displayItems.filter((item) => !excluded.has(item.idx));
+        const excludedCount = displayItems.length - visibleItems.length;
 
-        if (!currentPreviewItems.length) {
+        if (!currentPreviewItems.length && !hasFallback) {
             dom.previewDialog.dataset.previewState = 'miss';
             dom.previewSummary.innerText = window.EPUB_STUDIO_I18N.t('previewNoResult');
+            dom.previewCandidate.hidden = true;
+            dom.previewCandidate.innerHTML = '';
             dom.previewList.innerHTML = '<div class="preview-empty">' + window.EPUB_STUDIO_I18N.t('previewNoResult') + '</div>';
             dom.previewCopyBtn.disabled = true;
             dom.previewCopyBtn.innerText = window.EPUB_STUDIO_I18N.t('previewCopy');
             return;
         }
 
-        dom.previewDialog.dataset.previewState = visibleItems.length ? 'hit' : 'miss';
-        dom.previewSummary.innerHTML = window.EPUB_STUDIO_I18N.t('previewCount', { count: visibleItems.length }) + (excludedCount > 0 ? ' · <span class="preview-summary-excluded">' + window.EPUB_STUDIO_I18N.t('previewExcludedCount', { count: excludedCount }) + '</span>' : '');
+        dom.previewDialog.dataset.previewState = visibleItems.length
+            ? 'hit'
+            : (hasFallback && !isFallbackSelected ? 'candidate' : 'miss');
+        const countSummary = window.EPUB_STUDIO_I18N.t('previewCount', { count: visibleItems.length }) + (excludedCount > 0 ? ' · <span class="preview-summary-excluded">' + window.EPUB_STUDIO_I18N.t('previewExcludedCount', { count: excludedCount }) + '</span>' : '');
+        dom.previewSummary.innerHTML = hasFallback && !isFallbackSelected
+            ? (currentPreviewItems.length
+                ? countSummary + ' · <span class="preview-summary-candidate">' + window.EPUB_STUDIO_I18N.t('previewFallbackCount', { count: currentPreviewFallbackItems.length }) + '</span>'
+                : window.EPUB_STUDIO_I18N.t('previewFallbackFound', { count: currentPreviewFallbackItems.length }))
+            : countSummary;
+        dom.previewCandidate.hidden = !hasFallback;
+        dom.previewCandidate.innerHTML = '';
         dom.previewList.innerHTML = '';
 
-        currentPreviewItems.forEach((item) => {
+        if (hasFallback) {
+            dom.previewCandidate.className = 'preview-candidate' + (isFallbackSelected ? ' is-selected' : '');
+
+            const candidateText = document.createElement('div');
+            candidateText.className = 'preview-candidate-copy';
+            const candidateTitle = document.createElement('strong');
+            candidateTitle.textContent = window.EPUB_STUDIO_I18N.t('previewFallbackTitle');
+            const candidateSample = document.createElement('small');
+            candidateSample.textContent = window.EPUB_STUDIO_I18N.t('previewFallbackSample', {
+                sample: currentPreviewFallbackItems[0].text,
+                count: currentPreviewFallbackItems.length
+            });
+            candidateText.appendChild(candidateTitle);
+            candidateText.appendChild(candidateSample);
+
+            const candidateAction = document.createElement('button');
+            candidateAction.type = 'button';
+            candidateAction.className = 'preview-item-action';
+            const candidateActionKey = isFallbackSelected ? 'previewFallbackRemove' : 'previewFallbackAdd';
+            const candidateActionLabel = window.EPUB_STUDIO_I18N.t(candidateActionKey);
+            candidateAction.title = candidateActionLabel;
+            candidateAction.setAttribute('aria-label', candidateActionLabel);
+            candidateAction.appendChild(createPreviewActionIcon(isFallbackSelected ? 'exclude' : 'add'));
+            candidateAction.addEventListener('click', () => {
+                setFallbackSelection(currentPreviewFileId, currentPreviewFallbackItems, !isFallbackSelected);
+                renderPreviewDialog();
+                if (currentPreviewFileId) validateFileById(currentPreviewFileId);
+            });
+
+            dom.previewCandidate.appendChild(candidateText);
+            dom.previewCandidate.appendChild(candidateAction);
+        }
+
+        displayItems.forEach((item) => {
             const isExcluded = excluded.has(item.idx);
             const row = document.createElement('div');
             row.className = 'preview-item' + (isExcluded ? ' is-excluded' : '');
@@ -1284,8 +1407,9 @@
         }
     }
 
-    function openPreviewDialog(title, meta, items, previewState = null) {
+    function openPreviewDialog(title, meta, items, fallbackItems = [], previewState = null) {
         currentPreviewItems = Array.isArray(items) ? items.slice() : [];
+        currentPreviewFallbackItems = Array.isArray(fallbackItems) ? fallbackItems.slice() : [];
         if (!dom.previewDialog.open) dom.previewDialog.showModal();
         dom.previewFileName.innerText = title || window.EPUB_STUDIO_I18N.t('previewTitle');
         dom.previewFileMeta.innerText = meta || '';
@@ -1294,6 +1418,8 @@
         if (previewState === 'loading') {
             dom.previewDialog.dataset.previewState = 'loading';
             dom.previewSummary.innerText = window.EPUB_STUDIO_I18N.t('previewLoading');
+            dom.previewCandidate.hidden = true;
+            dom.previewCandidate.innerHTML = '';
             dom.previewList.innerHTML = '<div class="preview-empty">' + window.EPUB_STUDIO_I18N.t('previewScanning') + '</div>';
             dom.previewCopyBtn.disabled = true;
             dom.previewCopyBtn.innerText = window.EPUB_STUDIO_I18N.t('previewCopy');
@@ -1328,8 +1454,11 @@
         currentPreviewRequestId += 1;
         if (dom.previewDialog.open) dom.previewDialog.close();
         currentPreviewItems = [];
+        currentPreviewFallbackItems = [];
         currentPreviewFileId = null;
         delete dom.previewDialog.dataset.previewState;
+        dom.previewCandidate.hidden = true;
+        dom.previewCandidate.innerHTML = '';
         dom.previewList.innerHTML = '<div class="preview-empty">' + window.EPUB_STUDIO_I18N.t('previewEmpty') + '</div>';
         dom.previewSummary.innerText = '';
         dom.previewMultiTocToggle.checked = dom.optMultiToc.checked;
@@ -1338,8 +1467,7 @@
     }
 
     async function copyPreviewLines() {
-        const excluded = currentPreviewFileId ? getExcludedPreviewLines(currentPreviewFileId) : new Set();
-        const visibleLines = currentPreviewItems.filter((item) => !excluded.has(item.idx)).map((item) => item.text);
+        const visibleLines = getActivePreviewItems().map((item) => item.text);
         if (!visibleLines.length) return;
         try {
             await navigator.clipboard.writeText(visibleLines.join('\n'));
@@ -1359,7 +1487,7 @@
         const requestId = ++currentPreviewRequestId;
 
         try {
-            openPreviewDialog(item.customTitle || item.file.name, `${item.file.name} · ${item.encoding}`, [], 'loading');
+            openPreviewDialog(item.customTitle || item.file.name, `${item.file.name} · ${item.encoding}`, [], [], 'loading');
 
             const text = await readFileText(item.file, item.encoding);
 
@@ -1376,7 +1504,7 @@
                 }
             });
         } catch (error) {
-            openPreviewDialog(item.customTitle || item.file.name, `${item.file.name} · ${item.encoding}`, [], 'miss');
+            openPreviewDialog(item.customTitle || item.file.name, `${item.file.name} · ${item.encoding}`, [], [], 'miss');
             dom.previewSummary.innerText = window.EPUB_STUDIO_I18N.t('previewNoResult');
             dom.previewList.innerHTML = '<div class="preview-empty">' + window.EPUB_STUDIO_I18N.t('previewError') + '</div>';
             dom.previewCopyBtn.disabled = true;
@@ -1407,9 +1535,11 @@
     store.subscribe((state, action) => {
         if (action.type === 'REMOVE_FILE') {
             excludedPreviewLinesByFile.delete(action.payload);
+            selectedFallbackLinesByFile.delete(action.payload);
             if (currentPreviewFileId === action.payload) closePreviewDialog();
         } else if (action.type === 'CLEAR_FILES') {
             excludedPreviewLinesByFile.clear();
+            selectedFallbackLinesByFile.clear();
             closePreviewDialog();
         }
         dom.convertBtn.classList.toggle('is-stop', state.isProcessing);
@@ -1678,6 +1808,7 @@
                 const text = cleanLine(line);
                 if (!text || text.length > DISCOVERED_TITLE_MAX_LENGTH) return;
                 const isStrongStart = parser.isStrongStart(text);
+                if (!isStrongStart && /[\\(（]\\s*\\d{1,5}\\s*[\\)）]$/.test(text)) return;
                 if (parser.shouldSkipCandidate(text, isStrongStart)) return;
                 if (!isStrongStart && parser.rules.titleNoisePattern.test(text)) return;
 
@@ -1692,6 +1823,25 @@
                 const indexes = getTitleSequenceIndexes(group.numbers);
                 return { key: group.key, indices: indexes.map((index) => group.indices[index]) };
             }).filter((group) => group.indices.length >= 2);
+        };
+
+        const findParenthesizedTitleFallback = (lines, parser) => lines.flatMap((line, idx) => {
+            const text = cleanLine(line);
+            if (!/[\\(（]\\s*\\d{1,5}\\s*[\\)）]$/.test(text)) return [];
+            const title = text.replace(/\\s*[\\(（]\\s*\\d{1,5}\\s*[\\)）]$/, '');
+            if (!title || text.length > 70 || !/[A-Za-z가-힣一-龥ぁ-んァ-ヶ]/.test(title)) return [];
+            if (parser.shouldSkipCandidate(title, parser.isStrongStart(title))) return [];
+            return [{ idx, text }];
+        });
+
+        const applySelectedTitleFallback = (validIndices, lines, parser, payload) => {
+            if (!payload.useMultiToc) return [];
+            const fallbackItems = findParenthesizedTitleFallback(lines, parser);
+            const selected = new Set(payload.selectedFallbackIndices || []);
+            for (const item of fallbackItems) {
+                if (selected.has(item.idx)) validIndices.add(item.idx);
+            }
+            return fallbackItems;
         };
 
         class ClusterParser {
@@ -2135,6 +2285,7 @@
                     const parser = new ClusterParser(payload.userRegex, payload.preserveCustomMatches);
                     const lines = safeSplit(payload.text);
                     const validIndices = parser.analyze(lines, payload.useMultiToc, payload.fileName);
+                    const fallbackItems = applySelectedTitleFallback(validIndices, lines, parser, payload);
                     const resultItems = [];
                     validIndices.forEach(i => resultItems.push({ idx: i, text: lines[i] }));
                     self.postMessage({
@@ -2144,7 +2295,8 @@
                             title: payload.customTitle || payload.fileName || '목차 미리보기',
                             fileName: payload.fileName || '',
                             meta: (payload.fileName || '') + (payload.fileName ? ' · ' : '') + lines.length + '줄',
-                            resultItems
+                            resultItems,
+                            fallbackItems
                         }
                     });
                 }
@@ -2152,6 +2304,7 @@
                     const parser = new ClusterParser(payload.userRegex, payload.preserveCustomMatches);
                     const lines = safeSplit(payload.text);
                     const validIndices = parser.analyze(lines, payload.useMultiToc, payload.fileName);
+                    applySelectedTitleFallback(validIndices, lines, parser, payload);
                     if (payload.excludedIndices && payload.excludedIndices.length) {
                         for (const idx of payload.excludedIndices) validIndices.delete(idx);
                     }
@@ -2165,6 +2318,7 @@
                     const bookLanguage = language === 'en' ? 'en' : 'ko';
 
                     const validIndices = useAutoToc ? parser.analyze(rawLines, useMultiToc, fileName) : new Set();
+                    if (useAutoToc) applySelectedTitleFallback(validIndices, rawLines, parser, payload);
                     if (excludedIndices.size > 0) {
                         for (const idx of excludedIndices) validIndices.delete(idx);
                     }
@@ -2281,7 +2435,8 @@
             openPreviewDialog(
                 payload.title || payload.fileName || window.EPUB_STUDIO_I18N.t('previewTitle'),
                 payload.meta || '',
-                payload.resultItems || []
+                payload.resultItems || [],
+                payload.fallbackItems || []
             );
         }
         else if (type === 'VALIDATE_RESULT') {
@@ -2350,6 +2505,7 @@
                 userRegex: dom.regexInput.value,
                 preserveCustomMatches: dom.regexInput.value !== dom.regexInput.defaultValue,
                 useMultiToc: dom.optMultiToc.checked,
+                selectedFallbackIndices: Array.from(getSelectedFallbackLines(item.id)),
                 excludedIndices: Array.from(getExcludedPreviewLines(item.id))
             }
         });
@@ -2414,6 +2570,7 @@
                             coverBuffer: coverBuf,
                             coverType,
                             language: window.EPUB_STUDIO_I18N.lang,
+                            selectedFallbackIndices: Array.from(getSelectedFallbackLines(item.id)),
                             excludedIndices: Array.from(getExcludedPreviewLines(item.id))
                         }
                     }, coverBuf ? [coverBuf] : []);
