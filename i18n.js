@@ -7,6 +7,13 @@
         if (file === 'contact.html') return 'contact';
         return 'index';
     })();
+    const PUBLIC_ORIGIN = 'https://epub-studio-mocha.vercel.app';
+    const PUBLIC_PATHS = {
+        index: '/',
+        about: '/about.html',
+        privacy: '/privacy.html',
+        contact: '/contact.html'
+    };
 
     const TEXT = {
         ko: {
@@ -511,21 +518,19 @@
 
         const canonical = document.querySelector('link[rel="canonical"]');
         if (canonical) {
-            const base = new URL(makeUrl(current.lang));
-            base.hash = '';
-            canonical.href = base.href;
+            canonical.href = makePublicUrl(current.lang);
         }
 
         const altKo = document.getElementById('hreflangKo');
         const altEn = document.getElementById('hreflangEn');
-        if (altKo) altKo.href = makeUrl('ko');
-        if (altEn) altEn.href = makeUrl('en');
+        if (altKo) altKo.href = makePublicUrl('ko');
+        if (altEn) altEn.href = makePublicUrl('en');
         if (!altKo) {
             const link = document.createElement('link');
             link.id = 'hreflangKo';
             link.rel = 'alternate';
             link.hreflang = 'ko';
-            link.href = makeUrl('ko');
+            link.href = makePublicUrl('ko');
             document.head.appendChild(link);
         }
         if (!altEn) {
@@ -533,12 +538,12 @@
             link.id = 'hreflangEn';
             link.rel = 'alternate';
             link.hreflang = 'en';
-            link.href = makeUrl('en');
+            link.href = makePublicUrl('en');
             document.head.appendChild(link);
         }
 
         const ogUrl = document.querySelector('meta[property="og:url"]');
-        if (ogUrl) ogUrl.setAttribute('content', makeUrl(current.lang));
+        if (ogUrl) ogUrl.setAttribute('content', makePublicUrl(current.lang));
 
         const schemaTag = document.getElementById('siteJsonLd');
         if (schemaTag) {
@@ -546,10 +551,16 @@
                 const schema = JSON.parse(schemaTag.textContent);
                 schema.inLanguage = current.lang;
                 schema.description = head.description || schema.description;
-                schema.url = makeUrl(current.lang);
+                schema.url = makePublicUrl(current.lang);
                 schemaTag.textContent = JSON.stringify(schema);
             } catch (_) {}
         }
+    }
+
+    function makePublicUrl(lang) {
+        const url = new URL(PUBLIC_PATHS[PAGE], PUBLIC_ORIGIN);
+        if (lang === 'en') url.searchParams.set('lang', 'en');
+        return url.href;
     }
 
     function makeUrl(lang, href = location.href) {

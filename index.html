@@ -6,59 +6,34 @@
     <title>EPUB STUDIO | TXT를 EPUB으로 변환하는 브라우저 기반 도구</title>
     <meta name="description" content="EPUB STUDIO는 TXT 파일을 브라우저에서 EPUB으로 바꾸는 도구입니다. 공백 정리, 목차 추출, 표지 적용, 인코딩 자동 감지, ZIP 압축을 브라우저 안에서 처리합니다.">
     <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
-    <meta name="theme-color" content="#0b0f1a">
+    <meta name="theme-color" content="#090e10">
     <meta name="google-adsense-account" content="ca-pub-6996920182245498">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230b0f1a'/%3E%3Cpath d='M14 18h36v28H14z' fill='%23161b2c' stroke='%236366f1' stroke-width='2'/%3E%3Cpath d='M20 26h24M20 32h18M20 38h22' stroke='%23f8fafc' stroke-width='3' stroke-linecap='round'/%3E%3C/svg>">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6996920182245498" crossorigin="anonymous"></script>
     <meta property="og:type" content="website">
     <meta property="og:title" content="EPUB STUDIO | TXT를 EPUB으로 변환하는 브라우저 기반 도구">
     <meta property="og:description" content="브라우저 안에서 TXT 파일을 EPUB으로 바꾸는 도구입니다. 공백 정리, 목차 추출, 표지 적용, 인코딩 자동 감지, ZIP 압축을 쓸 수 있습니다.">
-    <meta property="og:url" content="">
+    <meta property="og:url" content="https://epub-studio-mocha.vercel.app/">
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="EPUB STUDIO | TXT를 EPUB으로 변환하는 브라우저 기반 도구">
     <meta name="twitter:description" content="브라우저에서 TXT 파일을 EPUB으로 바꾸고, 공백 정리와 목차 추출을 한 번에 처리합니다.">
-    <link rel="canonical" id="canonicalLink" href="">
-    <script>
-        (function () {
-            const url = location.href.split('#')[0];
-            const canonical = document.getElementById('canonicalLink');
-            if (canonical) canonical.href = url;
-            const ogUrl = document.querySelector('meta[property="og:url"]');
-            if (ogUrl) ogUrl.setAttribute('content', url);
-            const schema = {
-                "@context": "https://schema.org",
-                "@type": "SoftwareApplication",
-                "name": "EPUB STUDIO",
-                "applicationCategory": "UtilitiesApplication",
-                "operatingSystem": "Web",
-                "inLanguage": "ko",
-                "description": "브라우저에서 TXT 파일을 EPUB으로 바꾸는 웹 도구입니다.",
-                "url": url,
-                "offers": {
-                    "@type": "Offer",
-                    "price": "0",
-                    "priceCurrency": "KRW"
-                }
-            };
-            let schemaTag = document.getElementById('siteJsonLd');
-            if (!schemaTag) {
-                schemaTag = document.createElement('script');
-                schemaTag.type = 'application/ld+json';
-                schemaTag.id = 'siteJsonLd';
-                document.head.appendChild(schemaTag);
-            }
-            if (schemaTag) schemaTag.textContent = JSON.stringify(schema);
-        })();
+    <link rel="canonical" id="canonicalLink" href="https://epub-studio-mocha.vercel.app/">
+    <link rel="alternate" id="hreflangKo" hreflang="ko" href="https://epub-studio-mocha.vercel.app/">
+    <link rel="alternate" id="hreflangEn" hreflang="en" href="https://epub-studio-mocha.vercel.app/?lang=en">
+    <link rel="alternate" hreflang="x-default" href="https://epub-studio-mocha.vercel.app/">
+    <script type="application/ld+json" id="siteJsonLd">
+        {"@context":"https://schema.org","@type":"SoftwareApplication","name":"EPUB STUDIO","applicationCategory":"UtilitiesApplication","operatingSystem":"Web","inLanguage":"ko","description":"브라우저에서 TXT 파일을 EPUB으로 바꾸는 웹 도구입니다.","url":"https://epub-studio-mocha.vercel.app/","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"}}
     </script>
     <!-- 외부 라이브러리 로드 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jschardet/3.0.0/jschardet.min.js"></script>
-    <script src="./i18n.js?v=20260628"></script>
-    <link rel="stylesheet" href="./site-shared.css">
+    <script src="./i18n.js?v=20260814"></script>
+    <link rel="stylesheet" href="./site-shared.css?v=20260814">
     <style>
         :root {
-            --danger: #ef4444;
-            --success: #22c55e;
+            --danger: #ff6b73;
+            --success: #52d6ad;
+            --warning: #f4bd61;
         }
 
         ::-webkit-scrollbar { width: 6px; }
@@ -70,8 +45,19 @@
             outline-color: var(--accent);
             outline-offset: 3px;
         }
-        .section-title {
-            font-size: 1.15rem;
+        .tool-section > .section-headline {
+            max-width: 840px;
+            margin-bottom: 28px;
+        }
+
+        .tool-section > .section-headline .section-title {
+            max-width: 800px;
+            font-size: clamp(2rem, 4.5vw, 3.35rem);
+            line-height: 1.02;
+        }
+
+        #features .section-headline > p:last-child {
+            display: none;
         }
 
         .section-headline p {
@@ -80,15 +66,28 @@
 
         .feature-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            column-gap: 32px;
+            counter-reset: feature;
+            border-top: 1px solid var(--border);
         }
 
         .feature-card {
-            padding: 16px;
-            border-radius: 14px;
-            border: 1px solid var(--border);
-            background: rgba(13,17,29,0.72);
+            position: relative;
+            padding: 20px 0 20px 40px;
+            border-bottom: 1px solid var(--border);
+            counter-increment: feature;
+        }
+
+        .feature-card::before {
+            content: counter(feature, decimal-leading-zero);
+            position: absolute;
+            top: 22px;
+            left: 0;
+            color: var(--accent);
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
         }
 
         .feature-card h3 {
@@ -106,34 +105,23 @@
         }
 
         .container {
-            background: var(--card);
+            background: rgba(17, 25, 27, 0.94);
             width: 100%;
-            max-width: 760px;
-            min-height: 920px;
+            max-width: none;
+            min-height: 640px;
             display: flex;
             flex-direction: column;
-            padding: 25px;
-            border-radius: 16px;
+            padding: 20px;
+            border-radius: 14px;
             border: 1px solid var(--border);
-            box-shadow: none;
+            border-top: 3px solid var(--primary);
+            box-shadow: 0 22px 70px rgba(0, 0, 0, 0.22);
         }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        h2 { font-size: 1.1rem; margin: 0; letter-spacing: 3px; font-weight: 900; }
-        h2 span { color: var(--primary); }
 
         .config-section {
-            background: rgba(255,255,255,0.02);
-            border-radius: 16px;
-            border: 1px solid var(--border);
-            padding: 15px;
-            margin-bottom: 15px;
+            padding: 0 0 16px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 16px;
         }
 
         .options-bar {
@@ -170,9 +158,9 @@
             align-self: center;
             font-size: 0.74rem;
             color: var(--text-dim);
-            background: #0d111d;
+            background: #0b1214;
             border: 1px solid var(--border);
-            border-radius: 999px;
+            border-radius: 8px;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -188,8 +176,8 @@
         }
         .btn-advanced-toggle.open {
             color: var(--text);
-            border-color: rgba(129,140,248,0.45);
-            background: rgba(99,102,241,0.12);
+            border-color: rgba(124,230,196,0.5);
+            background: rgba(82,214,173,0.1);
         }
         .btn-advanced-toggle .arrow { transition: 0.3s; font-size: 0.6rem; }
         .btn-advanced-toggle.open .arrow { transform: rotate(180deg); }
@@ -222,7 +210,7 @@
 
         .regex-output {
             margin-top: 10px;
-            background: #0d111d;
+            background: #0b1214;
             border: 1px solid var(--border);
             border-radius: 8px;
             padding: 10px;
@@ -236,7 +224,7 @@
         }
 
         #regexInput, #testInput {
-            background: #0b0f1a;
+            background: #090f11;
             border: 1px solid var(--border);
             border-radius: 8px;
             color: var(--text);
@@ -252,7 +240,7 @@
         #btnTestParser {
             background: var(--primary);
             border: none;
-            color: white;
+            color: #06110d;
             padding: 6px 12px;
             border-radius: 6px;
             font-size: 0.75rem;
@@ -262,16 +250,30 @@
         }
         #btnTestParser:hover { background: var(--accent); }
 
+        #btnTestParser:active,
+        .btn-start:active,
+        .btn-file-convert:active,
+        .btn-cover:active,
+        .btn-preview-action:active {
+            transform: translateY(1px);
+        }
+
         .file-list-area {
             flex-grow: 1;
             overflow: hidden;
-            background: #0d111d;
-            border-radius: 14px;
-            border: 2px dashed var(--border);
-            margin-bottom: 15px;
+            min-height: clamp(300px, 42vh, 520px);
+            background: #0b1214;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin-bottom: 0;
             display: flex;
             flex-direction: column;
             position: relative;
+        }
+
+        .file-list-area:not(:has(.table-wrapper.active)) {
+            border-style: dashed;
+            background: rgba(82,214,173,0.025);
         }
 
         .table-wrapper { display: none; flex-direction: column; height: 100%; width: 100%; }
@@ -279,8 +281,8 @@
         .table-scroll-box { flex-grow: 1; overflow-y: auto; overflow-x: hidden; width: 100%; }
 
         .file-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 0.75rem; }
-        .file-table th { position: sticky; top: 0; background: #1c2336; z-index: 2; padding: 10px; color: var(--text-dim); border-bottom: 1px solid var(--border); }
-        .file-table td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: middle; background: #0d111d; text-align: center; }
+        .file-table th { position: sticky; top: 0; background: #152023; z-index: 2; padding: 11px 10px; color: var(--text-dim); border-bottom: 1px solid var(--border); }
+        .file-table td { padding: 9px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; background: #0b1214; text-align: center; }
         .file-table th.col-title, .file-table td.col-title { text-align: left; padding-left: 15px; }
 
         .title-input { background: none; border: none; color: var(--text); width: 100%; outline: none; font-size: 0.75rem; }
@@ -288,22 +290,22 @@
         .btn-header-action:hover { border-color: var(--accent); color: var(--text); }
 
         .cover-btn-group { display: flex; gap: 4px; justify-content: center; }
-        .btn-cover { background: #2d334a; border: 1px solid var(--border); color: var(--text-dim); padding: 3px 8px; font-size: 0.65rem; border-radius: 4px; cursor: pointer; }
+        .btn-cover { background: #192326; border: 1px solid var(--border); color: var(--text-dim); padding: 4px 8px; font-size: 0.65rem; border-radius: 6px; cursor: pointer; }
         .btn-cover.active { background: rgba(34,197,94,0.15); border-color: var(--success); color: var(--success); }
         .status-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.6rem; font-weight: 800; transition: 0.2s; }
         .status-badge.clickable { cursor: pointer; }
         .status-badge.clickable:hover { filter: brightness(1.3); transform: scale(1.05); }
-        .badge-wait { background: #2d334a; color: var(--text-dim); }
+        .badge-wait { background: #1c282b; color: var(--text-dim); }
         .badge-done { background: rgba(34,197,94,0.15); color: var(--success); border: 1px solid var(--success); }
-        .badge-ing { background: rgba(99,102,241,0.15); color: var(--primary); border: 1px solid var(--primary); }
+        .badge-ing { background: rgba(82,214,173,0.12); color: var(--accent); border: 1px solid var(--primary); }
         .badge-error { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid var(--danger); }
 
         .file-actions { display: flex; justify-content: center; align-items: center; gap: 5px; }
         .btn-file-convert {
             padding: 4px 7px;
-            border: 1px solid rgba(129,140,248,0.5);
-            border-radius: 4px;
-            background: rgba(99,102,241,0.12);
+            border: 1px solid rgba(124,230,196,0.45);
+            border-radius: 6px;
+            background: rgba(82,214,173,0.08);
             color: var(--accent);
             font-size: 0.62rem;
             font-weight: 800;
@@ -366,11 +368,8 @@
             display: grid;
             grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
             gap: 10px;
-            padding: 12px;
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            background: rgba(13,17,29,0.72);
-            margin-bottom: 15px;
+            padding: 0;
+            margin-bottom: 16px;
             align-items: stretch;
         }
 
@@ -381,9 +380,9 @@
             gap: 6px;
             min-height: 72px;
             padding: 10px 12px;
-            border-radius: 12px;
+            border-radius: 10px;
             border: 1px solid var(--border);
-            background: #0d111d;
+            background: #0b1214;
         }
 
         .status-detail {
@@ -426,10 +425,10 @@
             min-height: 72px;
             background: var(--primary);
             border: none;
-            border-radius: 12px;
+            border-radius: 10px;
             font-weight: 800;
             cursor: pointer;
-            color: white;
+            color: #06110d;
             font-size: 0.92rem;
             transition: 0.3s;
         }
@@ -446,7 +445,7 @@
         #status { font-size: 0.94rem; text-align: left; color: var(--text); min-height: 1.2rem; font-weight: 800; }
         .progress-bar {
             height: 3px;
-            background: #2d334a;
+            background: #263538;
             border-radius: 2px;
             overflow: hidden;
             opacity: 0;
@@ -482,11 +481,11 @@
         }
 
         .preview-dialog[data-preview-state="loading"] .preview-panel {
-            border-color: rgba(129,140,248,0.75);
+            border-color: rgba(124,230,196,0.7);
         }
 
         .preview-dialog[data-preview-state="candidate"] .preview-panel {
-            border-color: rgba(245,158,11,0.75);
+            border-color: rgba(244,189,97,0.75);
         }
 
         .preview-dialog[data-preview-state="hit"] .preview-summary {
@@ -502,15 +501,15 @@
         }
 
         .preview-dialog[data-preview-state="candidate"] .preview-summary {
-            color: #fbbf24;
+            color: var(--warning);
         }
 
         .preview-panel {
             padding: 14px;
             border: 1px solid var(--border);
             border-radius: 14px;
-            background: rgba(13,17,29,0.94);
-            box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+            background: rgba(11,18,20,0.97);
+            box-shadow: 0 24px 70px rgba(0,0,0,0.42);
         }
 
         .preview-head {
@@ -550,8 +549,8 @@
             gap: 8px;
             padding: 6px 10px;
             border: 1px solid var(--border);
-            border-radius: 999px;
-            background: #0d111d;
+            border-radius: 8px;
+            background: #0b1214;
             color: var(--text-dim);
             font-size: 0.72rem;
             cursor: pointer;
@@ -567,9 +566,9 @@
 
         .btn-preview-action {
             border: 1px solid var(--border);
-            background: #0d111d;
+            background: #0b1214;
             color: var(--text-dim);
-            border-radius: 999px;
+            border-radius: 8px;
             padding: 6px 10px;
             font-size: 0.72rem;
             cursor: pointer;
@@ -597,7 +596,7 @@
         }
 
         .preview-summary .preview-summary-candidate {
-            color: #fbbf24;
+            color: var(--warning);
         }
 
         .preview-list {
@@ -626,7 +625,7 @@
             padding: 9px 10px;
             border: 1px solid var(--border);
             border-radius: 10px;
-            background: #0d111d;
+            background: #0b1214;
             color: var(--text);
             font-size: 0.82rem;
             line-height: 1.55;
@@ -684,9 +683,9 @@
             gap: 10px;
             margin: 0 0 10px;
             padding: 9px 10px;
-            border: 1px solid rgba(245, 158, 11, 0.45);
+            border: 1px solid rgba(244,189,97,0.45);
             border-radius: 10px;
-            background: rgba(245, 158, 11, 0.07);
+            background: rgba(244,189,97,0.07);
         }
 
         .preview-candidate[hidden] {
@@ -721,7 +720,7 @@
             justify-content: center;
             border: 1px solid var(--border);
             border-radius: 8px;
-            background: #0b0f1a;
+            background: #090f11;
             color: var(--text-dim);
             cursor: pointer;
             transition: 0.18s ease;
@@ -899,24 +898,20 @@
                 <h1 class="section-title">TXT 파일을 브라우저에서 EPUB으로 바꿉니다</h1>
                 <p>공백 정리, 목차 추출, 표지 적용, 인코딩 자동 감지, ZIP 묶음 출력까지 모두 브라우저에서 처리합니다.</p>
             </div>
-            <div style="display:flex; justify-content:center;">
+            <div>
 <div class="container">
-    <div class="header">
-        <h2><span>EPUB</span> STUDIO</h2>
-    </div>
-
     <div class="config-section">
         <div class="options-bar">
             <div class="options-group">
                 <label class="option-item"><input type="checkbox" id="optTrim" checked> 공백 정제</label>
                 <label class="option-item"><input type="checkbox" id="optToc" checked> 목차 추출</label>
                     <label class="option-item" title="체크하면 '몇 화'와 '070'처럼 형식이 다른 챕터 표기가 섞여 있어도 함께 목차로 잡습니다.">
-                    <input type="checkbox" id="optMultiToc"> 🔀 다중 패턴 허용
+                    <input type="checkbox" id="optMultiToc"> 다중 패턴 허용
                 </label>
                 <label class="option-item"><input type="checkbox" id="optZip"> ZIP 일괄 압축</label>
             </div>
             <button type="button" class="btn-advanced-toggle" id="btnToggleAdvanced">
-                ⚙️ 고급 설정 <span class="arrow">▼</span>
+                고급 설정 <span class="arrow">▼</span>
             </button>
         </div>
 
@@ -925,7 +920,7 @@
             <input type="text" id="regexInput" value="^\s*(([<【〔]\s*(\d+[\.\s화수]|제?\s*\d+[화수]|자기\s*소개|프롤로그|에필로그|공지|작가).*?[>】〕])|제?\s*\d+[화회수](?![이가을를은는의])(?:\s.{1,70})?$|(?:Chapter|Stage|Episode|Ep|Part)\s*\d+.*?|^[#＃]\s*\d+.*?$|(?!\d*\.?\d+\s*(?:년|월|일|시|분|초|주년|세기|년대|광복절|삼일절|기념일|명절|행사|당일|미터|km|m|cm|mm|kg|g|살|세|차|퍼센트|%|배|개|명|마리|번|회분|곱하기|x|\*|위|원|달러|유로|엔|만|천|백|십|억|조|캐럿|빌리언|트릴리언|층|군|팀|점|승|무|패|등급))\d*\.?\d+(?:[\s화회수]|\.(?!\d)).{1,70}(?<![고다자죠요]\.)$)\s*$">
 
             <div class="regex-test-panel">
-                <div id="testLabel" style="font-size: 0.75rem; color: var(--accent); font-weight: 700; margin-bottom: 8px;">🔬 파서 시뮬레이터 (엔진 테스트)</div>
+                <div id="testLabel" style="font-size: 0.75rem; color: var(--accent); font-weight: 700; margin-bottom: 8px;">파서 시뮬레이터 (엔진 테스트)</div>
                 <textarea id="testInput" rows="4"></textarea>
                 <div class="regex-test-row">
                     <button type="button" id="btnTestParser">테스트 실행</button>

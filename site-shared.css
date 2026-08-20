@@ -1,14 +1,14 @@
 :root {
-    --bg: #0b0f1a;
-    --card: #161b2c;
-    --primary: #6366f1;
-    --accent: #818cf8;
-    --border: #2d334a;
-    --text: #f8fafc;
-    --text-dim: #94a3b8;
-    --surface-soft: rgba(255,255,255,0.03);
-    --scroll-track: #0d111d;
-    --scroll-thumb: #2d334a;
+    --bg: #090e10;
+    --card: #11191b;
+    --primary: #52d6ad;
+    --accent: #7ce6c4;
+    --border: #283639;
+    --text: #f2f7f5;
+    --text-dim: #93a6a2;
+    --surface-soft: rgba(153, 190, 180, 0.055);
+    --scroll-track: #0b1113;
+    --scroll-thumb: #344649;
 }
 
 html {
@@ -20,7 +20,7 @@ html, body {
     min-height: 100%;
     background: var(--bg);
     color: var(--text);
-    font-family: 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
+    font-family: 'Pretendard Variable', 'Pretendard', 'SUIT Variable', 'Noto Sans KR', sans-serif;
     word-break: keep-all;
     line-break: auto;
 }
@@ -28,9 +28,11 @@ html, body {
 body {
     overflow-x: hidden;
     background:
-        radial-gradient(circle at top left, rgba(99,102,241,0.18), transparent 32%),
-        radial-gradient(circle at top right, rgba(129,140,248,0.12), transparent 28%),
-        linear-gradient(180deg, #0b0f1a 0%, #0e1322 100%);
+        linear-gradient(rgba(124, 230, 196, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124, 230, 196, 0.025) 1px, transparent 1px),
+        radial-gradient(circle at 12% 0%, rgba(82, 214, 173, 0.1), transparent 26%),
+        var(--bg);
+    background-size: 36px 36px, 36px 36px, auto, auto;
 }
 
 *, *::before, *::after {
@@ -47,17 +49,15 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
 }
 
 .page-shell {
-    width: min(1120px, calc(100vw - 32px));
+    width: min(1180px, calc(100vw - 40px));
     margin: 0 auto;
-    padding: 24px 0 40px;
+    padding: 18px 0 36px;
 }
 
 .site-header,
 .section-block,
 .footer-panel {
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    background: var(--surface-soft);
+    background: transparent;
 }
 
 .site-header {
@@ -65,10 +65,10 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
     justify-content: space-between;
     align-items: center;
     gap: 20px;
-    padding: 16px 20px;
-    margin-bottom: 18px;
-    background: rgba(13,17,29,0.7);
-    backdrop-filter: blur(6px);
+    min-height: 58px;
+    padding: 8px 4px 12px;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--border);
 }
 
 .brand-block {
@@ -79,15 +79,15 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
 
 .brand-name {
     margin: 0;
-    font-size: 1rem;
+    font-size: 0.94rem;
     font-weight: 900;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
 }
 
 .brand-subtitle {
     margin: 0;
-    font-size: 0.88rem;
+    font-size: 0.8rem;
     color: var(--text-dim);
     word-break: keep-all;
 }
@@ -96,7 +96,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 2px;
 }
 
 .lang-switch {
@@ -110,16 +110,16 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
     border: 1px solid var(--border);
     background: rgba(13,17,29,0.9);
     color: var(--text-dim);
-    border-radius: 999px;
-    width: 36px;
-    height: 36px;
+    border-radius: 8px;
+    width: 34px;
+    height: 34px;
     display: grid;
     place-items: center;
     padding: 0;
     font-size: 1.05rem;
     font-weight: 800;
     cursor: pointer;
-    transition: 0.2s ease;
+    transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
     line-height: 1;
 }
 
@@ -129,9 +129,15 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
 }
 
 .lang-switch button.active {
-    background: rgba(99,102,241,0.18);
+    background: rgba(82, 214, 173, 0.12);
     color: var(--text);
-    border-color: rgba(129,140,248,0.55);
+    border-color: rgba(124, 230, 196, 0.5);
+}
+
+.lang-switch button:active,
+.header-nav a:active,
+.footer-links a:active {
+    transform: translateY(1px);
 }
 
 .header-nav a,
@@ -141,34 +147,34 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
 }
 
 .header-nav a {
-    font-size: 0.88rem;
-    padding: 8px 12px;
-    border: 1px solid transparent;
-    border-radius: 999px;
+    font-size: 0.82rem;
+    padding: 8px 10px;
+    border-bottom: 1px solid transparent;
     word-break: keep-all;
+    transition: color 0.18s ease, border-color 0.18s ease;
 }
 
 .header-nav a:hover {
     color: var(--text);
-    border-color: var(--border);
-    background: rgba(255,255,255,0.03);
+    border-color: var(--accent);
 }
 
 .content-stack {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 0;
 }
 
 .section-block {
-    padding: 22px 24px;
+    padding: 42px 4px;
+    border-bottom: 1px solid var(--border);
 }
 
 .section-headline {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-bottom: 18px;
+    gap: 10px;
+    margin-bottom: 24px;
 }
 
 .section-headline p,
@@ -179,7 +185,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
 .footer-panel p {
     margin: 0;
     color: var(--text-dim);
-    line-height: 1.8;
+    line-height: 1.7;
     word-break: keep-all;
     overflow-wrap: normal;
 }
@@ -187,15 +193,15 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
 .hero-kicker {
     margin: 0;
     color: var(--accent);
-    font-size: 0.82rem;
+    font-size: 0.76rem;
     font-weight: 800;
 }
 
 .section-title {
     margin: 0;
-    font-size: clamp(1.35rem, 2.8vw, 2rem);
-    line-height: 1.12;
-    letter-spacing: -0.03em;
+    font-size: clamp(1.65rem, 3.2vw, 2.5rem);
+    line-height: 1.08;
+    letter-spacing: -0.045em;
     text-wrap: balance;
 }
 
@@ -203,15 +209,13 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
 .contact-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 12px;
+    gap: 24px;
 }
 
 .support-card,
 .contact-card {
-    padding: 16px;
-    border-radius: 14px;
-    border: 1px solid var(--border);
-    background: rgba(13,17,29,0.72);
+    padding: 18px 0 4px;
+    border-top: 1px solid var(--border);
 }
 
 .support-card h3,
@@ -246,7 +250,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
 }
 
 .footer-panel {
-    padding: 18px 24px;
+    padding: 22px 4px 0;
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
@@ -264,32 +268,66 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
     color: var(--text);
 }
 
-@media (max-width: 900px) {
-    .page-shell {
-        width: min(100vw - 20px, 1120px);
-        padding-top: 14px;
+@media (prefers-reduced-motion: no-preference) {
+    .site-header,
+    .section-block {
+        animation: page-enter 0.42s ease both;
     }
 
-    .site-header,
-    .section-block,
-    .footer-panel {
-        padding-left: 16px;
-        padding-right: 16px;
+    .section-block:nth-of-type(2) {
+        animation-delay: 0.06s;
+    }
+
+    @keyframes page-enter {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+}
+
+@media (max-width: 900px) {
+    .page-shell {
+        width: min(100vw - 24px, 1180px);
+        padding-top: 10px;
     }
 }
 
 @media (max-width: 640px) {
     .site-header {
+        position: relative;
         flex-direction: column;
         align-items: flex-start;
+        gap: 10px;
+    }
+
+    .brand-block {
+        min-height: 48px;
+        padding-right: 92px;
     }
 
     .header-nav {
+        width: 100%;
+        flex-wrap: nowrap;
         justify-content: flex-start;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .header-nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    .header-nav a {
+        flex: 0 0 auto;
+    }
+
+    .lang-switch {
+        position: absolute;
+        top: 8px;
+        right: 0;
     }
 
     .section-block {
-        padding: 18px 16px;
+        padding: 32px 0;
     }
 
     .support-grid,
@@ -298,6 +336,6 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
     }
 
     .footer-panel {
-        padding: 16px;
+        padding: 20px 0 0;
     }
 }

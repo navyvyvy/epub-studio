@@ -1075,3 +1075,29 @@ test('duplicate and unsafe output titles get safe unique filenames', () => {
     assert.equal(context.getEpubFilename('a/b', used), 'a_b.epub');
     assert.equal(context.getEpubFilename('a/b', used), 'a_b (2).epub');
 });
+
+test('public pages expose stable crawl metadata and sitemap entries', () => {
+    const origin = 'https://epub-studio-mocha.vercel.app';
+    const pages = new Map([
+        ['index.html', `${origin}/`],
+        ['about.html', `${origin}/about.html`],
+        ['privacy.html', `${origin}/privacy.html`],
+        ['contact.html', `${origin}/contact.html`]
+    ]);
+
+    for (const [file, url] of pages) {
+        const source = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
+        assert.ok(source.includes(`<link rel="canonical"${file === 'index.html' ? ' id="canonicalLink"' : ''} href="${url}">`));
+        assert.ok(source.includes(`<meta property="og:url" content="${url}">`));
+        assert.ok(source.includes(`hreflang="en" href="${url}${url.includes('?') ? '&' : '?'}lang=en">`));
+    }
+
+    const robots = readFileSync(new URL('../robots.txt', import.meta.url), 'utf8');
+    assert.match(robots, /Sitemap: https:\/\/epub-studio-mocha\.vercel\.app\/sitemap\.xml/);
+
+    const sitemap = readFileSync(new URL('../sitemap.xml', import.meta.url), 'utf8');
+    for (const url of pages.values()) assert.ok(sitemap.includes(`<loc>${url}</loc>`));
+
+    const i18n = readFileSync(new URL('../i18n.js', import.meta.url), 'utf8');
+    assert.match(i18n, /canonical\.href = makePublicUrl\(current\.lang\)/);
+});
