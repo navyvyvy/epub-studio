@@ -8,7 +8,7 @@
     <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
     <meta name="theme-color" content="#090e10">
     <meta name="google-adsense-account" content="ca-pub-6996920182245498">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230b0f1a'/%3E%3Cpath d='M14 18h36v28H14z' fill='%23161b2c' stroke='%236366f1' stroke-width='2'/%3E%3Cpath d='M20 26h24M20 32h18M20 38h22' stroke='%23f8fafc' stroke-width='3' stroke-linecap='round'/%3E%3C/svg>">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23090e10'/%3E%3Cpath d='M14 18h36v28H14z' fill='%2311191b' stroke='%2352d6ad' stroke-width='2'/%3E%3Cpath d='M20 26h24M20 32h18M20 38h22' stroke='%23f2f7f5' stroke-width='3' stroke-linecap='round'/%3E%3C/svg>">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6996920182245498" crossorigin="anonymous"></script>
     <meta property="og:type" content="website">
     <meta property="og:title" content="EPUB STUDIO | TXT를 EPUB으로 변환하는 브라우저 기반 도구">
@@ -27,13 +27,24 @@
     <!-- 외부 라이브러리 로드 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jschardet/3.0.0/jschardet.min.js"></script>
-    <script src="./i18n.js?v=20260814"></script>
+    <script src="./i18n.js?v=20260820-4"></script>
     <link rel="stylesheet" href="./site-shared.css?v=20260814">
     <style>
         :root {
             --danger: #ff6b73;
             --success: #52d6ad;
             --warning: #f4bd61;
+            --snap-offset: 92px;
+        }
+
+        .home-page .page-shell {
+            padding-top: 0;
+        }
+
+        html {
+            scroll-behavior: auto;
+            scroll-snap-type: y mandatory;
+            scroll-padding-top: var(--snap-offset);
         }
 
         ::-webkit-scrollbar { width: 6px; }
@@ -53,7 +64,7 @@
         .tool-section > .section-headline .section-title {
             max-width: 800px;
             font-size: clamp(2rem, 4.5vw, 3.35rem);
-            line-height: 1.02;
+            line-height: 1.12;
         }
 
         #features .section-headline > p:last-child {
@@ -738,7 +749,508 @@
             display: block;
         }
 
+        .home-page .site-header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            padding: 9px 12px;
+            border: 1px solid rgba(124, 230, 196, 0.18);
+            border-top: 0;
+            border-radius: 0 0 14px 14px;
+            background: #090e10;
+            box-shadow: 0 12px 34px rgba(0, 0, 0, 0.34);
+        }
+
+        .home-page::before {
+            content: "";
+            position: fixed;
+            z-index: -1;
+            width: 42vw;
+            height: 42vw;
+            right: -18vw;
+            top: 24vh;
+            border-radius: 50%;
+            background: rgba(82, 214, 173, 0.08);
+            filter: blur(90px);
+            pointer-events: none;
+        }
+
+        .tool-section {
+            position: relative;
+            isolation: isolate;
+            overflow: hidden;
+            padding-top: 10px;
+        }
+
+        .section-block {
+            display: flex;
+            flex-direction: column;
+            min-height: calc(100dvh - var(--snap-offset));
+            padding-top: 42px;
+            padding-bottom: 42px;
+            scroll-margin-top: 0;
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+            justify-content: center;
+        }
+
+        .section-block.tool-section {
+            padding-top: 21px;
+            padding-bottom: 21px;
+        }
+
+        .footer-panel {
+            scroll-snap-align: end;
+        }
+
+        .tool-section::before {
+            content: "";
+            position: absolute;
+            z-index: -1;
+            width: 460px;
+            height: 460px;
+            right: -180px;
+            top: -210px;
+            border: 1px solid rgba(124, 230, 196, 0.16);
+            border-radius: 50%;
+            box-shadow: 0 0 0 70px rgba(124, 230, 196, 0.025), 0 0 0 140px rgba(124, 230, 196, 0.018);
+            pointer-events: none;
+        }
+
+        .container {
+            position: relative;
+            min-height: clamp(500px, calc(100dvh - 470px), 590px);
+            overflow: hidden;
+        }
+
+        .home-page .file-list-area {
+            min-height: clamp(440px, 68dvh, 760px);
+        }
+
+        .container::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -28%;
+            width: 24%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            pointer-events: none;
+        }
+
+        #features {
+            padding-top: 42px;
+            padding-bottom: 42px;
+        }
+
+        #features .section-headline {
+            max-width: 900px;
+            margin-bottom: 28px;
+        }
+
+        #features .section-title {
+            font-size: clamp(2.2rem, 4.4vw, 4rem);
+            line-height: 1.12;
+        }
+
+        .feature-grid {
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+            gap: 12px;
+            border: 0;
+        }
+
+        .feature-card {
+            grid-column: span 4;
+            min-height: 145px;
+            padding: 20px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: rgba(17, 25, 27, 0.72);
+            transition: border-color 0.24s ease, transform 0.24s ease, background-color 0.24s ease;
+        }
+
+        .feature-card:nth-child(1),
+        .feature-card:nth-child(6) {
+            grid-column: span 7;
+        }
+
+        .feature-card:nth-child(2),
+        .feature-card:nth-child(7) {
+            grid-column: span 5;
+        }
+
+        .feature-card:nth-child(1) {
+            min-height: 170px;
+            background:
+                radial-gradient(circle at 82% 18%, rgba(124, 230, 196, 0.18), transparent 30%),
+                linear-gradient(135deg, rgba(82, 214, 173, 0.1), rgba(17, 25, 27, 0.74));
+        }
+
+        .feature-card:nth-child(4) {
+            background:
+                linear-gradient(145deg, rgba(124, 230, 196, 0.08), transparent 58%),
+                rgba(17, 25, 27, 0.72);
+        }
+
+        .feature-card::before {
+            content: "";
+            position: static;
+            display: block;
+            width: 34px;
+            height: 2px;
+            margin-bottom: 24px;
+            background: var(--accent);
+        }
+
+        .feature-card h3 {
+            max-width: 19ch;
+            font-size: clamp(1.15rem, 2vw, 1.55rem);
+            letter-spacing: -0.035em;
+        }
+
+        .feature-card p {
+            max-width: 48ch;
+            margin-top: 12px;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(124, 230, 196, 0.48);
+            background-color: rgba(20, 31, 33, 0.92);
+        }
+
+        .studio-story {
+            position: relative;
+            padding-top: 42px;
+            padding-bottom: 42px;
+        }
+
+        .story-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 0.8fr) minmax(480px, 1.2fr);
+            gap: clamp(40px, 8vw, 110px);
+            align-items: start;
+        }
+
+        .story-copy {
+            position: sticky;
+            top: 116px;
+        }
+
+        .story-copy .section-title {
+            max-width: 12ch;
+            margin-top: 10px;
+            font-size: clamp(2.15rem, 4vw, 3.65rem);
+            line-height: 1.12;
+        }
+
+        .story-copy > p:last-child {
+            max-width: 46ch;
+            margin-top: 22px;
+            color: var(--text-dim);
+            line-height: 1.75;
+        }
+
+        .workflow-track {
+            display: grid;
+            border-top: 1px solid var(--border);
+        }
+
+        .workflow-step {
+            position: relative;
+            display: grid;
+            grid-template-columns: 84px minmax(0, 1fr);
+            gap: 24px;
+            min-height: 128px;
+            padding: 22px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .workflow-step::before {
+            content: "";
+            position: absolute;
+            left: 79px;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: linear-gradient(var(--border), rgba(124, 230, 196, 0.5), var(--border));
+            transform: scaleY(1);
+            transform-origin: top;
+            transition: transform 0.7s ease 0.18s;
+        }
+
+        .workflow-step.is-visible::before {
+            transform: scaleY(1);
+        }
+
+        .workflow-mark {
+            color: var(--accent);
+            font-size: 0.72rem;
+            font-weight: 900;
+            letter-spacing: 0.13em;
+        }
+
+        .workflow-step h3 {
+            margin: 0 0 10px;
+            font-size: clamp(1.2rem, 2vw, 1.55rem);
+            letter-spacing: -0.03em;
+        }
+
+        .workflow-step p {
+            max-width: 52ch;
+            margin: 0;
+            color: var(--text-dim);
+            line-height: 1.7;
+        }
+
+        .privacy-stage {
+            padding-top: 42px;
+            padding-bottom: 42px;
+        }
+
+        .privacy-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 0.72fr) minmax(520px, 1.28fr);
+            gap: clamp(40px, 7vw, 96px);
+            align-items: start;
+        }
+
+        .privacy-copy .section-title {
+            max-width: 12ch;
+            margin-top: 10px;
+            font-size: clamp(2.15rem, 4vw, 3.65rem);
+            line-height: 1.12;
+        }
+
+        .privacy-copy > p:last-child {
+            max-width: 45ch;
+            margin: 20px 0 0;
+            color: var(--text-dim);
+            line-height: 1.7;
+        }
+
+        .privacy-accordion {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            column-gap: 28px;
+            border-top: 1px solid var(--border);
+        }
+
+        .privacy-item {
+            padding: 18px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .privacy-item:last-child {
+            grid-column: 1 / -1;
+        }
+
+        .privacy-item h3 {
+            margin: 0 0 8px;
+            color: var(--text);
+            font-weight: 780;
+        }
+
+        .privacy-item p {
+            max-width: 70ch;
+            margin: 0;
+            color: var(--text-dim);
+            line-height: 1.65;
+        }
+
+        .contact-stage {
+            padding-top: 42px;
+            padding-bottom: 42px;
+            overflow: hidden;
+        }
+
+        .contact-inner {
+            position: relative;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+            align-items: start;
+        }
+
+        .contact-inner::after {
+            content: "";
+            position: absolute;
+            z-index: -1;
+            right: -8%;
+            bottom: -100px;
+            width: 420px;
+            height: 420px;
+            border: 1px solid rgba(124, 230, 196, 0.18);
+            border-radius: 50%;
+        }
+
+        .contact-stage .section-title {
+            max-width: 15ch;
+            margin-top: 10px;
+            font-size: clamp(2rem, 3.2vw, 3rem);
+            line-height: 1.12;
+        }
+
+        @media (min-width: 901px) {
+            .section-block:not(.tool-section) {
+                height: calc(100dvh - var(--snap-offset));
+                min-height: 0;
+            }
+
+            #features .feature-grid,
+            .story-grid,
+            .privacy-layout,
+            .contact-inner {
+                flex: 1;
+            }
+
+            #features .feature-grid,
+            .privacy-accordion {
+                grid-auto-rows: minmax(0, 1fr);
+                min-height: 0;
+            }
+
+            .feature-card,
+            .feature-card:nth-child(1) {
+                min-height: 0;
+            }
+
+            .story-grid,
+            .privacy-layout,
+            .contact-inner {
+                align-items: center;
+            }
+
+            .workflow-track,
+            .privacy-accordion {
+                align-self: stretch;
+            }
+
+            .workflow-step,
+            .privacy-item {
+                align-content: center;
+            }
+        }
+
+        .contact-action {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 18px;
+            padding-left: 0;
+        }
+
+        .contact-action p {
+            max-width: 46ch;
+            margin: 0;
+            color: var(--text-dim);
+            line-height: 1.7;
+        }
+
+        .contact-email {
+            position: relative;
+            display: inline-block;
+            max-width: 100%;
+            padding: 10px 0 12px;
+            color: var(--text);
+            font-size: clamp(1.25rem, 2.5vw, 2.35rem);
+            font-weight: 850;
+            letter-spacing: -0.04em;
+            text-decoration: none;
+            overflow-wrap: anywhere;
+        }
+
+        .contact-email::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 2px;
+            background: var(--accent);
+            transform-origin: right;
+            transition: transform 0.28s ease;
+        }
+
+        .contact-email:hover {
+            color: var(--accent);
+        }
+
+        .contact-email:hover::after {
+            transform: scaleX(0.34);
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            .home-page::before { animation: ambient-drift 12s ease-in-out infinite alternate; }
+            .tool-section::before { animation: orbit-turn 24s linear infinite; }
+            .container::after { animation: tool-scan 4.8s ease-in-out infinite; }
+
+            .motion-ready [data-reveal] {
+                opacity: 0;
+                transform: translateY(34px) scale(0.985);
+                transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+                transition-delay: var(--reveal-delay, 0ms);
+            }
+
+            .motion-ready [data-reveal].is-visible {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+
+            .motion-ready .workflow-step::before {
+                transform: scaleY(0);
+            }
+
+            .motion-ready .workflow-step.is-visible::before {
+                transform: scaleY(1);
+            }
+
+            .feature-card:nth-child(2), .workflow-step:nth-child(2) { --reveal-delay: 70ms; }
+            .feature-card:nth-child(3), .workflow-step:nth-child(3) { --reveal-delay: 140ms; }
+            .feature-card:nth-child(4) { --reveal-delay: 40ms; }
+            .feature-card:nth-child(5) { --reveal-delay: 110ms; }
+            .feature-card:nth-child(6) { --reveal-delay: 60ms; }
+            .feature-card:nth-child(7) { --reveal-delay: 130ms; }
+
+            @keyframes ambient-drift {
+                to { transform: translate3d(-9vw, 8vh, 0) scale(1.12); }
+            }
+
+            @keyframes orbit-turn {
+                to { transform: rotate(360deg); }
+            }
+
+            @keyframes tool-scan {
+                0%, 14% { transform: translateX(0); opacity: 0; }
+                30%, 72% { opacity: 0.9; }
+                88%, 100% { transform: translateX(540%); opacity: 0; }
+            }
+        }
+
         @media (max-width: 900px) {
+            .story-grid,
+            .privacy-layout,
+            .contact-inner {
+                grid-template-columns: 1fr;
+            }
+
+            .story-copy {
+                position: static;
+            }
+
+            .feature-card,
+            .feature-card:nth-child(1),
+            .feature-card:nth-child(2),
+            .feature-card:nth-child(6),
+            .feature-card:nth-child(7) {
+                grid-column: span 6;
+            }
+
+            .contact-action {
+                padding-left: 18%;
+            }
+
             .options-bar {
                 flex-direction: row;
                 flex-wrap: wrap;
@@ -761,8 +1273,8 @@
                 min-height: 0;
             }
 
-            .file-list-area {
-                min-height: clamp(220px, 28vh, 320px);
+            .home-page .file-list-area {
+                min-height: clamp(380px, 56dvh, 620px);
             }
 
             .table-scroll-box {
@@ -771,6 +1283,13 @@
 
             .file-table {
                 min-width: 560px;
+            }
+        }
+
+        @media (min-width: 901px) and (max-height: 760px) {
+            .section-block:not(.tool-section) {
+                height: auto;
+                min-height: calc(100dvh - var(--snap-offset));
             }
         }
 
@@ -803,8 +1322,8 @@
                 min-height: 64px;
             }
 
-            .file-list-area {
-                min-height: clamp(260px, 36vh, 360px);
+            .home-page .file-list-area {
+                min-height: clamp(360px, 56dvh, 520px);
             }
 
             .regex-area {
@@ -813,6 +1332,28 @@
         }
 
         @media (max-width: 640px) {
+            :root {
+                --snap-offset: 124px;
+            }
+
+            html {
+                scroll-snap-type: y proximity;
+            }
+
+            .home-page .site-header {
+                top: 0;
+                padding: 8px 10px;
+            }
+
+            .tool-section {
+                padding-top: 22px;
+            }
+
+            .section-block.tool-section {
+                padding-top: 22px;
+                padding-bottom: 22px;
+            }
+
             .section-headline p {
                 font-size: 0.96rem;
             }
@@ -822,7 +1363,132 @@
             }
 
             .feature-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: none;
+                grid-auto-flow: column;
+                grid-auto-columns: 88%;
+                overflow-x: auto;
+                padding: 2px 0 14px;
+                scroll-snap-type: x mandatory;
+                overscroll-behavior-inline: contain;
+                scrollbar-width: none;
+            }
+
+            .feature-grid::-webkit-scrollbar {
+                display: none;
+            }
+
+            .feature-card,
+            .feature-card:nth-child(1),
+            .feature-card:nth-child(2),
+            .feature-card:nth-child(6),
+            .feature-card:nth-child(7) {
+                grid-column: auto;
+                min-height: 270px;
+                scroll-snap-align: center;
+            }
+
+            #features,
+            .studio-story,
+            .privacy-stage,
+            .contact-stage {
+                padding-top: 34px;
+                padding-bottom: 34px;
+            }
+
+            #features .section-title,
+            .story-copy .section-title,
+            .privacy-copy .section-title {
+                font-size: clamp(2.05rem, 10.5vw, 2.8rem);
+            }
+
+            .contact-stage .section-title {
+                max-width: 13ch;
+                font-size: clamp(1.9rem, 9.2vw, 2.45rem);
+            }
+
+            .story-grid {
+                gap: 18px;
+            }
+
+            .workflow-step {
+                grid-template-columns: 64px minmax(0, 1fr);
+                gap: 18px;
+                min-height: 220px;
+                padding: 22px;
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                background: rgba(17, 25, 27, 0.72);
+                scroll-snap-align: center;
+            }
+
+            .studio-story {
+                padding-top: 26px;
+                padding-bottom: 26px;
+            }
+
+            .workflow-track {
+                grid-template-columns: none;
+                grid-auto-flow: column;
+                grid-auto-columns: 88%;
+                gap: 12px;
+                overflow-x: auto;
+                padding: 2px 0 14px;
+                border-top: 0;
+                scroll-snap-type: x mandatory;
+                overscroll-behavior-inline: contain;
+                scrollbar-width: none;
+            }
+
+            .workflow-track::-webkit-scrollbar {
+                display: none;
+            }
+
+            .workflow-step::before {
+                display: none;
+            }
+
+            .contact-inner {
+                gap: 24px;
+            }
+
+            .contact-action {
+                padding-left: 0;
+            }
+
+            .privacy-layout {
+                gap: 24px;
+            }
+
+            .privacy-copy > p:last-child {
+                margin-top: 14px;
+            }
+
+            .privacy-accordion {
+                grid-template-columns: none;
+                grid-auto-flow: column;
+                grid-auto-columns: 88%;
+                gap: 12px;
+                overflow-x: auto;
+                padding: 2px 0 14px;
+                border-top: 0;
+                scroll-snap-type: x mandatory;
+                overscroll-behavior-inline: contain;
+                scrollbar-width: none;
+            }
+
+            .privacy-accordion::-webkit-scrollbar {
+                display: none;
+            }
+
+            .privacy-item,
+            .privacy-item:last-child {
+                grid-column: auto;
+                min-height: 280px;
+                padding: 22px;
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                background: rgba(17, 25, 27, 0.72);
+                scroll-snap-align: center;
             }
 
             .container {
@@ -859,8 +1525,8 @@
                 justify-content: flex-start;
             }
 
-            .file-list-area {
-                min-height: 180px;
+            .home-page .file-list-area {
+                min-height: clamp(340px, 52dvh, 480px);
                 flex-grow: 0;
             }
 
@@ -872,9 +1538,22 @@
                 max-height: 170px;
             }
         }
+
+        .home-page .container:has(.regex-area.open) .file-list-area {
+            min-height: 72px;
+        }
+
+        .home-page .contact-inner {
+            align-items: start;
+            align-content: center;
+        }
+
+        .home-page .contact-action {
+            padding-left: 0;
+        }
     </style>
 </head>
-<body>
+<body class="home-page">
 
 <div class="page-shell">
     <header class="site-header">
@@ -885,15 +1564,15 @@
         <nav class="header-nav" aria-label="페이지 섹션">
             <a href="#tool">변환 도구</a>
             <a href="#features">기능 소개</a>
-            <a href="./about.html">사이트 소개</a>
-            <a href="./privacy.html">개인정보처리방침</a>
-            <a href="./contact.html">문의</a>
+            <a href="#about">사이트 소개</a>
+            <a href="#privacy">개인정보처리방침</a>
+            <a href="#contact">문의</a>
         </nav>
     </header>
 
     <main class="content-stack">
         <section class="section-block tool-section" id="tool">
-            <div class="section-headline">
+            <div class="section-headline" data-reveal>
                 <p class="hero-kicker">브라우저에서 바로 쓰는 EPUB 도구</p>
                 <h1 class="section-title">TXT 파일을 브라우저에서 EPUB으로 바꿉니다</h1>
                 <p>공백 정리, 목차 추출, 표지 적용, 인코딩 자동 감지, ZIP 묶음 출력까지 모두 브라우저에서 처리합니다.</p>
@@ -1002,40 +1681,118 @@
         </section>
 
         <section class="section-block" id="features">
-            <div class="section-headline">
+            <div class="section-headline" data-reveal>
                 <p class="hero-kicker">기능 소개</p>
                 <h2 class="section-title">지금 들어 있는 기능만 추려 적었습니다</h2>
                 <p>지금 구현된 기능만 짧게 적었습니다.</p>
             </div>
             <div class="feature-grid">
-                <article class="feature-card">
+                <article class="feature-card" data-reveal>
                     <h3>TXT에서 EPUB으로 변환</h3>
                     <p>여러 파일을 한꺼번에 처리하거나 목록에서 필요한 파일 하나만 EPUB으로 만들 수 있습니다.</p>
                 </article>
-                <article class="feature-card">
+                <article class="feature-card" data-reveal>
                     <h3>공백 정제</h3>
                     <p>불필요한 연속 빈 줄은 줄이고, 문단 사이의 여백은 너무 과하게 건드리지 않습니다.</p>
                 </article>
-                <article class="feature-card">
+                <article class="feature-card" data-reveal>
                     <h3>목차 추출</h3>
                     <p>번호가 순서대로 이어지는 제목을 찾고, 파일명에 1-200 같은 범위가 있으면 패턴 선택에 참고합니다.</p>
                 </article>
-                <article class="feature-card">
+                <article class="feature-card" data-reveal>
                     <h3>목차 미리보기</h3>
                     <p>감지된 목차를 확인하고 필요 없는 줄은 뺄 수 있습니다. 다중 패턴에서는 자동 감지와 다른 형식도 별도 후보로 확인해 추가할 수 있습니다.</p>
                 </article>
-                <article class="feature-card">
+                <article class="feature-card" data-reveal>
                     <h3>표지 설정</h3>
                     <p>제목을 검색하거나 클립보드에 있는 이미지와 이미지 URL을 표지로 붙일 수 있습니다.</p>
                 </article>
-                <article class="feature-card">
+                <article class="feature-card" data-reveal>
                     <h3>인코딩 자동 감지</h3>
                     <p>UTF-8, CP949 같은 흔한 인코딩을 자동으로 읽어들여 깨짐을 줄입니다.</p>
                 </article>
-                <article class="feature-card">
+                <article class="feature-card" data-reveal>
                     <h3>ZIP 일괄 압축</h3>
                     <p>여러 EPUB 결과물을 한 번에 ZIP으로 묶어 받을 수 있습니다.</p>
                 </article>
+            </div>
+        </section>
+
+        <section class="section-block studio-story" id="about">
+            <div class="story-grid">
+                <div class="story-copy" data-reveal>
+                    <p class="hero-kicker">작동 방식</p>
+                    <h2 class="section-title">파일은 브라우저 안에서 움직입니다</h2>
+                    <p>TXT를 읽고 목차를 찾고 EPUB을 만드는 기본 흐름은 서버 업로드 없이 현재 브라우저에서 처리합니다.</p>
+                </div>
+                <div class="workflow-track" aria-label="EPUB 변환 과정">
+                    <article class="workflow-step" data-reveal>
+                        <span class="workflow-mark">TXT</span>
+                        <div>
+                            <h3>파일을 직접 읽습니다</h3>
+                            <p>UTF-8, CP949, UTF-16 계열을 확인해 원문이 깨지지 않도록 읽습니다.</p>
+                        </div>
+                    </article>
+                    <article class="workflow-step" data-reveal>
+                        <span class="workflow-mark">TOC</span>
+                        <div>
+                            <h3>제목 흐름을 분석합니다</h3>
+                            <p>이어지는 번호와 반복되는 형식을 비교해 목차 후보를 만들고 미리보기에서 바로 다듬습니다.</p>
+                        </div>
+                    </article>
+                    <article class="workflow-step" data-reveal>
+                        <span class="workflow-mark">EPUB</span>
+                        <div>
+                            <h3>읽기 좋은 단위로 묶습니다</h3>
+                            <p>긴 본문은 안전한 크기로 나누고 표지와 목차를 포함한 EPUB 파일로 내려받습니다.</p>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="section-block privacy-stage" id="privacy">
+            <div class="privacy-layout">
+                <div class="privacy-copy" data-reveal>
+                    <p class="hero-kicker">개인정보처리방침</p>
+                    <h2 class="section-title">파일과 데이터 처리 방식을 안내합니다</h2>
+                    <p>기본 변환은 사용자의 브라우저에서 진행되며 원문 파일을 서버에 저장하지 않습니다.</p>
+                </div>
+                <div class="privacy-accordion" data-reveal>
+                    <article class="privacy-item">
+                        <h3>1. 수집하는 정보</h3>
+                        <p>회원가입이나 사용자 계정을 만들지 않습니다. 파일명, 제목, 정규식, 클립보드 이미지와 이미지 URL은 변환 기능에 필요한 범위에서만 브라우저 안에서 사용합니다.</p>
+                    </article>
+                    <article class="privacy-item">
+                        <h3>2. 파일 처리 방식</h3>
+                        <p>TXT 내용은 브라우저가 직접 읽고 Web Worker에서 변환합니다. 기본 동작은 로컬 처리이며 서버 업로드를 사용하지 않습니다.</p>
+                    </article>
+                    <article class="privacy-item">
+                        <h3>3. 외부 서비스</h3>
+                        <p>JSZip과 jschardet CDN, 표지 검색, 클립보드 기능, AdSense 광고를 사용할 때 브라우저에서 외부 요청이 발생할 수 있습니다.</p>
+                    </article>
+                    <article class="privacy-item">
+                        <h3>4. 보관 및 삭제</h3>
+                        <p>원문 파일을 서버에 저장하거나 브라우저 밖에 장기 보관하지 않습니다. 새로고침하거나 페이지를 닫으면 작업 상태가 초기화될 수 있습니다.</p>
+                    </article>
+                    <article class="privacy-item">
+                        <h3>5. 문의</h3>
+                        <p>개인정보 처리와 관련한 문의는 아래 문의 섹션의 이메일 링크를 이용해 주세요.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="section-block contact-stage" id="contact">
+            <div class="contact-inner">
+                <div data-reveal>
+                    <p class="hero-kicker">문의</p>
+                    <h2 class="section-title">이상한 제목 패턴을 발견했나요</h2>
+                </div>
+                <div class="contact-action" data-reveal>
+                    <p>감지되지 않는 제목 형식이나 변환 중 생긴 문제를 파일 예시와 함께 보내주세요.</p>
+                    <a class="contact-email" href="#" data-contact-email>이메일로 문의하기</a>
+                </div>
             </div>
         </section>
 
@@ -1044,9 +1801,9 @@
             <div class="footer-links">
                 <a href="#tool">변환 도구</a>
                 <a href="#features">기능 소개</a>
-                <a href="./about.html">사이트 소개</a>
-                <a href="./privacy.html">개인정보처리방침</a>
-                <a href="./contact.html">문의</a>
+                <a href="#about">사이트 소개</a>
+                <a href="#privacy">개인정보처리방침</a>
+                <a href="#contact">문의</a>
             </div>
         </footer>
     </main>
@@ -1162,6 +1919,7 @@
         previewCloseBtn: document.getElementById('previewCloseBtn'),
         testInput: document.getElementById('testInput'),
         btnTestParser: document.getElementById('btnTestParser'),
+        container: document.querySelector('.container'),
         testOutput: document.getElementById('testOutput')
     };
 
@@ -1366,7 +2124,10 @@
     }
 
     dom.btnToggleAdvanced.onclick = () => {
+        const opening = !store.state.isAdvancedOpen;
+        if (opening) dom.container.style.height = `${dom.container.offsetHeight}px`;
         store.dispatch({ type: 'TOGGLE_ADVANCED' });
+        if (!opening) dom.container.style.height = '';
     };
     dom.previewCopyBtn.onclick = copyPreviewLines;
     dom.previewCloseBtn.onclick = closePreviewDialog;
@@ -1700,7 +2461,7 @@
             bracketOpenPattern: /^[<【〔\\[(]/,
             bracketClosePattern: /[>】〕\\]\\)〉》」』]/,
             bracketTitlePattern: BRACKET_TITLE_PATTERN,
-            quotedStartPattern: /^[-—~]?\\s*["'”’「『“‘]/,
+            quotedStartPattern: /^[-\u2014~]?\\s*["'”’「『“‘]/,
             finalDotPattern: /[.?!]$/,
             finalPunctuationPattern: /[.,!?;~]/,
             titleNoisePattern: /(?:제\\s*)?\\d+\\s*[화회장막편부수]/,
@@ -1772,7 +2533,7 @@
         };
         const getFilenameChapterRange = (fileName) => {
             const baseName = String(fileName || '').replace(/\\.[^.]+$/, '');
-            const matches = Array.from(baseName.matchAll(/(?:^|[^\\d])(\\d{1,5})\\s*[-~–—]\\s*(\\d{1,5})(?!\\d)/g));
+            const matches = Array.from(baseName.matchAll(/(?:^|[^\\d])(\\d{1,5})\\s*[-~\u2013\u2014]\\s*(\\d{1,5})(?!\\d)/g));
             const match = matches[matches.length - 1];
             if (!match) return null;
             const start = Number(match[1]);
@@ -2604,6 +3365,49 @@
     };
 
     dom.clearAllBtn.onclick = () => { if (!store.state.isProcessing) store.dispatch({ type: 'CLEAR_FILES' }); };
+</script>
+<script>
+    (() => {
+        const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if ('IntersectionObserver' in window && !reduceMotion) {
+            const items = document.querySelectorAll('[data-reveal]');
+            document.body.classList.add('motion-ready');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    if (!entry.isIntersecting) return;
+                    entry.target.classList.add('is-visible');
+                    observer.unobserve(entry.target);
+                });
+            }, { threshold: 0.14, rootMargin: '0px 0px -6% 0px' });
+
+            items.forEach((item) => observer.observe(item));
+        }
+
+        const sections = Array.from(document.querySelectorAll('.section-block'));
+        let wheelLocked = false;
+        window.addEventListener('wheel', (event) => {
+            if (innerWidth <= 640 || event.ctrlKey || Math.abs(event.deltaY) < 24 || wheelLocked) return;
+            if (document.querySelector('dialog[open]') || event.target.closest('input, textarea, select, .table-scroll-box')) return;
+
+            const snapOffset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--snap-offset')) || 0;
+            const current = sections.reduce((best, section, index) => {
+                const distance = Math.abs(section.getBoundingClientRect().top - snapOffset);
+                return distance < best.distance ? { index, distance } : best;
+            }, { index: 0, distance: Infinity }).index;
+            const currentSection = sections[current];
+            const sectionStart = currentSection.offsetTop - snapOffset;
+            const sectionEnd = currentSection.offsetTop + currentSection.offsetHeight - innerHeight;
+            if ((event.deltaY > 0 && scrollY < sectionEnd - 1) || (event.deltaY < 0 && scrollY > sectionStart + 1)) return;
+
+            const next = current + (event.deltaY > 0 ? 1 : -1);
+            if (!sections[next]) return;
+
+            event.preventDefault();
+            wheelLocked = true;
+            scrollTo({ top: Math.max(0, sections[next].offsetTop - snapOffset), behavior: reduceMotion ? 'auto' : 'smooth' });
+            setTimeout(() => { wheelLocked = false; }, 650);
+        }, { passive: false });
+    })();
 </script>
 </body>
 </html>

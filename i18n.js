@@ -109,6 +109,22 @@
                     ['인코딩 자동 감지', 'UTF-8, CP949 같은 흔한 인코딩을 자동으로 읽어들여 깨짐을 줄입니다.'],
                     ['ZIP 일괄 압축', '여러 EPUB 결과물을 한 번에 ZIP으로 묶어 받을 수 있습니다.']
                 ],
+                storyKicker: '작동 방식',
+                storyTitle: '파일은 브라우저 안에서 움직입니다',
+                storyDesc: 'TXT를 읽고 목차를 찾고 EPUB을 만드는 기본 흐름은 서버 업로드 없이 현재 브라우저에서 처리합니다.',
+                workflowLabel: 'EPUB 변환 과정',
+                workflowSteps: [
+                    ['파일을 직접 읽습니다', 'UTF-8, CP949, UTF-16 계열을 확인해 원문이 깨지지 않도록 읽습니다.'],
+                    ['제목 흐름을 분석합니다', '이어지는 번호와 반복되는 형식을 비교해 목차 후보를 만들고 미리보기에서 바로 다듬습니다.'],
+                    ['읽기 좋은 단위로 묶습니다', '긴 본문은 안전한 크기로 나누고 표지와 목차를 포함한 EPUB 파일로 내려받습니다.']
+                ],
+                privacyKicker: '개인정보처리방침',
+                privacyTitle: '파일과 데이터 처리 방식을 안내합니다',
+                privacyDesc: '기본 변환은 사용자의 브라우저에서 진행되며 원문 파일을 서버에 저장하지 않습니다.',
+                contactKicker: '문의',
+                contactTitle: '이상한 제목 패턴을 발견했나요',
+                contactDesc: '감지되지 않는 제목 형식이나 변환 중 생긴 문제를 파일 예시와 함께 보내주세요.',
+                contactEmail: '이메일로 문의하기',
                 footerCopy: '© 2026 EPUB STUDIO. TXT를 EPUB으로 바꾸는 브라우저 도구입니다.',
                 fileState: {
                     wait: '대기',
@@ -200,7 +216,7 @@
                 title: '운영자 연락처',
                 intro: '정책 문의, 서비스 제안, 오류 제보는 아래 연락처로 보내 주세요. 운영 방식이 바뀌면 이 부분만 바꾸면 됩니다.',
                 cards: [
-                    ['운영자 이메일', 'navyvyvy@naver.com'],
+                    ['운영자 이메일', '이메일로 문의하기'],
                     ['답변 범위', '서비스 오류, 정책 문의, 기능 제안, 제휴 문의를 받습니다.'],
                     ['운영 안내', '이 사이트는 변환 도구와 안내 페이지를 함께 두는 구조로 되어 있습니다.']
                 ]
@@ -299,6 +315,22 @@
                     ['Automatic encoding detection', 'Automatically detects common encodings such as UTF-8 and CP949 to reduce read failures.'],
                     ['Batch ZIP packaging', 'Bundle multiple EPUB outputs into a single ZIP file for download.']
                 ],
+                storyKicker: 'How it works',
+                storyTitle: 'Your file stays in the browser workflow',
+                storyDesc: 'Reading TXT, finding chapters, and building the EPUB all happen in the current browser without a server upload.',
+                workflowLabel: 'EPUB conversion process',
+                workflowSteps: [
+                    ['Read the file directly', 'Check UTF-8, CP949, and UTF-16 variants so the original text can be read without corruption.'],
+                    ['Analyze the title flow', 'Compare sequential numbers and repeated formats, then refine the detected TOC in preview.'],
+                    ['Package readable sections', 'Split long text into safe sections and download an EPUB with its cover and table of contents.']
+                ],
+                privacyKicker: 'Privacy Policy',
+                privacyTitle: 'How your files and data are handled',
+                privacyDesc: 'Conversion runs in your browser by default, and the original text file is not stored on a server.',
+                contactKicker: 'Contact',
+                contactTitle: 'Found an unusual title pattern?',
+                contactDesc: 'Send an example when a title format is missed or a conversion behaves unexpectedly.',
+                contactEmail: 'Send an email',
                 footerCopy: '© 2026 EPUB STUDIO. A browser-based TXT to EPUB tool.',
                 fileState: {
                     wait: 'Ready',
@@ -390,7 +422,7 @@
                 title: 'Operator contact',
                 intro: 'Send policy questions, service ideas, or bug reports to the contact below. If the operating contact changes later, only this section needs to be updated.',
                 cards: [
-                    ['Operator email', 'navyvyvy@naver.com'],
+                    ['Operator email', 'Send an email'],
                     ['Response scope', 'Service issues, policy-related questions, feature suggestions, and partnership inquiries.'],
                     ['Operation note', 'This site provides the guide pages alongside the single-page conversion tool.']
                 ]
@@ -596,6 +628,13 @@
         if (switcher) switcher.setAttribute('aria-label', getString('langSwitcherLabel'));
     }
 
+    function applyContactLinks() {
+        const address = ['navyvyvy', 'naver.com'].join('@');
+        document.querySelectorAll('[data-contact-email]').forEach((anchor) => {
+            anchor.href = `mailto:${address}`;
+        });
+    }
+
     function injectSwitcher() {
         const nav = document.querySelector('.header-nav');
         if (!nav || nav.querySelector('.lang-switch')) return;
@@ -675,6 +714,35 @@
         setText('#features .hero-kicker', 'featureKicker');
         setText('#features .section-title', 'featureTitle');
         setNthText('#features .section-headline > p', 1, 'featureDesc');
+
+        setText('#about .hero-kicker', 'storyKicker');
+        setText('#about .section-title', 'storyTitle');
+        setNthText('#about .story-copy > p', 1, 'storyDesc');
+        const workflow = document.querySelector('#about .workflow-track');
+        if (workflow) workflow.setAttribute('aria-label', getString('workflowLabel'));
+        const workflowSteps = TEXT[current.lang].index.workflowSteps;
+        document.querySelectorAll('#about .workflow-step').forEach((step, index) => {
+            const heading = step.querySelector('h3');
+            const body = step.querySelector('p');
+            if (heading) heading.textContent = workflowSteps[index]?.[0] || heading.textContent;
+            if (body) body.textContent = workflowSteps[index]?.[1] || body.textContent;
+        });
+
+        setText('#privacy .hero-kicker', 'privacyKicker');
+        setText('#privacy .section-title', 'privacyTitle');
+        setNthText('#privacy .privacy-copy > p', 1, 'privacyDesc');
+        const privacyData = TEXT[current.lang].privacy;
+        document.querySelectorAll('#privacy .privacy-item').forEach((item, index) => {
+            const summary = item.querySelector('h3');
+            const body = item.querySelector('p');
+            if (summary) summary.textContent = privacyData.headings[index] || summary.textContent;
+            if (body) body.textContent = privacyData.sections[index] || body.textContent;
+        });
+
+        setText('#contact .hero-kicker', 'contactKicker');
+        setText('#contact .section-title', 'contactTitle');
+        setText('#contact .contact-action > p', 'contactDesc');
+        setText('#contact .contact-email', 'contactEmail');
         setText('.footer-panel > p', 'footerCopy');
         applyFooterLinks(['navTool', 'navFeatures', 'navAbout', 'navPrivacy', 'navContact']);
     }
@@ -744,6 +812,7 @@
         document.documentElement.lang = current.lang;
         applyCommonText();
         applyPageText();
+        applyContactLinks();
         setHeadText();
         rewriteInternalLinks();
         injectSwitcher();
