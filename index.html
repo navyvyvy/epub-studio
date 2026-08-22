@@ -47,6 +47,11 @@
             scroll-padding-top: var(--snap-offset);
         }
 
+        html:has(.preview-dialog[open]),
+        body:has(.preview-dialog[open]) {
+            overflow: hidden;
+        }
+
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: var(--scroll-track); }
         ::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 3px; }
@@ -824,7 +829,7 @@
         }
 
         .home-page .file-list-area {
-            min-height: clamp(440px, 68dvh, 760px);
+            min-height: clamp(260px, 36dvh, 460px);
         }
 
         .container::after {
@@ -1274,7 +1279,7 @@
             }
 
             .home-page .file-list-area {
-                min-height: clamp(380px, 56dvh, 620px);
+                min-height: clamp(280px, 44dvh, 440px);
             }
 
             .table-scroll-box {
@@ -1323,7 +1328,7 @@
             }
 
             .home-page .file-list-area {
-                min-height: clamp(360px, 56dvh, 520px);
+                min-height: clamp(240px, 40dvh, 360px);
             }
 
             .regex-area {
@@ -1526,7 +1531,7 @@
             }
 
             .home-page .file-list-area {
-                min-height: clamp(340px, 52dvh, 480px);
+                min-height: clamp(180px, 25dvh, 240px);
                 flex-grow: 0;
             }
 
@@ -1974,6 +1979,26 @@
                 : '<path d="M6 6l12 12"/><path d="M18 6L6 18"/>';
         return svg;
     }
+
+    const detectFileEncoding = (buffer, detect = (binary) => jschardet.detect(binary)) => {
+        const bytes = new Uint8Array(buffer);
+        if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) return 'UTF-8';
+        if (bytes.length >= 2 && bytes[0] === 0xFF && bytes[1] === 0xFE) return 'UTF-16LE';
+        if (bytes.length >= 2 && bytes[0] === 0xFE && bytes[1] === 0xFF) return 'UTF-16BE';
+
+        try {
+            new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+            return 'UTF-8';
+        } catch (_) {
+            const cp949Text = new TextDecoder('euc-kr').decode(buffer);
+            if (/[가-힣]/.test(cp949Text)) return 'CP949';
+        }
+
+        const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
+        const result = detect(binary);
+        const encoding = result && result.confidence > 0.7 ? result.encoding.toUpperCase() : 'UTF-8';
+        return ['EUC-KR', 'CP949'].includes(encoding) ? 'CP949' : encoding;
+    };
 
     async function readFileText(file, encoding, maxBytes = null) {
         const slice = maxBytes ? file.slice(0, maxBytes) : file;
@@ -2583,10 +2608,14 @@
 
         const findParenthesizedTitleFallback = (lines, parser) => lines.flatMap((line, idx) => {
             const text = cleanLine(line);
-            if (!/[\\(（]\\s*\\d{1,5}\\s*[\\)）]$/.test(text)) return [];
-            const title = text.replace(/\\s*[\\(（]\\s*\\d{1,5}\\s*[\\)）]$/, '');
-            if (!title || text.length > 70 || !/[A-Za-z가-힣一-龥ぁ-んァ-ヶ]/.test(title)) return [];
-            if (parser.shouldSkipCandidate(title, parser.isStrongStart(title))) return [];
+            const suffixPattern = /\\s*[\\(（]\\s*\\d{1,5}\\s*[\\)）](?:\\s*[>】〕\\]〉》」』"'”’])*\\s*$/;
+            if (!suffixPattern.test(text)) return [];
+            const isAngleWrapped = /^\\s*["'”’]*\\s*[<【〔\\[]/.test(text) && /[>】〕\\]〉》」』]\\s*["'”’]*\\s*$/.test(text);
+            const isQuoteWrapped = /^\\s*(?:'[^']+'|"[^"]+"|“[^”]+”|‘[^’]+’)\\s*$/.test(text);
+            const title = text.replace(suffixPattern, '');
+            const normalizedTitle = title.replace(/^\\s*["'”’「『“‘]\\s*/, '');
+            if (!normalizedTitle || text.length > 70 || !/[A-Za-z가-힣一-龥ぁ-んァ-ヶ]/.test(normalizedTitle)) return [];
+            if (!isAngleWrapped && !isQuoteWrapped && parser.shouldSkipCandidate(normalizedTitle, parser.isStrongStart(normalizedTitle))) return [];
             return [{ idx, text }];
         });
 
@@ -3227,12 +3256,7 @@
             if (!file.name.toLowerCase().endsWith('.txt')) continue;
 
             const buf = await file.slice(0, 32768).arrayBuffer();
-            let bin = "";
-            new Uint8Array(buf).forEach(b => bin += String.fromCharCode(b));
-
-            let det = jschardet.detect(bin);
-            let enc = (det && det.confidence > 0.7) ? det.encoding.toUpperCase() : 'UTF-8';
-            if (["EUC-KR", "CP949"].includes(enc)) enc = "CP949";
+            const enc = detectFileEncoding(buf);
 
             newFiles.push({
                 id: Date.now()+'-'+Math.random(),

@@ -38,6 +38,21 @@ function loadWorker() {
     return { context, messages };
 }
 
+function loadEncodingDetector() {
+    const source = html.match(/const detectFileEncoding = ([\s\S]*?);\s*\n\s*async function readFileText/)[1];
+    return Function(`return (${source});`)();
+}
+
+test('encoding detection prefers valid UTF-8 and recognizes short CP949 Korean text', () => {
+    const detectEncoding = loadEncodingDetector();
+    const utf8 = new TextEncoder().encode('옥션 하우스').buffer;
+    const cp949 = new Uint8Array([0xBF, 0xC1, 0xBC, 0xC7, 0x20, 0xC7, 0xCF, 0xBF, 0xEC, 0xBD, 0xBA]).buffer;
+    const misleadingDetector = () => ({ encoding: 'windows-1252', confidence: 0.95 });
+
+    assert.equal(detectEncoding(utf8, misleadingDetector), 'UTF-8');
+    assert.equal(detectEncoding(cp949, misleadingDetector), 'CP949');
+});
+
 test('parser detects sequential Korean chapter titles', async () => {
     const { context, messages } = loadWorker();
     await context.self.onmessage({ data: {
@@ -875,6 +890,62 @@ test('parenthesized number suffixes are offered as a selectable multi-pattern fa
         }
     } });
     assert.deepEqual(Array.from(prose.messages[0].payload.fallbackItems || []), []);
+});
+
+test('parenthesized fallback allows a leading quote decoration', async () => {
+    const { context, messages } = loadWorker();
+    await context.self.onmessage({ data: {
+        type: 'PREVIEW_PARSER',
+        payload: {
+            requestId: 1,
+            fileName: 'sample.txt',
+            text: "' 옥션 하우스(1)\n본문\n' 옥션 하우스(2)",
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: true
+        }
+    } });
+
+    assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), [
+        "' 옥션 하우스(1)",
+        "' 옥션 하우스(2)"
+    ]);
+});
+
+test('parenthesized fallback allows a quoted angle-bracket title', async () => {
+    const { context, messages } = loadWorker();
+    const title = "'< 이 프로그램은 보고 계신 스폰서의 제공으로 보내드립니다(5) >'";
+    await context.self.onmessage({ data: {
+        type: 'PREVIEW_PARSER',
+        payload: {
+            requestId: 1,
+            fileName: 'sample.txt',
+            text: title,
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: true
+        }
+    } });
+
+    assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), [title]);
+});
+
+test('parenthesized fallback allows a fully quoted sentence title', async () => {
+    const { context, messages } = loadWorker();
+    const title = "' 이 프로그램은 보고 계신 스폰서의 제공으로 보내드립니다(1) '";
+    await context.self.onmessage({ data: {
+        type: 'PREVIEW_PARSER',
+        payload: {
+            requestId: 1,
+            fileName: 'sample.txt',
+            text: title,
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: true
+        }
+    } });
+
+    assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), [title]);
 });
 
 test('parenthesized fallback remains selectable alongside regular titles', async () => {
