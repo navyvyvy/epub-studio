@@ -2489,6 +2489,7 @@
             quotedStartPattern: /^[-\u2014~]?\\s*["'”’「『“‘]/,
             finalDotPattern: /[.?!]$/,
             finalPunctuationPattern: /[.,!?;~]/,
+            profileRowPattern: /^(?:[^|]{1,20}\\||[^:]{1,12}:)\\s*.+\\((?:18|19|20)\\d{2}\\)/,
             titleNoisePattern: /(?:제\\s*)?\\d+\\s*[화회장막편부수]/,
             groupMatchers: [
                 { group: 'KOR', test: (t) => t.match(/^[<【〔\\[(=\\-~◈]?\\s*(?:외전|프롤로그|에필로그)?\\s*(?:제\\s*)?\\d+\\s*([화회장막편부수])(?:\\]|\\s|:|\\.|-|$)/), resolve: (_, match) => 'KOR_' + match[1] },
@@ -2606,22 +2607,60 @@
             }).filter((group) => group.indices.length >= 2);
         };
 
-        const findParenthesizedTitleFallback = (lines, parser) => lines.flatMap((line, idx) => {
-            const text = cleanLine(line);
-            const suffixPattern = /\\s*[\\(（]\\s*\\d{1,5}\\s*[\\)）](?:\\s*[>】〕\\]〉》」』"'”’])*\\s*$/;
-            if (!suffixPattern.test(text)) return [];
-            const isAngleWrapped = /^\\s*["'”’]*\\s*[<【〔\\[]/.test(text) && /[>】〕\\]〉》」』]\\s*["'”’]*\\s*$/.test(text);
-            const isQuoteWrapped = /^\\s*(?:'[^']+'|"[^"]+"|“[^”]+”|‘[^’]+’)\\s*$/.test(text);
-            const title = text.replace(suffixPattern, '');
-            const normalizedTitle = title.replace(/^\\s*["'”’「『“‘]\\s*/, '');
-            if (!normalizedTitle || text.length > 70 || !/[A-Za-z가-힣一-龥ぁ-んァ-ヶ]/.test(normalizedTitle)) return [];
-            if (!isAngleWrapped && !isQuoteWrapped && parser.shouldSkipCandidate(normalizedTitle, parser.isStrongStart(normalizedTitle))) return [];
-            return [{ idx, text }];
-        });
+        const findParenthesizedTitleFallback = (lines, parser) => {
+            const numberPattern = /\\s*[\\(（]\\s*(\\d{1,5})\\s*[\\)）]/;
+            const candidates = lines.flatMap((line, idx) => {
+                const text = cleanLine(line);
+                const numberMatch = text.match(numberPattern);
+                if (!numberMatch) return [];
+                if (parser.rules.profileRowPattern.test(text)) return [];
+                const isAngleWrapped = /^\\s*["'”’]*\\s*[<【〔\\[]/.test(text) && /[>】〕\\]〉》」』]\\s*["'”’]*\\s*$/.test(text);
+                const isQuoteWrapped = /^\\s*(?:'[^']+'|"[^"]+"|“[^”]+”|‘[^’]+’)\\s*$/.test(text);
+                const trailing = text.slice(numberMatch.index + numberMatch[0].length)
+                    .replace(/\\s*[>】〕\\]〉》」』"'”’]+\\s*$/, '').trim();
+                const number = Number(numberMatch[1]);
+                if (number >= 1800 && number <= 2099 && trailing && !isAngleWrapped && !isQuoteWrapped) return [];
+                const isEpisodeNote = /^[\\(（][^\\(（\\)）]{1,50}[\\)）]$/.test(trailing);
+                const isShortSubtitle = trailing.length <= 40 && /[A-Za-z가-힣一-龥ぁ-んァ-ヶ]/.test(trailing);
+                if (trailing && !isEpisodeNote && !isShortSubtitle) return [];
+                const title = text.slice(0, numberMatch.index);
+                const normalizedTitle = title.replace(/^\\s*["'”’「『“‘]\\s*/, '');
+                if (!normalizedTitle || text.length > 70 || !/[A-Za-z가-힣一-龥ぁ-んァ-ヶ]/.test(normalizedTitle)) return [];
+                const key = normalizedTitle
+                    .replace(/^\\s*[<【〔\\[]\\s*/, '')
+                    .replace(/^\\s*\\[[^\\]]{1,30}\\]\\s*/, '')
+                    .trim();
+                return [{
+                    idx,
+                    text,
+                    key,
+                    wrapped: isAngleWrapped || isQuoteWrapped,
+                    shouldSkip: parser.shouldSkipCandidate(normalizedTitle, parser.isStrongStart(normalizedTitle))
+                }];
+            });
+            const counts = candidates.reduce((map, item) => map.set(item.key, (map.get(item.key) || 0) + 1), new Map());
+            return candidates.flatMap((item) => {
+                const repeated = counts.get(item.key) > 1;
+                if (item.shouldSkip && !item.wrapped && !repeated) return [];
+                return [{
+                    idx: item.idx,
+                    text: item.text,
+                    key: item.key,
+                    wrapped: item.wrapped,
+                    alwaysOffer: item.wrapped || (repeated && item.shouldSkip)
+                }];
+            });
+        };
 
         const applySelectedTitleFallback = (validIndices, lines, parser, payload) => {
-            if (!payload.useMultiToc) return [];
-            const fallbackItems = findParenthesizedTitleFallback(lines, parser);
+            const fallbackItems = findParenthesizedTitleFallback(lines, parser)
+                .filter((item) => payload.useMultiToc || item.alwaysOffer);
+            const anchoredKeys = new Set(fallbackItems
+                .filter((item) => item.wrapped || validIndices.has(item.idx))
+                .map((item) => item.key));
+            for (const item of fallbackItems) {
+                if (anchoredKeys.has(item.key)) validIndices.add(item.idx);
+            }
             const selected = new Set(payload.selectedFallbackIndices || []);
             for (const item of fallbackItems) {
                 if (selected.has(item.idx)) validIndices.add(item.idx);
@@ -2648,6 +2687,7 @@
             // 새로 추가할 제목 예외는 shouldSkipCandidate()와 groupMatchers에 넣으면 됩니다.
             shouldSkipCandidate(text, isStrongStart) {
                 if (/^[<【〔\\[(]?\\s*작가의\\s*말\\s*[>】〕\\])〉》」』]?\\s*$/.test(text)) return true;
+                if (this.rules.profileRowPattern.test(text)) return true;
                 const isBracketed = this.rules.bracketOpenPattern.test(text) && this.rules.bracketClosePattern.test(text);
                 const isBracketTitle = this.rules.bracketTitlePattern.test(text);
 
@@ -3072,7 +3112,8 @@
                     const validIndices = parser.analyze(lines, payload.useMultiToc, payload.fileName);
                     const fallbackItems = applySelectedTitleFallback(validIndices, lines, parser, payload);
                     const resultItems = [];
-                    validIndices.forEach(i => resultItems.push({ idx: i, text: lines[i] }));
+                    Array.from(validIndices).sort((a, b) => a - b)
+                        .forEach(i => resultItems.push({ idx: i, text: lines[i] }));
                     self.postMessage({
                         type: 'PREVIEW_RESULT',
                         payload: {

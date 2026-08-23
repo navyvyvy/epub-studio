@@ -202,6 +202,86 @@ test('numbered prose between consecutive titles is not a title candidate', async
     }
 });
 
+test('numbered lists between consecutive chapter titles stay out of the TOC', async () => {
+    const content = [
+        '대영제국에서 작가로 살아남기 361화',
+        '',
+        '1. 독일이 러시아에 전쟁을 선포한다.',
+        '',
+        '2. 우리 군이 알자스─로렌으로 돌격한다.',
+        '',
+        '3. 실지를 탈환한다.',
+        '',
+        '4. ??',
+        '',
+        '5. PROFIT!!',
+        '',
+        '대영제국에서 작가로 살아남기 362화'
+    ].join('\n');
+
+    for (const useMultiToc of [false, true]) {
+        const { context, messages } = loadWorker();
+        await context.self.onmessage({ data: {
+            type: 'TEST_PARSER',
+            payload: { text: content, userRegex: defaultTitleRegex, preserveCustomMatches: false, useMultiToc }
+        } });
+        assert.deepEqual(Array.from(messages[0].payload.resultLines), [
+            '대영제국에서 작가로 살아남기 361화',
+            '대영제국에서 작가로 살아남기 362화'
+        ]);
+    }
+});
+
+test('wiki-style family profile rows stay out of the TOC', async () => {
+    const content = [
+        '배우자 | 로웨나 진─로스차일드(1904)',
+        '',
+        '자녀 | 딸 : 애나 밀러(1905)[한국_이름1 진예나]',
+        '',
+        '장남 : 프레드 리처드 진─로스차일드(1921)[한국_이름2 진이찰]',
+        '',
+        '차남 : 아서 조지 진─로스차일드(1921)[한국_이름3 진아슬]'
+    ].join('\n');
+
+    for (const useMultiToc of [false, true]) {
+        const { context, messages } = loadWorker();
+        await context.self.onmessage({ data: {
+            type: 'PREVIEW_PARSER',
+            payload: {
+                requestId: 1,
+                fileName: 'sample.txt',
+                text: content,
+                userRegex: defaultTitleRegex,
+                preserveCustomMatches: false,
+                useMultiToc
+            }
+        } });
+        assert.deepEqual(Array.from(messages[0].payload.resultItems), []);
+        assert.deepEqual(Array.from(messages[0].payload.fallbackItems || []), []);
+    }
+});
+
+test('a parenthesized year inside prose stays out of the TOC', async () => {
+    const content = '아, 그…… <민중을 이끄는 자유의 여신(1830)> 말인가.';
+
+    for (const useMultiToc of [false, true]) {
+        const { context, messages } = loadWorker();
+        await context.self.onmessage({ data: {
+            type: 'PREVIEW_PARSER',
+            payload: {
+                requestId: 1,
+                fileName: 'sample.txt',
+                text: content,
+                userRegex: defaultTitleRegex,
+                preserveCustomMatches: false,
+                useMultiToc
+            }
+        } });
+        assert.deepEqual(Array.from(messages[0].payload.resultItems), []);
+        assert.deepEqual(Array.from(messages[0].payload.fallbackItems || []), []);
+    }
+});
+
 test('special-title words inside prose do not enter the TOC', async () => {
     const content = [
         '41화',
@@ -941,11 +1021,77 @@ test('parenthesized fallback allows a fully quoted sentence title', async () => 
             text: title,
             userRegex: defaultTitleRegex,
             preserveCustomMatches: false,
-            useMultiToc: true
+            useMultiToc: false
         }
     } });
 
     assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), [title]);
+});
+
+test('parenthesized fallback allows a trailing episode note', async () => {
+    const { context, messages } = loadWorker();
+    const titles = [
+        "' 이 프로그램은 보고 계신 스폰서의 제공으로 보내드립니다(1)  '",
+        "' 이 프로그램은 보고 계신 스폰서의 제공으로 보내드립니다(3)(무료 마지막화입니다!) '"
+    ];
+    await context.self.onmessage({ data: {
+        type: 'PREVIEW_PARSER',
+        payload: {
+            requestId: 1,
+            fileName: 'sample.txt',
+            text: titles.join('\n본문\n'),
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: false
+        }
+    } });
+
+    assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), titles);
+});
+
+test('parenthesized fallback allows a repeated unwrapped sentence title', async () => {
+    const { context, messages } = loadWorker();
+    const titles = [
+        '이 프로그램은 보고 계신 스폰서의 제공으로 보내드립니다(1)',
+        '이 프로그램은 보고 계신 스폰서의 제공으로 보내드립니다(2) 리하르트 슈트라우스.',
+        '이 프로그램은 보고 계신 스폰서의 제공으로 보내드립니다(3)(무료 마지막화입니다!)'
+    ];
+    await context.self.onmessage({ data: {
+        type: 'PREVIEW_PARSER',
+        payload: {
+            requestId: 1,
+            fileName: 'sample.txt',
+            text: titles.join('\n본문\n'),
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: false
+        }
+    } });
+
+    assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), titles);
+});
+
+test('a detected wrapped title promotes earlier matching parenthesized titles', async () => {
+    const { context, messages } = loadWorker();
+    const titles = [
+        '이 프로그램은 보고 계신 스폰서의 제공으로 보내드립니다(1)',
+        '이 프로그램은 보고 계신 스폰서의 제공으로 보내드립니다(2) 리하르트 슈트라우스.',
+        '이 프로그램은 보고 계신 스폰서의 제공으로 보내드립니다(3)(무료 마지막화입니다!)',
+        '< [유료화 시작]이 프로그램은 보고 계신 스폰서의 제공으로 보내드립니다(4) >'
+    ];
+    await context.self.onmessage({ data: {
+        type: 'PREVIEW_PARSER',
+        payload: {
+            requestId: 1,
+            fileName: 'sample.txt',
+            text: titles.join('\n본문\n'),
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: false
+        }
+    } });
+
+    assert.deepEqual(Array.from(messages[0].payload.resultItems, (item) => item.text), titles);
 });
 
 test('parenthesized fallback remains selectable alongside regular titles', async () => {
