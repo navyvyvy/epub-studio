@@ -147,6 +147,80 @@ test('decorated Korean chapter titles keep their leading symbol', async () => {
     }
 });
 
+test('decorated Korean chapter titles allow a closing symbol after the chapter unit', async () => {
+    const { context, messages } = loadWorker();
+    await context.self.onmessage({ data: {
+        type: 'PREVIEW_PARSER',
+        payload: {
+            requestId: 1,
+            fileName: 'sample.txt',
+            text: '본문\n\n◈12화◈ 무엇을 상상하든 그 이상\n\n내용\n\n◈13화◈ 다음 이야기\n\n본문',
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: false
+        }
+    } });
+
+    assert.deepEqual(Array.from(messages[0].payload.resultItems, (item) => item.text), [
+        '◈12화◈ 무엇을 상상하든 그 이상',
+        '◈13화◈ 다음 이야기'
+    ]);
+});
+
+test('box-drawing separators before Korean chapter numbers are treated as title decoration', async () => {
+    const { context, messages } = loadWorker();
+    await context.self.onmessage({ data: {
+        type: 'PREVIEW_PARSER',
+        payload: {
+            requestId: 1,
+            fileName: 'sample.txt',
+            text: '본문\n\n──────────────────────────────────── 1화 첩자의 끝은 죽음이다.\n\n내용\n\n──────────────────────────────────── 2화 다음 이야기.\n\n본문',
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: false
+        }
+    } });
+
+    assert.deepEqual(Array.from(messages[0].payload.resultItems, (item) => item.text), [
+        '──────────────────────────────────── 1화 첩자의 끝은 죽음이다.',
+        '──────────────────────────────────── 2화 다음 이야기.'
+    ]);
+});
+
+test('chapter-like lines ending with an end marker stay out of the TOC', async () => {
+    const { context, messages } = loadWorker();
+    await context.self.onmessage({ data: {
+        type: 'PREVIEW_PARSER',
+        payload: {
+            requestId: 1,
+            fileName: 'sample.txt',
+            text: "'< 80화 반시(半屍) (1) > 끝' 어쩌구 저쩌구 끝\n\n본문\n\n'< 80화 반시(半屍) (2) > 끝' 어쩌구 저쩌구 끝",
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: false
+        }
+    } });
+
+    assert.deepEqual(Array.from(messages[0].payload.resultItems), []);
+    assert.deepEqual(Array.from(messages[0].payload.fallbackItems), []);
+
+    const direct = loadWorker();
+    await direct.context.self.onmessage({ data: {
+        type: 'TEST_PARSER',
+        payload: {
+            text: '1화 시작\n\n2화 잘못된 끝\n\n2화 정상 제목\n\n3화 계속',
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: false
+        }
+    } });
+    assert.deepEqual(Array.from(direct.messages[0].payload.resultLines), [
+        '1화 시작',
+        '2화 정상 제목',
+        '3화 계속'
+    ]);
+});
+
 test('hash-prefixed chapter titles allow fullwidth marks, spaces, and a single item', async () => {
     const cases = [
         ['＃1화', ['＃1화']],
@@ -1049,7 +1123,7 @@ test('parenthesized fallback allows a trailing episode note', async () => {
     assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), titles);
 });
 
-test('parenthesized fallback allows a repeated unwrapped sentence title', async () => {
+test('parenthesized titles already inferred by the main parser stay out of fallback', async () => {
     const { context, messages } = loadWorker();
     const titles = [
         '이 프로그램은 보고 계신 스폰서의 제공으로 보내드립니다(1)',
@@ -1068,7 +1142,8 @@ test('parenthesized fallback allows a repeated unwrapped sentence title', async 
         }
     } });
 
-    assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), titles);
+    assert.deepEqual(Array.from(messages[0].payload.resultItems, (item) => item.text), titles);
+    assert.deepEqual(Array.from(messages[0].payload.fallbackItems), []);
 });
 
 test('a detected wrapped title promotes earlier matching parenthesized titles', async () => {
@@ -1137,7 +1212,7 @@ test('parenthesized fallback remains selectable alongside regular titles', async
     assert.match(ncx, /내집 마련의 꿈\(2\)/);
 });
 
-test('parenthesized candidate count includes matching lines already detected as titles', async () => {
+test('parenthesized candidates exclude titles already detected by the main parser', async () => {
     const { context, messages } = loadWorker();
     await context.self.onmessage({ data: {
         type: 'PREVIEW_PARSER',
@@ -1152,9 +1227,7 @@ test('parenthesized candidate count includes matching lines already detected as 
     } });
 
     assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), [
-        '제1화 시작(1)',
-        '100억을 벌었다(2)',
-        '제2화 계속(2)'
+        '100억을 벌었다(2)'
     ]);
 });
 

@@ -2503,7 +2503,7 @@
         const TITLE_RULES = {
             maxLineLength: 90,
             strongStartPatterns: [
-                /^[<【〔\\[(=\\-~◈]?\\s*(?:외전|프롤로그|에필로그)?\\s*(?:제\\s*)?\\d+\\s*[화회장막편부수](?:\\s|:|\\.|-|$)/i,
+                /^(?:[<【〔\\[(=\\-~◈]?|[─━═]+)\\s*(?:외전|프롤로그|에필로그)?\\s*(?:제\\s*)?\\d+\\s*[화회장막편부수](?:◈|\\s|:|\\.|-|$)/i,
                 /^[<【〔\\[(]?\\s*(?:Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\.?\\s*\\d+/i,
                 /^[<【〔\\[(=\\-~]?\\s*[#＃]\\s*\\d+/,
                 /^0\\d{1,3}(?:\\s|$)/,
@@ -2520,10 +2520,11 @@
             quotedStartPattern: /^[-\u2014~]?\\s*["'”’「『“‘]/,
             finalDotPattern: /[.?!]$/,
             finalPunctuationPattern: /[.,!?;~]/,
+            endMarkerPattern: /끝\\s*$/,
             profileRowPattern: /^(?:[^|]{1,20}\\||[^:]{1,12}:)\\s*.+\\((?:18|19|20)\\d{2}\\)/,
             titleNoisePattern: /(?:제\\s*)?\\d+\\s*[화회장막편부수]/,
             groupMatchers: [
-                { group: 'KOR', test: (t) => t.match(/^[<【〔\\[(=\\-~◈]?\\s*(?:외전|프롤로그|에필로그)?\\s*(?:제\\s*)?\\d+\\s*([화회장막편부수])(?:\\]|\\s|:|\\.|-|$)/), resolve: (_, match) => 'KOR_' + match[1] },
+                { group: 'KOR', test: (t) => t.match(/^(?:[<【〔\\[(=\\-~◈]?|[─━═]+)\\s*(?:외전|프롤로그|에필로그)?\\s*(?:제\\s*)?\\d+\\s*([화회장막편부수])(?:◈|\\]|\\s|:|\\.|-|$)/), resolve: (_, match) => 'KOR_' + match[1] },
                 { group: 'KOR_SUFFIX', test: (t) => t.match(/^[^.!?。！？]{1,50}\\s+(?:제\\s*)?\\d+\\s*([화회장막편부수])\\.?$/), resolve: (_, match) => 'KOR_SUFFIX_' + match[1] },
                 { group: 'ENG', test: (t) => t.match(/^(Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\.?\\s*\\d+/i), resolve: (_, match) => 'ENG_' + match[1].toUpperCase() },
                 { group: 'SPECIAL', test: (t) => /^(?:[<【〔\\[(]\\s*)?(?:프롤로그|에필로그|외전|후기|공지|작가의\\s*말|서장|종장|프로필)(?:\\s*[>】〕\\])〉》」』])?(?=$|\\s|\\d|[:.\\-])/.test(t) && !/[.?!。！？]$/.test(t) },
@@ -2642,6 +2643,7 @@
             const numberPattern = /\\s*[\\(（]\\s*(\\d{1,5})\\s*[\\)）]/;
             const candidates = lines.flatMap((line, idx) => {
                 const text = cleanLine(line);
+                if (parser.rules.endMarkerPattern.test(text)) return [];
                 const numberMatch = text.match(numberPattern);
                 if (!numberMatch) return [];
                 if (parser.rules.profileRowPattern.test(text)) return [];
@@ -2684,10 +2686,11 @@
         };
 
         const applySelectedTitleFallback = (validIndices, lines, parser, payload) => {
+            const detectedIndices = new Set(validIndices);
             const fallbackItems = findParenthesizedTitleFallback(lines, parser)
                 .filter((item) => payload.useMultiToc || item.alwaysOffer);
             const anchoredKeys = new Set(fallbackItems
-                .filter((item) => item.wrapped || validIndices.has(item.idx))
+                .filter((item) => detectedIndices.has(item.idx))
                 .map((item) => item.key));
             for (const item of fallbackItems) {
                 if (anchoredKeys.has(item.key)) validIndices.add(item.idx);
@@ -2696,7 +2699,9 @@
             for (const item of fallbackItems) {
                 if (selected.has(item.idx)) validIndices.add(item.idx);
             }
-            return fallbackItems;
+            return fallbackItems.filter((item) =>
+                !detectedIndices.has(item.idx) && (selected.has(item.idx) || !validIndices.has(item.idx))
+            );
         };
 
         class ClusterParser {
@@ -2718,6 +2723,7 @@
             // 새로 추가할 제목 예외는 shouldSkipCandidate()와 groupMatchers에 넣으면 됩니다.
             shouldSkipCandidate(text, isStrongStart) {
                 if (/^[<【〔\\[(]?\\s*작가의\\s*말\\s*[>】〕\\])〉》」』]?\\s*$/.test(text)) return true;
+                if (this.rules.endMarkerPattern.test(text)) return true;
                 if (this.rules.profileRowPattern.test(text)) return true;
                 const isBracketed = this.rules.bracketOpenPattern.test(text) && this.rules.bracketClosePattern.test(text);
                 const isBracketTitle = this.rules.bracketTitlePattern.test(text);
@@ -2755,7 +2761,7 @@
             }
 
             getChapterNum(text) {
-                const match = text.match(/(?:제\\s*)?(\\d+)\\s*[화회장막편부수](?:\\]|\\s|:|\\.|-|$)/) ||
+                const match = text.match(/(?:제\\s*)?(\\d+)\\s*[화회장막편부수](?:◈|\\]|\\s|:|\\.|-|$)/) ||
                     text.match(/(?:Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\.?\\s*(\\d+)/i) ||
                     text.match(/[#＃]\\s*(\\d+)/) ||
                     text.match(/(?:^|[^a-zA-Z0-9가-힣])(\\d+)(?![.\\/\\\\]\\d)/);
