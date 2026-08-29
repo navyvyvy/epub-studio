@@ -317,9 +317,9 @@
             background: rgba(82,214,173,0.025);
         }
 
-        .table-wrapper { display: none; flex-direction: column; height: 100%; width: 100%; }
+        .table-wrapper { display: none; flex-direction: column; height: 100%; min-height: 0; width: 100%; }
         .table-wrapper.active { display: flex; }
-        .table-scroll-box { flex-grow: 1; overflow-y: auto; overflow-x: hidden; width: 100%; }
+        .table-scroll-box { flex-grow: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; width: 100%; }
 
         .file-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 0.75rem; }
         .file-table th { position: sticky; top: 0; background: #152023; z-index: 2; padding: 11px 10px; color: var(--text-dim); border-bottom: 1px solid var(--border); }
@@ -855,6 +855,7 @@
 
         .home-page .file-list-area {
             min-height: clamp(330px, 46dvh, 520px);
+            max-height: clamp(330px, 46dvh, 520px);
         }
 
         .container::after {
@@ -1311,6 +1312,7 @@
 
             .home-page .file-list-area {
                 min-height: clamp(280px, 44dvh, 440px);
+                max-height: clamp(280px, 44dvh, 440px);
             }
 
             .table-scroll-box {
@@ -1360,6 +1362,7 @@
 
             .home-page .file-list-area {
                 min-height: clamp(240px, 40dvh, 360px);
+                max-height: clamp(240px, 40dvh, 360px);
             }
 
             .regex-area {
@@ -1563,6 +1566,7 @@
 
             .home-page .file-list-area {
                 min-height: clamp(220px, 30dvh, 280px);
+                max-height: clamp(220px, 30dvh, 280px);
                 flex-grow: 0;
             }
 
@@ -2049,11 +2053,24 @@
         }
         const normalized = String(encoding || 'UTF-8').toLowerCase();
         if (!label) label = normalized === 'cp949' ? 'windows-949' : normalized;
+        const content = buffer.slice(offset);
+        if (offset === 0 && ['utf-8', 'windows-949', 'euc-kr'].includes(label)) {
+            const damage = (text) => (text.match(/\uFFFD|[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g) || []).length;
+            const preferredLabel = label === 'utf-8' ? 'utf-8' : 'euc-kr';
+            const preferredText = new TextDecoder(preferredLabel).decode(content);
+            const preferredDamage = damage(preferredText);
+            if (preferredDamage === 0) return preferredText;
+            const alternateText = new TextDecoder(preferredLabel === 'utf-8' ? 'euc-kr' : 'utf-8').decode(content);
+            return damage(alternateText) < preferredDamage ? alternateText : preferredText;
+        }
         try {
-            return new TextDecoder(label).decode(buffer.slice(offset));
+            const strictUtf8 = label === 'utf-8' && offset === 0;
+            return new TextDecoder(label, strictUtf8 ? { fatal: true } : undefined).decode(content);
         } catch (_) {
-            const fallback = label === 'windows-949' ? 'euc-kr' : (label === 'utf-16be' ? 'utf-16le' : 'utf-8');
-            return new TextDecoder(fallback).decode(buffer.slice(offset));
+            const fallback = label === 'windows-949' || (label === 'utf-8' && offset === 0)
+                ? 'euc-kr'
+                : (label === 'utf-16be' ? 'utf-16le' : 'utf-8');
+            return new TextDecoder(fallback).decode(content);
         }
     }
 
@@ -2395,16 +2412,17 @@
             const hasCover = !!item.coverBlob;
             const isClickable = ['done', 'error'].includes(item.state);
             const canPreview = dom.optToc.checked && !store.state.isProcessing;
+            const isDetecting = dom.optToc.checked && item.isValid === 'none';
             const detectState = item.isValid === 'ok' ? 'hit' : item.isValid === 'no' ? 'miss' : 'wait';
             const detectBtn = el('button', {
                 className: `detect-preview detect-${detectState}`,
                 onClick: () => {
                     if (canPreview) previewFileById(item.id);
                 }
-            }, window.EPUB_STUDIO_I18N.t('tablePreview'));
-            detectBtn.disabled = !canPreview;
+            }, window.EPUB_STUDIO_I18N.t(isDetecting ? 'previewLoading' : 'tablePreview'));
+            detectBtn.disabled = !canPreview || isDetecting;
             detectBtn.title = dom.optToc.checked
-                ? window.EPUB_STUDIO_I18N.t('tablePreview')
+                ? window.EPUB_STUDIO_I18N.t(isDetecting ? 'previewLoading' : 'tablePreview')
                 : window.EPUB_STUDIO_I18N.t('previewScanning');
             const singleConvertBtn = el('button', {
                 className: 'btn-file-convert',
@@ -2527,7 +2545,7 @@
                 { group: 'KOR', test: (t) => t.match(/^(?:[<【〔\\[(=\\-~◈]?|[─━═]+)\\s*(?:외전|프롤로그|에필로그)?\\s*(?:제\\s*)?\\d+\\s*([화회장막편부수])(?:◈|\\]|\\s|:|\\.|-|$)/), resolve: (_, match) => 'KOR_' + match[1] },
                 { group: 'KOR_SUFFIX', test: (t) => t.match(/^[^.!?。！？]{1,50}\\s+(?:제\\s*)?\\d+\\s*([화회장막편부수])\\.?$/), resolve: (_, match) => 'KOR_SUFFIX_' + match[1] },
                 { group: 'ENG', test: (t) => t.match(/^(Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\.?\\s*\\d+/i), resolve: (_, match) => 'ENG_' + match[1].toUpperCase() },
-                { group: 'SPECIAL', test: (t) => /^(?:[<【〔\\[(]\\s*)?(?:프롤로그|에필로그|외전|후기|공지|작가의\\s*말|서장|종장|프로필)(?:\\s*[>】〕\\])〉》」』])?(?=$|\\s|\\d|[:.\\-])/.test(t) && !/[.?!。！？]$/.test(t) },
+                { group: 'SPECIAL', test: (t) => /^(?:[<【〔\\[(]\\s*)?(?:[#＃]\\s*)?(?:프롤로그|에필로그|외전|후기|공지|작가의\\s*말|서장|종장|프로필)(?:\\s*[>】〕\\])〉》」』])?(?=$|\\s|\\d|[:.\\-])/.test(t) && !/[.?!。！？]$/.test(t) },
                 { group: 'BRACKET', test: (t) => BRACKET_TITLE_PATTERN.test(t) },
                 { group: 'SHARP', test: (t) => /^[#＃]\\s*\\d+/.test(t) },
                 { group: 'NUMBER', test: (t) => /^\\d+[-_.]\\d+(?:\\s|$)/.test(t) || /^\\d+[.)](?!\\d)/.test(t) || /^0\\d{1,3}(?:[.)]?\\s*$)/.test(t) || /^\\[\\d+\\]/.test(t) || /^\\d{1,5}$/.test(t) },
@@ -2537,6 +2555,7 @@
 
         const cleanLine = (line) => line.replace(/[\\u200B-\\u200D\\uFEFF]/g, '').trim();
         const matchesAny = (patterns, text) => patterns.some((pattern) => pattern.test(text));
+        const TRAILING_PART_PATTERN = /\\s*[\\(（]\\s*(\\d{1,5})\\s*[\\)）]\\s*[#＃>】〕\\]〉》」』"'”’]*\\s*$/;
         const MAX_ISOLATED_TITLE_GAP = 10; // ponytail: raise only if real files skip more chapter numbers.
         const getTitleSequenceIndexes = (numbers) => {
             if (numbers.length === 0) return [];
@@ -2722,7 +2741,7 @@
 
             // 새로 추가할 제목 예외는 shouldSkipCandidate()와 groupMatchers에 넣으면 됩니다.
             shouldSkipCandidate(text, isStrongStart) {
-                if (/^[<【〔\\[(]?\\s*작가의\\s*말\\s*[>】〕\\])〉》」』]?\\s*$/.test(text)) return true;
+                if (/^[<【〔\\[(]?\\s*(?:[#＃]\\s*)?작가의\\s*말\\s*[>】〕\\])〉》」』]?\\s*$/.test(text)) return true;
                 if (this.rules.endMarkerPattern.test(text)) return true;
                 if (this.rules.profileRowPattern.test(text)) return true;
                 const isBracketed = this.rules.bracketOpenPattern.test(text) && this.rules.bracketClosePattern.test(text);
@@ -2889,13 +2908,35 @@
                     const sequence = getContinuousSequenceIndexes(candidates).map((index) => candidates[index]);
                     if (sequence.length >= 2 && new Set(sequence.map((item) => item.group)).size > 1) {
                         const mergedGroup = 'SEQUENCE_' + sequence[0].idx;
-                        for (const item of sequence) lineData[item.idx] = mergedGroup;
+                        const sequencePartBases = new Set(sequence.map((item) =>
+                            this.normalizeLine(lines[item.idx]).replace(TRAILING_PART_PATTERN, '').trim()
+                        ));
+                        for (const item of candidates) {
+                            const base = this.normalizeLine(lines[item.idx]).replace(TRAILING_PART_PATTERN, '').trim();
+                            if (sequence.includes(item) || sequencePartBases.has(base)) lineData[item.idx] = mergedGroup;
+                        }
                     }
                 }
                 const candidateGroups = lineData.slice();
                 const numericGroups = new Map();
                 const sequenceNumbers = new Map();
                 const orphanNumericItems = [];
+                if (useMultiToc) {
+                    const candidates = lineData.flatMap((group, idx) => {
+                        if (!group || group === 'SPECIAL') return [];
+                        const text = this.normalizeLine(lines[idx]);
+                        const hasExplicitChapterNumber = group.startsWith('KOR') || group === 'SHARP';
+                        if ((text.match(/\\d{1,5}/g) || []).length !== 1 && !hasExplicitChapterNumber) return [];
+                        const number = this.getChapterNum(text);
+                        return number === -1 ? [] : [{ idx, group, number }];
+                    });
+                    const sequence = getContinuousSequenceIndexes(candidates).map((index) => candidates[index]);
+                    const sequenceGroups = new Set(sequence.map((item) => item.group));
+                    const bridgesHashPrefix = sequenceGroups.has('SHARP') && Array.from(sequenceGroups).some((group) => group.startsWith('KOR'));
+                    if (sequence.length >= 2 && bridgesHashPrefix) {
+                        for (const item of sequence) sequenceNumbers.set(item.idx, item.number);
+                    }
+                }
                 lineData.forEach((group, idx) => {
                     if (!group || (group === 'CUSTOM' && this.preserveCustomMatches)) return;
                     const numbers = Array.from(this.normalizeLine(lines[idx]).matchAll(/\\d{1,5}/g), (match) => Number(match[0]));
@@ -2905,7 +2946,7 @@
                 });
                 for (const [group, groupItems] of numericGroups) {
                     if (groupItems.length < 2) {
-                        if (group !== 'SPECIAL' && group !== 'SHARP' && !discoveredTitleIndices.has(groupItems[0].idx)) {
+                        if (group !== 'SPECIAL' && group !== 'SHARP' && !sequenceNumbers.has(groupItems[0].idx) && !discoveredTitleIndices.has(groupItems[0].idx)) {
                             orphanNumericItems.push({ ...groupItems[0], group });
                             lineData[groupItems[0].idx] = null;
                         }
@@ -2922,7 +2963,21 @@
                             bestColumn = column;
                         }
                     }
-                    const keep = bestSequence.length >= 2 ? new Set(bestSequence.map((item) => item.idx)) : new Set();
+                    const keep = new Set(groupItems.filter((item) => sequenceNumbers.has(item.idx)).map((item) => item.idx));
+                    if (bestSequence.length >= 2) bestSequence.forEach((item) => keep.add(item.idx));
+                    const partGroups = new Map();
+                    for (const item of groupItems) {
+                        const text = this.normalizeLine(lines[item.idx]);
+                        const partMatch = text.match(TRAILING_PART_PATTERN);
+                        if (!partMatch) continue;
+                        const key = text.slice(0, partMatch.index).trim();
+                        if (!partGroups.has(key)) partGroups.set(key, []);
+                        partGroups.get(key).push({ item, number: Number(partMatch[1]) });
+                    }
+                    for (const parts of partGroups.values()) {
+                        const indexes = getTitleSequenceIndexes(parts.map((part) => part.number));
+                        if (indexes.length >= 2) indexes.forEach((index) => keep.add(parts[index].item.idx));
+                    }
                     if (bestSequence.length >= 2 && bestColumn !== -1) {
                         for (const item of bestSequence) sequenceNumbers.set(item.idx, item.numbers[bestColumn]);
                     }
@@ -3115,7 +3170,8 @@
                     if (!finalIndices.has(item.idx)) continue;
 
                     if (item.num !== -1) {
-                        const chapterKey = (useMultiToc ? item.group + ':' : '') + item.num;
+                        const part = item.t.match(TRAILING_PART_PATTERN)?.[1];
+                        const chapterKey = (useMultiToc ? item.group + ':' : '') + item.num + (part ? ':' + part : '');
                         if (seenChapterKeys.has(chapterKey)) continue;
                         seenChapterKeys.add(chapterKey);
                     }
@@ -3353,6 +3409,7 @@
     async function validateFileById(id) {
         const item = store.state.files.find((file) => file.id === id);
         if (!item) return;
+        store.dispatch({ type: 'UPDATE_FILE_VALIDITY', payload: { id, isValid: 'none' } });
         const text = await readFileText(item.file, item.encoding);
         parserWorker.postMessage({
             type: 'VALIDATE',

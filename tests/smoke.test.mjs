@@ -43,6 +43,12 @@ function loadEncodingDetector() {
     return Function(`return (${source});`)();
 }
 
+function loadFileReader() {
+    const source = html.match(/async function readFileText[\s\S]*?\n    }\s*\n\s*function updatePreviewCopyButtonState/)[0]
+        .replace(/\s*function updatePreviewCopyButtonState[\s\S]*$/, '');
+    return Function(`${source}; return readFileText;`)();
+}
+
 test('encoding detection prefers valid UTF-8 and recognizes short CP949 Korean text', () => {
     const detectEncoding = loadEncodingDetector();
     const utf8 = new TextEncoder().encode('옥션 하우스').buffer;
@@ -51,6 +57,23 @@ test('encoding detection prefers valid UTF-8 and recognizes short CP949 Korean t
 
     assert.equal(detectEncoding(utf8, misleadingDetector), 'UTF-8');
     assert.equal(detectEncoding(cp949, misleadingDetector), 'CP949');
+});
+
+test('file reading recovers when UTF-8 and CP949 sampling picks the wrong encoding', async () => {
+    const readFileText = loadFileReader();
+    const bytes = new Uint8Array([0xBF, 0xC1, 0xBC, 0xC7, 0x20, 0xC7, 0xCF, 0xBF, 0xEC, 0xBD, 0xBA]);
+    const asFile = (content) => ({
+        slice(start = 0, end = bytes.length) {
+            const chunk = content.slice(start, end);
+            return { arrayBuffer: async () => chunk.buffer };
+        },
+        arrayBuffer: async () => content.buffer
+    });
+
+    assert.equal(await readFileText(asFile(bytes), 'UTF-8'), '옥션 하우스');
+
+    const utf8 = new TextEncoder().encode('#1. 오늘은 우리가 함께 걷는다');
+    assert.equal(await readFileText(asFile(utf8), 'CP949'), '#1. 오늘은 우리가 함께 걷는다');
 });
 
 test('parser detects sequential Korean chapter titles', async () => {
@@ -91,6 +114,32 @@ test('Korean chapter numbers at the end of a title continue the same sequence', 
         } });
 
         assert.deepEqual(Array.from(messages[0].payload.resultLines), ['44화. 어쩌구', '스트라이커 45화']);
+    }
+});
+
+test('wrapped hash-prefixed repeated chapters keep sequential parenthesized parts', async () => {
+    const content = '105장 이전 이야기\n\n본문\n\n# 106장 하북성으로 (1) #\n\n본문\n\n# 106장 하북성으로 (2) #\n\n본문\n\n107장 다음 이야기';
+
+    for (const useMultiToc of [false, true]) {
+        const { context, messages } = loadWorker();
+        await context.self.onmessage({ data: {
+            type: 'PREVIEW_PARSER',
+            payload: {
+                requestId: 1,
+                fileName: 'sample.txt',
+                text: content,
+                userRegex: defaultTitleRegex,
+                preserveCustomMatches: false,
+                useMultiToc
+            }
+        } });
+
+        assert.deepEqual(Array.from(messages[0].payload.resultItems, (item) => item.text), [
+            '105장 이전 이야기',
+            '# 106장 하북성으로 (1) #',
+            '# 106장 하북성으로 (2) #',
+            '107장 다음 이야기'
+        ]);
     }
 });
 
@@ -412,6 +461,26 @@ test('authors notes are excluded while afterwords remain in the TOC', async () =
             '2화 계속'
         ]);
     }
+});
+
+test('hash-prefixed special chapter titles are detected without admitting author notes', async () => {
+    const { context, messages } = loadWorker();
+    await context.self.onmessage({ data: {
+        type: 'PREVIEW_PARSER',
+        payload: {
+            requestId: 1,
+            fileName: 'sample.txt',
+            text: '# 종장 (1)\n\n본문\n\n＃ 서장 (2)\n\n# 작가의 말',
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: false
+        }
+    } });
+
+    assert.deepEqual(Array.from(messages[0].payload.resultItems, (item) => item.text), [
+        '# 종장 (1)',
+        '＃ 서장 (2)'
+    ]);
 });
 
 test('automatic discovery converts unknown sequential title formats', async () => {
@@ -1327,6 +1396,15 @@ test('file-table clicks do not reopen the picker during a row rerender', () => {
         composedPath() { return [{}, {}]; }
     });
     assert.equal(pickerClicks, 1);
+});
+
+test('file rows show pending title detection as analyzing', () => {
+    const renderList = html.match(/function renderList[\s\S]*?(?=\n\s*async function readClipboardImage)/)[0];
+    const validateFile = html.match(/async function validateFileById[\s\S]*?(?=\n\s*async function validateFiles)/)[0];
+
+    assert.match(renderList, /isDetecting \? 'previewLoading' : 'tablePreview'/);
+    assert.match(renderList, /detectBtn\.disabled = !canPreview \|\| isDetecting/);
+    assert.match(validateFile, /UPDATE_FILE_VALIDITY[\s\S]*isValid: 'none'/);
 });
 
 test('EPUB metadata stays consistent and long chapters are split', async () => {
