@@ -2511,6 +2511,7 @@
         importScripts("https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js");
 
         const BRACKET_TITLE_PATTERN = /^[<【〔\\[(]\\s*(?:(?:(?:외전|프롤로그|에필로그)\\s*)?(?:제\\s*)?\\d+\\s*[화회장막편부수]|(?:Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\.?\\s*\\d+|(?:프롤로그|에필로그|외전|후기|공지|작가(?:의\\s*말)?|자기\\s*소개|서장|종장|프로필)|\\d{1,5})(?:\\s*[-:.·]\\s*[^>】〕\\]\\)〉》」』]{1,20})?\\s*[>】〕\\]\\)〉》」』]$/i;
+        const BRACKET_SUFFIX_TITLE_PATTERN = /^(?:\\.{2,3}\\s*)?[<【〔\\[(〈《「『#＃]\\s*[^\\r\\n]{0,59}\\S\\s*-\\s*\\[(?:\\d{1,5}|서장|종장|프롤로그|에필로그|외전)\\](?:\\s+수정본)?\\s*[>】〕\\]\\)〉》」』#＃]$/i;
         const COVER_TYPES = {
             'image/jpeg': { file: 'cover.jpg', media: 'image/jpeg' },
             'image/png': { file: 'cover.png', media: 'image/png' },
@@ -2529,12 +2530,13 @@
                 /^\\d+[.)](?!\\d)/,
                 /^\\[\\d+\\]/,
                 BRACKET_TITLE_PATTERN,
+                BRACKET_SUFFIX_TITLE_PATTERN,
             ],
             sentenceSuffixPattern: /[다요네데지음니까야라자고대군걸죠셔가냐어워확정예정발표출시전망돌입상승하락고][.?!~"”'’\\s,…·:;>\\]】〕〉》」』]*$/,
             chapterSuffixPattern: /\\d+\\s*[화회장막편부수](?:[이가을를은는에로와과의]|에서|으로|부터|까지|쯤|정도|분량|라는|란|만|도|면|아닌|인가|일까|인지)/,
             bracketOpenPattern: /^[<【〔\\[(]/,
             bracketClosePattern: /[>】〕\\]\\)〉》」』]/,
-            bracketTitlePattern: BRACKET_TITLE_PATTERN,
+            bracketTitlePatterns: [BRACKET_TITLE_PATTERN, BRACKET_SUFFIX_TITLE_PATTERN],
             quotedStartPattern: /^[-\u2014~]?\\s*["'”’「『“‘]/,
             finalDotPattern: /[.?!]$/,
             finalPunctuationPattern: /[.,!?;~]/,
@@ -2546,6 +2548,7 @@
                 { group: 'KOR_SUFFIX', test: (t) => t.match(/^[^.!?。！？]{1,50}\\s+(?:제\\s*)?\\d+\\s*([화회장막편부수])\\.?$/), resolve: (_, match) => 'KOR_SUFFIX_' + match[1] },
                 { group: 'ENG', test: (t) => t.match(/^(Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\.?\\s*\\d+/i), resolve: (_, match) => 'ENG_' + match[1].toUpperCase() },
                 { group: 'SPECIAL', test: (t) => /^(?:[<【〔\\[(]\\s*)?(?:[#＃]\\s*)?(?:프롤로그|에필로그|외전|후기|공지|작가의\\s*말|서장|종장|프로필)(?:\\s*[>】〕\\])〉》」』])?(?=$|\\s|\\d|[:.\\-])/.test(t) && !/[.?!。！？]$/.test(t) },
+                { group: 'BRACKET_SUFFIX', test: (t) => BRACKET_SUFFIX_TITLE_PATTERN.test(t) },
                 { group: 'BRACKET', test: (t) => BRACKET_TITLE_PATTERN.test(t) },
                 { group: 'SHARP', test: (t) => /^[#＃]\\s*\\d+/.test(t) },
                 { group: 'NUMBER', test: (t) => /^\\d+[-_.]\\d+(?:\\s|$)/.test(t) || /^\\d+[.)](?!\\d)/.test(t) || /^0\\d{1,3}(?:[.)]?\\s*$)/.test(t) || /^\\[\\d+\\]/.test(t) || /^\\d{1,5}$/.test(t) },
@@ -2553,7 +2556,7 @@
             bannedRegex: /((?:\\d+\\.\\d+)|(?:\\d+[\\/\\\\]\\d+))\\s*(?:캐럿|만|억|천|밀리언|빌리언|트릴리언|달러|원|퍼센트|%|미터|km|m|cm|mm|kg|g|초|분|시간|배|위|군|점|승|무|패|등급)|(?:총|약|단|무려|겨우|고작|단지)\\s*\\d+\\s*[장회화편부]|\\d+\\s*(?:년|월|일|시|분|초|주년|세기|년대|광복절|삼일절|기념일|명절|행사|당일|살|세|차|퍼센트|%|배|개|명|마리|번|회분|곱하기|층)/i
         };
 
-        const cleanLine = (line) => line.replace(/[\\u200B-\\u200D\\uFEFF]/g, '').trim();
+        const cleanLine = (line) => line.replace(/(?:&#x20;|&#32;|&nbsp;)/gi, ' ').replace(/[\\u200B-\\u200D\\uFEFF]/g, '').trim();
         const matchesAny = (patterns, text) => patterns.some((pattern) => pattern.test(text));
         const TRAILING_PART_PATTERN = /\\s*[\\(（]\\s*(\\d{1,5})\\s*[\\)）]\\s*[#＃>】〕\\]〉》」』"'”’]*\\s*$/;
         const MAX_ISOLATED_TITLE_GAP = 10; // ponytail: raise only if real files skip more chapter numbers.
@@ -2745,7 +2748,7 @@
                 if (this.rules.endMarkerPattern.test(text)) return true;
                 if (this.rules.profileRowPattern.test(text)) return true;
                 const isBracketed = this.rules.bracketOpenPattern.test(text) && this.rules.bracketClosePattern.test(text);
-                const isBracketTitle = this.rules.bracketTitlePattern.test(text);
+                const isBracketTitle = matchesAny(this.rules.bracketTitlePatterns, text);
 
                 if (isBracketed && !isBracketTitle) return true;
 
@@ -2789,13 +2792,13 @@
 
             getGroupTier(group) {
                 if (group.startsWith('KOR') || group.startsWith('ENG')) return 3;
-                if (group === 'BRACKET' || group === 'SHARP') return 2;
+                if (group === 'BRACKET' || group === 'BRACKET_SUFFIX' || group === 'SHARP') return 2;
                 if (group === 'NUMBER') return 1;
                 return 0;
             }
 
             buildActiveGroups(groupCounts, firstSeen, useMultiToc, expectedRange, groupRanges) {
-                const activeGroups = new Set(['SPECIAL']);
+                const activeGroups = new Set(['SPECIAL', 'BRACKET_SUFFIX']);
                 if (this.preserveCustomMatches && groupCounts['CUSTOM'] > 0) return new Set(['CUSTOM']);
 
                 if (useMultiToc) {
@@ -2945,6 +2948,7 @@
                     numericGroups.get(group).push({ idx, numbers });
                 });
                 for (const [group, groupItems] of numericGroups) {
+                    if (group === 'BRACKET_SUFFIX') continue;
                     if (groupItems.length < 2) {
                         if (group !== 'SPECIAL' && group !== 'SHARP' && !sequenceNumbers.has(groupItems[0].idx) && !discoveredTitleIndices.has(groupItems[0].idx)) {
                             orphanNumericItems.push({ ...groupItems[0], group });
@@ -3105,7 +3109,7 @@
                     let t = this.normalizeLine(lines[idx]);
                     let num = sequenceNumbers.has(idx) ? sequenceNumbers.get(idx) : this.getChapterNum(t);
                     let group = lineData[idx];
-                    let isAnchor = sequenceNumbers.has(idx) || (group === 'CUSTOM' && this.preserveCustomMatches) || group.startsWith('KOR') || group.startsWith('ENG') || group.startsWith('AUTO_') || group === 'SHARP';
+                    let isAnchor = sequenceNumbers.has(idx) || (group === 'CUSTOM' && this.preserveCustomMatches) || group.startsWith('KOR') || group.startsWith('ENG') || group.startsWith('AUTO_') || group === 'SHARP' || group === 'BRACKET_SUFFIX';
                     return { idx, t, num, group, isAnchor };
                 });
 
@@ -3171,7 +3175,9 @@
 
                     if (item.num !== -1) {
                         const part = item.t.match(TRAILING_PART_PATTERN)?.[1];
-                        const chapterKey = (useMultiToc ? item.group + ':' : '') + item.num + (part ? ':' + part : '');
+                        const chapterKey = item.group === 'BRACKET_SUFFIX'
+                            ? item.group + ':' + item.t
+                            : (useMultiToc ? item.group + ':' : '') + item.num + (part ? ':' + part : '');
                         if (seenChapterKeys.has(chapterKey)) continue;
                         seenChapterKeys.add(chapterKey);
                     }

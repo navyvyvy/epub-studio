@@ -143,6 +143,90 @@ test('wrapped hash-prefixed repeated chapters keep sequential parenthesized part
     }
 });
 
+test('angle-wrapped titles allow a trailing bracketed chapter marker', async () => {
+    const longGap = Array.from({ length: 200 }, (_, index) => ['', '   ', '\t', '&#x20;'][index % 4]).join('\r\n');
+    const content = '< 집 - [서장] >\n본문\n< 위층 복도 - [1] >\n본문\n< 독방 - [3] >&#x20;\r\n' + longGap + '\r\n< 지하 창고 - [8] >';
+
+    for (const useMultiToc of [false, true]) {
+        const { context, messages } = loadWorker();
+        await context.self.onmessage({ data: {
+            type: 'TEST_PARSER',
+            payload: { text: content, userRegex: defaultTitleRegex, preserveCustomMatches: false, useMultiToc }
+        } });
+
+        assert.deepEqual(Array.from(messages[0].payload.resultLines), [
+            '< 집 - [서장] >',
+            '< 위층 복도 - [1] >',
+            '< 독방 - [3] >&#x20;',
+            '< 지하 창고 - [8] >'
+        ]);
+    }
+
+    const singleton = loadWorker();
+    await singleton.context.self.onmessage({ data: {
+        type: 'TEST_PARSER',
+        payload: { text: '< 소환전(召喚殿) - [1] >\n본문의 [1] 표시는 제목이 아니다.', userRegex: defaultTitleRegex, useMultiToc: false }
+    } });
+    assert.deepEqual(Array.from(singleton.messages[0].payload.resultLines), ['< 소환전(召喚殿) - [1] >']);
+
+    const afterEndMarker = loadWorker();
+    await afterEndMarker.context.self.onmessage({ data: {
+        type: 'TEST_PARSER',
+        payload: { text: longGap + '\r\n< 독방 - [2] > 끝\r\nⓒ 검미성\r\n< 독방 - [3] >&#x20;\r\n' + longGap, userRegex: defaultTitleRegex, useMultiToc: false }
+    } });
+    assert.deepEqual(Array.from(afterEndMarker.messages[0].payload.resultLines), ['< 독방 - [3] >&#x20;']);
+
+    const mixedPatterns = loadWorker();
+    await mixedPatterns.context.self.onmessage({ data: {
+        type: 'TEST_PARSER',
+        payload: {
+            text: '1화 시작\n\n2화 계속\n\n3화 다음\n\n< 소환전(召喚殿) - [1] >\n\n< 독방 - [1] > 끝\nⓒ 검미성\n< 독방 - [1] >\n\n< 성밖 - [1] >',
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: false
+        }
+    } });
+    assert.deepEqual(Array.from(mixedPatterns.messages[0].payload.resultLines), [
+        '1화 시작',
+        '2화 계속',
+        '3화 다음',
+        '< 소환전(召喚殿) - [1] >',
+        '< 독방 - [1] >',
+        '< 성밖 - [1] >'
+    ]);
+
+    const revisedTitles = loadWorker();
+    await revisedTitles.context.self.onmessage({ data: {
+        type: 'TEST_PARSER',
+        payload: {
+            text: '< 아스가르드 - [1] 수정본 >\n본문\n< 미드가르드 - [종장] 수정본 >',
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: false
+        }
+    } });
+    assert.deepEqual(Array.from(revisedTitles.messages[0].payload.resultLines), [
+        '< 아스가르드 - [1] 수정본 >',
+        '< 미드가르드 - [종장] 수정본 >'
+    ]);
+
+    const alternateWrappers = loadWorker();
+    await alternateWrappers.context.self.onmessage({ data: {
+        type: 'TEST_PARSER',
+        payload: {
+            text: '.. # 대학 - [서장] #\n본문\n＃ 강의실 - [1] ＃\n본문\n【 운동장 - [종장] 】',
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: false
+        }
+    } });
+    assert.deepEqual(Array.from(alternateWrappers.messages[0].payload.resultLines), [
+        '.. # 대학 - [서장] #',
+        '＃ 강의실 - [1] ＃',
+        '【 운동장 - [종장] 】'
+    ]);
+});
+
 test('decorated Korean chapter titles keep their leading symbol', async () => {
     const content = [
         '◈ 1화 제국의 수도로 (1)',
