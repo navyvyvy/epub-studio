@@ -225,6 +225,21 @@ test('angle-wrapped titles allow a trailing bracketed chapter marker', async () 
         '＃ 강의실 - [1] ＃',
         '【 운동장 - [종장] 】'
     ]);
+
+    const numberedWrappers = loadWorker();
+    await numberedWrappers.context.self.onmessage({ data: {
+        type: 'TEST_PARSER',
+        payload: {
+            text: '< 006. 들린다 > 끝\nⓒ 나일함\n=====\n\n< 007. 안 부르는 게 아니라, 못 부르는 것 >\n\n< 016. 오디션의 결과 > 끝\nⓒ 나일함\n=====\n\n< 017. 내가 그렇게 만들 생각이다 >',
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: false
+        }
+    } });
+    assert.deepEqual(Array.from(numberedWrappers.messages[0].payload.resultLines), [
+        '< 007. 안 부르는 게 아니라, 못 부르는 것 >',
+        '< 017. 내가 그렇게 만들 생각이다 >'
+    ]);
 });
 
 test('decorated Korean chapter titles keep their leading symbol', async () => {
@@ -384,7 +399,8 @@ test('numbered prose between consecutive titles is not a title candidate', async
         '7위계 고급 마법.',
         '◈ 34화 진실을 향한 발걸음 (3)',
         '8위계 오리지널 마법.',
-        '◈ 35화 진실을 향한 발걸음 (4)'
+        '◈ 35화 진실을 향한 발걸음 (4)',
+        '곧바로 3화. 그래, 4화. 5화 때 6.8프로라는 대박을 했을 때도 놀라긴 했지만, 이 정도는 아니었는데······.'
     ].join('\n\n');
 
     for (const useMultiToc of [false, true]) {
@@ -406,6 +422,41 @@ test('numbered prose between consecutive titles is not a title candidate', async
             '◈ 34화 진실을 향한 발걸음 (3)',
             '◈ 35화 진실을 향한 발걸음 (4)'
         ]);
+    }
+});
+
+test('chapter references in consecutive prose sentences stay out of the TOC', async () => {
+    const sentence = '곧바로 3화. 그래, 4화. 5화 때 6.8프로라는 대박을 했을 때도 놀라긴 했지만, 이 정도는 아니었는데······.';
+    const splitSentence = '곧바로 3화.\n\n그래, 4화.\n\n5화 때 6.8프로라는 대박을 했을 때도 놀라긴 했지만, 이 정도는 아니었는데······.';
+
+    for (const text of [sentence, splitSentence]) {
+        const { context, messages } = loadWorker();
+        await context.self.onmessage({ data: {
+            type: 'TEST_PARSER',
+            payload: { text, userRegex: defaultTitleRegex, preserveCustomMatches: false, useMultiToc: false }
+        } });
+        assert.deepEqual(Array.from(messages[0].payload.resultLines), []);
+    }
+});
+
+test('timecodes stay out of the TOC', async () => {
+    const content = '1화 시작\n\n[00:00:01]\n\n[00:00:02] 대사\n\n00:00:03,500 --> 00:00:05,000\n\n2화 계속';
+    const timecodesOnly = '[00:00:01]\n\n[00:00:02]\n\n[00:00:03]';
+
+    for (const useMultiToc of [false, true]) {
+        const mixed = loadWorker();
+        await mixed.context.self.onmessage({ data: {
+            type: 'TEST_PARSER',
+            payload: { text: content, userRegex: defaultTitleRegex, preserveCustomMatches: false, useMultiToc }
+        } });
+        assert.deepEqual(Array.from(mixed.messages[0].payload.resultLines), ['1화 시작', '2화 계속']);
+
+        const standalone = loadWorker();
+        await standalone.context.self.onmessage({ data: {
+            type: 'TEST_PARSER',
+            payload: { text: timecodesOnly, userRegex: defaultTitleRegex, preserveCustomMatches: false, useMultiToc }
+        } });
+        assert.deepEqual(Array.from(standalone.messages[0].payload.resultLines), []);
     }
 });
 
@@ -1146,7 +1197,7 @@ test('automatic discovery rejects non-sequential and non-title lines', async () 
     assert.equal(messages[0].payload.resultItems.length, 0);
 });
 
-test('parenthesized number suffixes are offered as a selectable multi-pattern fallback', async () => {
+test('parenthesized number suffixes are offered as a selectable fallback', async () => {
     const content = '내집 마련의 꿈(1)\n본문\n내집 마련의 꿈(2)';
 
     for (const useMultiToc of [false, true]) {
@@ -1164,10 +1215,10 @@ test('parenthesized number suffixes are offered as a selectable multi-pattern fa
         } });
 
         assert.deepEqual(Array.from(messages[0].payload.resultItems), []);
-        assert.deepEqual(
-            Array.from(messages[0].payload.fallbackItems || [], (item) => item.text),
-            useMultiToc ? ['내집 마련의 꿈(1)', '내집 마련의 꿈(2)'] : []
-        );
+        assert.deepEqual(Array.from(messages[0].payload.fallbackItems || [], (item) => item.text), [
+            '내집 마련의 꿈(1)',
+            '내집 마련의 꿈(2)'
+        ]);
     }
 
     const singleton = loadWorker();
@@ -1197,6 +1248,45 @@ test('parenthesized number suffixes are offered as a selectable multi-pattern fa
         }
     } });
     assert.deepEqual(Array.from(prose.messages[0].payload.fallbackItems || []), []);
+});
+
+test('different titles sharing a parenthesized suffix are offered together', async () => {
+    const titles = ['콘티가 움직이더라 (1)', '비료를 거름삼아 (1)'];
+    for (const useMultiToc of [false, true]) {
+        const { context, messages } = loadWorker();
+        await context.self.onmessage({ data: {
+            type: 'PREVIEW_PARSER',
+            payload: {
+                requestId: 1,
+                fileName: 'sample.txt',
+                text: titles.join('\n본문\n'),
+                userRegex: defaultTitleRegex,
+                preserveCustomMatches: false,
+                useMultiToc
+            }
+        } });
+
+        assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), titles);
+    }
+});
+
+test('a clearly dominant alternative TOC pattern becomes the main pattern', async () => {
+    const regularTitles = ['제1화 시작', '제2화 계속'];
+    const alternativeTitles = Array.from({ length: 5 }, (_, index) => `서로 다른 제목 ${index + 1}(1)`);
+    const { context, messages } = loadWorker();
+    await context.self.onmessage({ data: {
+        type: 'PREVIEW_PARSER',
+        payload: {
+            requestId: 1,
+            fileName: 'sample.txt',
+            text: [...regularTitles, ...alternativeTitles].join('\n본문\n'),
+            userRegex: defaultTitleRegex,
+            preserveCustomMatches: false,
+            useMultiToc: false
+        }
+    } });
+
+    assert.deepEqual(Array.from(messages[0].payload.resultItems, (item) => item.text), alternativeTitles);
 });
 
 test('parenthesized fallback allows a leading quote decoration', async () => {
