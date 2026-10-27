@@ -1129,6 +1129,11 @@
                 min-height: 0;
             }
 
+            #features {
+                height: auto;
+                min-height: calc(100dvh - var(--snap-offset));
+            }
+
             #features .feature-grid,
             .story-grid,
             .privacy-layout,
@@ -1140,6 +1145,10 @@
             .privacy-accordion {
                 grid-auto-rows: minmax(0, 1fr);
                 min-height: 0;
+            }
+
+            #features .feature-grid {
+                grid-auto-rows: minmax(min-content, 1fr);
             }
 
             .feature-card,
@@ -1573,14 +1582,17 @@
             .file-table {
                 min-width: 560px;
             }
+        }
 
-            .table-scroll-box {
-                max-height: 170px;
-            }
+        .home-page .container:has(.regex-area.open) {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: auto auto minmax(120px, 1fr);
+            min-height: min-content;
         }
 
         .home-page .container:has(.regex-area.open) .file-list-area {
-            min-height: 72px;
+            min-height: 0;
         }
 
         .home-page .contact-inner {
