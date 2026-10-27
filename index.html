@@ -1737,7 +1737,7 @@
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>목차 추출</h3>
-                    <p>번호가 순서대로 이어지는 제목을 찾고, 파일명에 1-200 같은 범위가 있으면 패턴 선택에 참고합니다.</p>
+                    <p>회차와 괄호 번호의 흐름을 함께 확인하고, 파일명에 1-200 같은 범위가 있으면 패턴 선택에 참고합니다.</p>
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>목차 미리보기</h3>
@@ -2594,6 +2594,22 @@
             }
             return [0];
         };
+        const getChapterPartSequenceIndexes = (parts) => {
+            // Sort only the numbering evidence; keep source indexes for the original reading order.
+            const ordered = parts.map((part, index) => ({ ...part, index }))
+                .sort((a, b) => a.chapter - b.chapter || a.number - b.number);
+            for (let start = 0; start < ordered.length; start++) {
+                const indexes = [ordered[start].index];
+                let previous = ordered[start];
+                for (let i = start + 1; i < ordered.length; i++) {
+                    if (ordered[i].number !== previous.number + 1 || ordered[i].chapter !== previous.chapter + 1) continue;
+                    indexes.push(ordered[i].index);
+                    previous = ordered[i];
+                }
+                if (indexes.length >= 2) return indexes;
+            }
+            return [];
+        };
         const getContinuousSequenceIndexes = (items) => {
             let best = [];
             for (let start = 0; start < items.length; start++) {
@@ -2670,6 +2686,8 @@
             const candidates = lines.flatMap((line, idx) => {
                 const text = cleanLine(line);
                 if (parser.rules.endMarkerPattern.test(text)) return [];
+                const group = parser.classifyLine(text);
+                if (group?.startsWith('KOR') || group?.startsWith('ENG') || group === 'SHARP') return [];
                 const numberMatch = text.match(numberPattern);
                 if (!numberMatch) return [];
                 if (parser.rules.profileRowPattern.test(text)) return [];
@@ -2985,6 +3003,19 @@
                         }
                         continue;
                     }
+                    const chapterPartGroups = new Map();
+                    for (const item of groupItems) {
+                        const text = this.normalizeLine(lines[item.idx]);
+                        if (!this.classifyLine(text)?.startsWith('KOR')) continue;
+                        const partMatch = text.match(TRAILING_PART_PATTERN);
+                        const key = (partMatch ? text.slice(0, partMatch.index) : text)
+                            .replace(this.rules.titleNoisePattern, (match) => '{chapter}' + match.slice(-1)).trim();
+                        if (!chapterPartGroups.has(key)) chapterPartGroups.set(key, []);
+                        chapterPartGroups.get(key).push({ item, number: partMatch ? Number(partMatch[1]) : 1, chapter: this.getChapterNum(text) });
+                    }
+                    const chapterPartSequences = Array.from(chapterPartGroups.values(), (parts) =>
+                        getChapterPartSequenceIndexes(parts).map((index) => parts[index])
+                    );
                     let bestSequence = [];
                     let bestColumn = -1;
                     const columnCount = Math.max(...groupItems.map((item) => item.numbers.length));
@@ -3013,6 +3044,13 @@
                     }
                     if (bestSequence.length >= 2 && bestColumn !== -1) {
                         for (const item of bestSequence) sequenceNumbers.set(item.idx, item.numbers[bestColumn]);
+                    }
+                    for (const parts of chapterPartSequences) {
+                        if (!parts.some((part) => keep.has(part.item.idx))) continue;
+                        for (const part of parts) {
+                            keep.add(part.item.idx);
+                            sequenceNumbers.set(part.item.idx, part.chapter);
+                        }
                     }
                     for (const item of groupItems) {
                         if (!keep.has(item.idx) && !discoveredTitleIndices.has(item.idx)) {

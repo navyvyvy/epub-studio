@@ -143,6 +143,67 @@ test('wrapped hash-prefixed repeated chapters keep sequential parenthesized part
     }
 });
 
+test('matching chapter and part sequences recover out-of-order titles without reordering the text', async () => {
+    const titles = ['267화. 정파', '268화. 정파(2)', '269화. 정파(3)', '270화. 정파(4)'];
+    const earlierTitles = ['264화. 이전 제목', '265화. 이전 제목(2)', '266화. 이전 제목(3)'];
+    const outOfOrder = [...earlierTitles, titles[0], titles[3], titles[2], titles[1], '271화. 정파(5)'];
+    const cases = [
+        { lines: titles, expected: titles },
+        { lines: outOfOrder, expected: outOfOrder },
+        {
+            lines: [...earlierTitles, titles[0], '700화. 정파(3)', '701화. 정파(4)', titles[3], titles[2], titles[1], '271화. 정파(5)'],
+            expected: outOfOrder
+        }
+    ];
+
+    for (const { lines, expected } of cases) {
+        for (const useMultiToc of [false, true]) {
+            const { context, messages } = loadWorker();
+            const text = lines.join('\n\n\n');
+            const options = { fileName: 'sample.txt', userRegex: defaultTitleRegex, preserveCustomMatches: false, useMultiToc };
+            await context.self.onmessage({ data: {
+                type: 'PREVIEW_PARSER',
+                payload: { ...options, text }
+            } });
+
+            assert.deepEqual(Array.from(messages[0].payload.resultItems, (item) => item.text), expected);
+            assert.deepEqual(Array.from(messages[0].payload.fallbackItems), []);
+
+            await context.self.onmessage({ data: {
+                type: 'CONVERT',
+                payload: { ...options, id: 'chapter-parts', title: 'Chapter Parts', content: text, useAutoToc: true, useTrim: true, language: 'ko' }
+            } });
+            const ncx = messages[1].payload.blob.files.get('OEBPS/toc.ncx');
+            assert.deepEqual(Array.from(ncx.matchAll(/<navLabel><text>(.*?)<\/text><\/navLabel>/g), (match) => match[1]), expected);
+        }
+    }
+});
+
+test('part numbers alone do not override the expected chapter sequence', async () => {
+    const regularTitles = ['264화. 이전 제목', '265화. 이전 제목(2)', '266화. 다음 제목'];
+    const unrelatedRuns = [
+        ['267화. 정파(1)', '700화. 정파(2)', '900화. 정파(3)'],
+        ['267화. 정파(4)'],
+        ['700화. 정파(1)', '701화. 정파(2)', '702화. 정파(3)']
+    ];
+    for (const run of unrelatedRuns) {
+        for (const useMultiToc of [false, true]) {
+            const { context, messages } = loadWorker();
+            await context.self.onmessage({ data: {
+                type: 'PREVIEW_PARSER',
+                payload: {
+                    text: [regularTitles[0], regularTitles[1], ...run, regularTitles[2]].join('\n\n'),
+                    userRegex: defaultTitleRegex,
+                    preserveCustomMatches: false,
+                    useMultiToc
+                }
+            } });
+            assert.deepEqual(Array.from(messages[0].payload.resultItems, (item) => item.text), regularTitles);
+            assert.deepEqual(Array.from(messages[0].payload.fallbackItems), []);
+        }
+    }
+});
+
 test('angle-wrapped titles allow a trailing bracketed chapter marker', async () => {
     const longGap = Array.from({ length: 200 }, (_, index) => ['', '   ', '\t', '&#x20;'][index % 4]).join('\r\n');
     const content = '< 집 - [서장] >\n본문\n< 위층 복도 - [1] >\n본문\n< 독방 - [3] >&#x20;\r\n' + longGap + '\r\n< 지하 창고 - [8] >';
