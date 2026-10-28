@@ -1749,11 +1749,11 @@
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>목차 추출</h3>
-                    <p>회차와 괄호 번호의 흐름을 함께 확인하고, 파일명에 1-200 같은 범위가 있으면 패턴 선택에 참고합니다.</p>
+                    <p>파일 전체에서 유효한 제목이 가장 많은 형식을 고릅니다. 회차·괄호 번호의 흐름을 확인하고, 시각·날짜 범위는 제외합니다.</p>
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>목차 미리보기</h3>
-                    <p>감지된 목차를 확인하고 필요 없는 줄은 뺄 수 있습니다. 같은 다른 형식이 훨씬 많으면 주 목차로 선택하고, 그 외에는 별도 후보로 보여줍니다.</p>
+                    <p>목차를 확인하고 필요 없는 줄은 뺄 수 있습니다. 다른 형식의 후보는 2개 이상 확인됐을 때만 보여주며, 직접 추가할 수 있습니다.</p>
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>표지 설정</h3>
@@ -2556,7 +2556,8 @@
             finalDotPattern: /[.?!]$/,
             finalPunctuationPattern: /[.,!?;~]/,
             endMarkerPattern: /끝\\s*$/,
-            timecodePattern: /^(?:[\\[【(]\\s*)?\\d{1,2}:\\d{2}:\\d{2}(?:[.,]\\d{1,3})?(?:\\s*[\\]】)])?(?:\\s|$)/,
+            timecodePattern: /^(?:[\\[【(]\\s*)?\\d{1,2}\\s*:\\s*\\d{2}(?:\\s*:\\s*\\d{2})?(?:[.,]\\d{1,3})?(?:\\s*[\\]】)])?(?:\\s|$)/,
+            dateRangePattern: /^(?:[\\[【(]\\s*)?\\d{4}\\s*[.\\/-]\\s*\\d{1,2}\\s*[.\\/-]\\s*\\d{1,2}\\s*\\.?\\s*[-~～]\\s*\\d{4}\\s*[.\\/-]\\s*\\d{1,2}\\s*[.\\/-]\\s*\\d{1,2}\\s*\\.?(?:\\s*[\\]】)])?(?:\\s|$)/,
             profileRowPattern: /^(?:[^|]{1,20}\\||[^:]{1,12}:)\\s*.+\\((?:18|19|20)\\d{2}\\)/,
             titleNoisePattern: /(?:제\\s*)?\\d+\\s*[화회장막편부수]/,
             groupMatchers: [
@@ -2695,11 +2696,12 @@
 
         const findParenthesizedTitleFallback = (lines, parser) => {
             const numberPattern = /\\s*[\\(（]\\s*(\\d{1,5})\\s*[\\)）]/;
+            const seenTexts = new Set();
             const candidates = lines.flatMap((line, idx) => {
                 const text = cleanLine(line);
                 if (parser.rules.endMarkerPattern.test(text)) return [];
                 const group = parser.classifyLine(text);
-                if (group?.startsWith('KOR') || group?.startsWith('ENG') || group === 'SHARP') return [];
+                if (group && group !== 'CUSTOM') return [];
                 const numberMatch = text.match(numberPattern);
                 if (!numberMatch) return [];
                 if (parser.rules.profileRowPattern.test(text)) return [];
@@ -2719,18 +2721,25 @@
                     .replace(/^\\s*[<【〔\\[]\\s*/, '')
                     .replace(/^\\s*\\[[^\\]]{1,30}\\]\\s*/, '')
                     .trim();
+                if (seenTexts.has(text)) return [];
+                seenTexts.add(text);
                 return [{
                     idx,
                     text,
                     key,
                     wrapped: isAngleWrapped || isQuoteWrapped,
+                    hasSubtitle: Boolean(trailing && !isEpisodeNote),
                     shouldSkip: parser.shouldSkipCandidate(normalizedTitle, parser.isStrongStart(normalizedTitle))
                 }];
             });
             const counts = candidates.reduce((map, item) => map.set(item.key, (map.get(item.key) || 0) + 1), new Map());
-            return candidates.flatMap((item) => {
+            const validCandidates = candidates.filter((item) => {
                 const repeated = counts.get(item.key) > 1;
-                if (item.shouldSkip && !item.wrapped && !repeated) return [];
+                return (!item.shouldSkip || item.wrapped || repeated) && (!item.hasSubtitle || repeated);
+            });
+            const formatCounts = validCandidates.reduce((map, item) => map.set(item.wrapped, (map.get(item.wrapped) || 0) + 1), new Map());
+            return validCandidates.flatMap((item) => {
+                if (formatCounts.get(item.wrapped) < 2 && counts.get(item.key) < 2) return [];
                 return [{
                     idx: item.idx,
                     text: item.text,
@@ -2741,44 +2750,20 @@
         };
 
         const applySelectedTitleFallback = (validIndices, lines, parser, payload) => {
-            const detectedIndices = new Set(validIndices);
-            const allFallbackItems = findParenthesizedTitleFallback(lines, parser);
-            const fallbackItems = allFallbackItems;
-            const fallbackGroups = new Map();
-            for (const item of allFallbackItems) {
-                if (detectedIndices.has(item.idx)) continue;
-                const format = item.wrapped ? 'WRAPPED' : 'PLAIN';
-                if (!fallbackGroups.has(format)) fallbackGroups.set(format, []);
-                fallbackGroups.get(format).push(item);
-            }
-            const dominantFallback = Array.from(fallbackGroups.values())
-                .reduce((best, items) => items.length > best.length ? items : best, []);
-            if (
-                !parser.preserveCustomMatches &&
-                detectedIndices.size >= 2 &&
-                dominantFallback.length >= detectedIndices.size * 2 &&
-                dominantFallback.length - detectedIndices.size >= 3
-            ) {
-                if (!payload.useMultiToc) {
-                    for (const idx of validIndices) {
-                        const group = parser.classifyLine(parser.normalizeLine(lines[idx]));
-                        if (group !== 'SPECIAL') validIndices.delete(idx);
-                    }
-                }
-                for (const item of dominantFallback) validIndices.add(item.idx);
-            }
+            const detectedTexts = new Set(Array.from(validIndices, (idx) => parser.normalizeLine(lines[idx])));
+            const fallbackItems = findParenthesizedTitleFallback(lines, parser);
             const anchoredKeys = new Set(fallbackItems
-                .filter((item) => detectedIndices.has(item.idx))
+                .filter((item) => detectedTexts.has(item.text))
                 .map((item) => item.key));
             for (const item of fallbackItems) {
-                if (anchoredKeys.has(item.key)) validIndices.add(item.idx);
+                if (anchoredKeys.has(item.key) && !detectedTexts.has(item.text)) validIndices.add(item.idx);
             }
             const selected = new Set(payload.selectedFallbackIndices || []);
             for (const item of fallbackItems) {
-                if (selected.has(item.idx)) validIndices.add(item.idx);
+                if (selected.has(item.idx) && !detectedTexts.has(item.text)) validIndices.add(item.idx);
             }
             return fallbackItems.filter((item) =>
-                !detectedIndices.has(item.idx) && (selected.has(item.idx) || !validIndices.has(item.idx))
+                !detectedTexts.has(item.text) && (selected.has(item.idx) || !validIndices.has(item.idx))
             );
         };
 
@@ -2803,6 +2788,7 @@
                 if (/^[<【〔\\[(]?\\s*(?:[#＃]\\s*)?작가의\\s*말\\s*[>】〕\\])〉》」』]?\\s*$/.test(text)) return true;
                 if (this.rules.endMarkerPattern.test(text)) return true;
                 if (this.rules.timecodePattern.test(text)) return true;
+                if (this.rules.dateRangePattern.test(text)) return true;
                 if (this.rules.profileRowPattern.test(text)) return true;
                 const isBracketed = this.rules.bracketOpenPattern.test(text) && this.rules.bracketClosePattern.test(text);
                 const isBracketTitle = matchesAny(this.rules.bracketTitlePatterns, text);
@@ -2857,15 +2843,8 @@
             }
 
             buildActiveGroups(groupCounts, firstSeen, useMultiToc, expectedRange, groupRanges) {
-                const activeGroups = new Set(['SPECIAL', 'BRACKET_SUFFIX']);
+                const activeGroups = new Set(['SPECIAL']);
                 if (this.preserveCustomMatches && groupCounts['CUSTOM'] > 0) return new Set(['CUSTOM']);
-
-                if (useMultiToc) {
-                    for (const [group, count] of Object.entries(groupCounts)) {
-                        if (group !== 'SPECIAL' && count >= 1) activeGroups.add(group);
-                    }
-                    return activeGroups;
-                }
 
                 let bestGroup = null;
                 let bestCount = -1;
@@ -2889,10 +2868,11 @@
                         (overlap === bestOverlap && rangeDistance < bestRangeDistance)
                     );
                     const sameRange = !expectedRange || (overlap === bestOverlap && rangeDistance === bestRangeDistance);
-                    if (betterRange || (sameRange && (
-                        count > bestCount ||
-                        (count === bestCount && seen < bestFirstSeen) ||
-                        (count === bestCount && seen === bestFirstSeen && tier > bestTier)
+                    if (count > bestCount || (count === bestCount && (
+                        betterRange || (sameRange && (
+                            seen < bestFirstSeen ||
+                            (seen === bestFirstSeen && tier > bestTier)
+                        ))
                     ))) {
                         bestCount = count;
                         bestTier = tier;
@@ -2903,6 +2883,11 @@
                     }
                 }
 
+                if (useMultiToc) {
+                    for (const group of Object.keys(groupCounts)) {
+                        if (!group.startsWith('FALLBACK_')) activeGroups.add(group);
+                    }
+                }
                 if (bestGroup) activeGroups.add(bestGroup);
                 return activeGroups;
             }
@@ -3159,31 +3144,12 @@
                     sequenceNumbers.delete(idx);
                 });
 
-                const groupCounts = {};
-                const firstSeen = {};
-                const groupRanges = {};
-                lineData.forEach((group, idx) => {
-                    if (!group) return;
-                    groupCounts[group] = (groupCounts[group] || 0) + 1;
-                    if (firstSeen[group] === undefined) firstSeen[group] = idx;
-                    const number = sequenceNumbers.has(idx) ? sequenceNumbers.get(idx) : this.getChapterNum(this.normalizeLine(lines[idx]));
-                    if (number !== -1) {
-                        const range = groupRanges[group] || { min: number, max: number };
-                        range.min = Math.min(range.min, number);
-                        range.max = Math.max(range.max, number);
-                        groupRanges[group] = range;
-                    }
-                });
-
-                // --- 2단계: 합격자 발표 ---
-                const activeGroups = this.buildActiveGroups(groupCounts, firstSeen, useMultiToc, getFilenameChapterRange(fileName), groupRanges);
-
                 const prelimIndices = [];
                 lineData.forEach((group, i) => {
-                    if (group && activeGroups.has(group)) prelimIndices.push(i);
+                    if (group) prelimIndices.push(i);
                 });
 
-                // --- 3단계: 샌드위치 필터 ---
+                // --- 2단계: 샌드위치 필터 ---
                 let items = prelimIndices.map(idx => {
                     let t = this.normalizeLine(lines[idx]);
                     let num = sequenceNumbers.has(idx) ? sequenceNumbers.get(idx) : this.getChapterNum(t);
@@ -3246,7 +3212,7 @@
                     }
                 }
 
-                const dedupedIndices = new Set();
+                const groupedItems = [];
                 const seenChapterKeys = new Set();
 
                 for (const item of items) {
@@ -3256,14 +3222,51 @@
                         const part = item.t.match(TRAILING_PART_PATTERN)?.[1];
                         const chapterKey = item.group === 'BRACKET_SUFFIX'
                             ? item.group + ':' + item.t
-                            : (useMultiToc ? item.group + ':' : '') + item.num + (part ? ':' + part : '');
+                            : item.group + ':' + item.num + (part ? ':' + part : '');
                         if (seenChapterKeys.has(chapterKey)) continue;
                         seenChapterKeys.add(chapterKey);
                     }
 
-                    dedupedIndices.add(item.idx);
+                    groupedItems.push(item);
                 }
 
+                if (!this.preserveCustomMatches && groupedItems.some((item) => item.group !== 'SPECIAL')) {
+                    const titleIndicesByText = new Map(groupedItems.map((item) => [item.t, item.idx]));
+                    for (const item of findParenthesizedTitleFallback(lines, this)) {
+                        groupedItems.push({ idx: titleIndicesByText.get(item.text) ?? item.idx, t: item.text, num: -1, group: item.wrapped ? 'FALLBACK_WRAPPED' : 'FALLBACK_PLAIN' });
+                    }
+                }
+
+                // --- 3단계: 전체 유효 제목 수로 패턴 선택 ---
+                const groupCounts = {};
+                const firstSeen = {};
+                const groupRanges = {};
+                for (const item of groupedItems) {
+                    const { group, idx, num } = item;
+                    groupCounts[group] = (groupCounts[group] || 0) + 1;
+                    firstSeen[group] = Math.min(firstSeen[group] ?? Infinity, idx);
+                    if (num !== -1) {
+                        const range = groupRanges[group] || { min: num, max: num };
+                        range.min = Math.min(range.min, num);
+                        range.max = Math.max(range.max, num);
+                        groupRanges[group] = range;
+                    }
+                }
+                const activeGroups = this.buildActiveGroups(groupCounts, firstSeen, useMultiToc, getFilenameChapterRange(fileName), groupRanges);
+                const dedupedIndices = new Set();
+                seenChapterKeys.clear();
+                for (const item of groupedItems.sort((a, b) => a.idx - b.idx)) {
+                    if (!activeGroups.has(item.group)) continue;
+                    if (item.num !== -1) {
+                        const part = item.t.match(TRAILING_PART_PATTERN)?.[1];
+                        const chapterKey = item.group === 'BRACKET_SUFFIX'
+                            ? item.group + ':' + item.t
+                            : (useMultiToc || item.group === 'SPECIAL' ? item.group + ':' : '') + item.num + (part ? ':' + part : '');
+                        if (seenChapterKeys.has(chapterKey)) continue;
+                        seenChapterKeys.add(chapterKey);
+                    }
+                    dedupedIndices.add(item.idx);
+                }
                 return dedupedIndices;
             }
         }

@@ -237,24 +237,24 @@ test('angle-wrapped titles allow a trailing bracketed chapter marker', async () 
     } });
     assert.deepEqual(Array.from(afterEndMarker.messages[0].payload.resultLines), ['< 독방 - [3] >&#x20;']);
 
-    const mixedPatterns = loadWorker();
-    await mixedPatterns.context.self.onmessage({ data: {
-        type: 'TEST_PARSER',
-        payload: {
-            text: '1화 시작\n\n2화 계속\n\n3화 다음\n\n< 소환전(召喚殿) - [1] >\n\n< 독방 - [1] > 끝\nⓒ 검미성\n< 독방 - [1] >\n\n< 성밖 - [1] >',
-            userRegex: defaultTitleRegex,
-            preserveCustomMatches: false,
-            useMultiToc: false
-        }
-    } });
-    assert.deepEqual(Array.from(mixedPatterns.messages[0].payload.resultLines), [
-        '1화 시작',
-        '2화 계속',
-        '3화 다음',
-        '< 소환전(召喚殿) - [1] >',
-        '< 독방 - [1] >',
-        '< 성밖 - [1] >'
-    ]);
+    for (const useMultiToc of [false, true]) {
+        const mixedPatterns = loadWorker();
+        await mixedPatterns.context.self.onmessage({ data: {
+            type: 'TEST_PARSER',
+            payload: {
+                text: '1화 시작\n\n2화 계속\n\n3화 다음\n\n< 소환전(召喚殿) - [1] >\n\n< 독방 - [1] > 끝\nⓒ 검미성\n< 독방 - [1] >\n\n< 성밖 - [1] >',
+                userRegex: defaultTitleRegex,
+                preserveCustomMatches: false,
+                useMultiToc
+            }
+        } });
+        assert.deepEqual(Array.from(mixedPatterns.messages[0].payload.resultLines), [
+            '1화 시작',
+            '2화 계속',
+            '3화 다음',
+            ...(useMultiToc ? ['< 소환전(召喚殿) - [1] >', '< 독방 - [1] >', '< 성밖 - [1] >'] : [])
+        ]);
+    }
 
     const revisedTitles = loadWorker();
     await revisedTitles.context.self.onmessage({ data: {
@@ -518,6 +518,49 @@ test('timecodes stay out of the TOC', async () => {
             payload: { text: timecodesOnly, userRegex: defaultTitleRegex, preserveCustomMatches: false, useMultiToc }
         } });
         assert.deepEqual(Array.from(standalone.messages[0].payload.resultLines), []);
+    }
+});
+
+test('spaced clocks and calendar date ranges are never title candidates', async () => {
+    const noiseGroups = [
+        ['[13 : 59]', '[14 : 59]', '[15 : 59]'],
+        ['[13:59]', '[14:59]', '[15:59]'],
+        ['[13 : 59 : 01]', '[14 : 59 : 02]', '[15 : 59 : 03]'],
+        ['[2015. 4. 21. ~ 2034. 1. 28]', '[2016. 4. 21. ~ 2035. 1. 28]'],
+        ['[2015.4.21~2034.1.28]', '[2016.4.21~2035.1.28]', '[2017.4.21~2036.1.28]'],
+        ['2015-04-21 ~ 2034-01-28', '2016-04-21 ~ 2035-01-28']
+    ];
+    for (const noise of noiseGroups) {
+        for (const useMultiToc of [false, true]) {
+            const options = { userRegex: defaultTitleRegex, preserveCustomMatches: false, useMultiToc };
+            const standalone = loadWorker();
+            await standalone.context.self.onmessage({ data: {
+                type: 'PREVIEW_PARSER', payload: { ...options, text: noise.join('\n\n') }
+            } });
+            assert.deepEqual(Array.from(standalone.messages[0].payload.resultItems), [], noise.join('\n'));
+            assert.deepEqual(Array.from(standalone.messages[0].payload.fallbackItems), []);
+
+            const text = ['169화', ...noise, '170화'].join('\n\n');
+            const { context, messages } = loadWorker();
+            await context.self.onmessage({ data: { type: 'PREVIEW_PARSER', payload: { ...options, text } } });
+            assert.deepEqual(Array.from(messages[0].payload.resultItems, (item) => item.text), ['169화', '170화']);
+            assert.deepEqual(Array.from(messages[0].payload.fallbackItems), []);
+            await context.self.onmessage({ data: {
+                type: 'CONVERT', payload: { ...options, content: text, title: 'Clocks and Dates', useAutoToc: true, useTrim: true }
+            } });
+            const files = messages[1].payload.blob.files;
+            assert.deepEqual(Array.from(files.get('OEBPS/toc.ncx').matchAll(/<navLabel><text>(.*?)<\/text><\/navLabel>/g), (match) => match[1]), ['169화', '170화']);
+            const body = Array.from(files.entries()).filter(([name]) => name.endsWith('.xhtml')).map(([, value]) => value).join('\n');
+            for (const line of noise) assert.ok(body.includes(line));
+        }
+    }
+
+    for (const titles of [['[13]', '[14]'], ['2015. 여름', '2016. 겨울']]) {
+        const { context, messages } = loadWorker();
+        await context.self.onmessage({ data: {
+            type: 'TEST_PARSER', payload: { text: titles.join('\n\n'), userRegex: defaultTitleRegex, useMultiToc: false }
+        } });
+        assert.deepEqual(Array.from(messages[0].payload.resultLines), titles);
     }
 });
 
@@ -875,7 +918,7 @@ test('numbered prose is not bridged into a confirmed chapter sequence', async ()
     assert.deepEqual(Array.from(messages[0].payload.resultLines), ['1화 시작', '2화 계속']);
 });
 
-test('filename chapter ranges guide single-pattern selection', async () => {
+test('title counts take priority over filename chapter ranges', async () => {
     const { context, messages } = loadWorker();
     const korean = Array.from({ length: 5 }, (_, index) => `제${index + 1}화 제목`).join('\n\n');
     const english = Array.from({ length: 6 }, (_, index) => `Chapter ${index + 1} Noise`).join('\n\n');
@@ -892,10 +935,123 @@ test('filename chapter ranges guide single-pattern selection', async () => {
 
     assert.deepEqual(Array.from(messages[0].payload.resultLines), [
         '프롤로그',
-        ...Array.from({ length: 5 }, (_, index) => `제${index + 1}화 제목`),
+        ...Array.from({ length: 6 }, (_, index) => `Chapter ${index + 1} Noise`),
         '외전 99',
         '에필로그'
     ]);
+});
+
+test('single-pattern selection counts all valid groups before choosing the largest', async () => {
+    const korean = ['제1화 시작', '제2화 계속'];
+    const english = ['Chapter 11 Start', 'Chapter 12 Continue', 'Chapter 13 Finish'];
+    const numbered = ['101. 시작', '102. 계속', '103. 전환', '104. 마무리'];
+    const wrapped = ['< 첫 방 - [1] >', '< 두 번째 방 - [1] >', '< 세 번째 방 - [1] >'];
+    const alternative = ['첫 이야기(1)', '두 번째 이야기(1)', '세 번째 이야기(1)'];
+    const special = ['프롤로그', '외전', '에필로그'];
+    const cases = [
+        { groups: [korean, english], expected: english },
+        { groups: [english, korean], expected: english },
+        { groups: [korean, english, numbered], expected: numbered },
+        { groups: [wrapped, numbered], expected: numbered },
+        { groups: [korean, wrapped], expected: wrapped },
+        { groups: [korean, alternative], expected: alternative },
+        { groups: [korean, english, [...alternative, '네 번째 이야기(1)']], expected: [...alternative, '네 번째 이야기(1)'] },
+        { groups: [special, korean, alternative], expected: [...special, ...alternative] },
+        { groups: [wrapped, wrapped, numbered], expected: numbered },
+        { groups: [alternative.slice(0, 2), korean], expected: alternative.slice(0, 2) },
+        { groups: [korean, alternative.slice(0, 2)], expected: korean, expectedMulti: korean },
+        { groups: [['#1 첫 장'], alternative.slice(0, 2)], expected: alternative.slice(0, 2) },
+        { groups: [[korean[0], '제99화 무관', '제100화 무관', korean[1]], english], expected: english, expectedMulti: [...korean, ...english] }
+    ];
+
+    for (const { groups, expected, expectedMulti = [...new Set(groups.flat())] } of cases) {
+        const text = groups.flat().join('\n본문\n\n');
+        for (const useMultiToc of [false, true]) {
+            const selected = useMultiToc ? expectedMulti : expected;
+            const options = { fileName: 'sample.txt', userRegex: defaultTitleRegex, preserveCustomMatches: false, useMultiToc };
+            const { context, messages } = loadWorker();
+            await context.self.onmessage({ data: { type: 'PREVIEW_PARSER', payload: { ...options, text } } });
+            assert.deepEqual(Array.from(messages[0].payload.resultItems, (item) => item.text), selected, text);
+
+            await context.self.onmessage({ data: {
+                type: 'VALIDATE',
+                payload: { ...options, text, excludedIndices: Array.from(messages[0].payload.resultItems, (item) => item.idx) }
+            } });
+            assert.equal(messages[1].payload.isValid, 'no');
+
+            await context.self.onmessage({ data: {
+                type: 'CONVERT',
+                payload: { ...options, id: 'largest-pattern', title: 'Largest Pattern', content: text, useAutoToc: true, useTrim: true, language: 'ko' }
+            } });
+            const ncx = messages[2].payload.blob.files.get('OEBPS/toc.ncx');
+            const titles = Array.from(ncx.matchAll(/<navLabel><text>(.*?)<\/text><\/navLabel>/g), (match) => match[1]);
+            assert.deepEqual(titles.filter((title) => title !== '시작'), selected.map((title) => title.replaceAll('<', '&lt;').replaceAll('>', '&gt;')), text);
+        }
+    }
+});
+
+test('filename ranges still break ties between equally sized title groups', async () => {
+    const { context, messages } = loadWorker();
+    const english = ['Chapter 11 Start', 'Chapter 12 Continue', 'Chapter 13 Finish'];
+    const korean = ['제1화 시작', '제2화 계속', '제3화 마무리'];
+    await context.self.onmessage({ data: {
+        type: 'TEST_PARSER',
+        payload: { text: [...english, ...korean].join('\n\n'), fileName: 'sample 1-3.txt', userRegex: '', useMultiToc: false }
+    } });
+    assert.deepEqual(Array.from(messages[0].payload.resultLines), korean);
+});
+
+test('alternative counts exclude duplicate titles, rejected numeric lists, and special chapters', async () => {
+    const regular = ['제1화 시작', '제2화 계속', '제3화 다음'];
+    const specials = ['외전 (1)', '외전 (2)', '외전 (3)', '외전 (4)'];
+    const cases = [
+        {
+            lines: [...regular, ...Array(4).fill('옥션 하우스(1)')],
+            expected: regular,
+            fallback: []
+        },
+        {
+            lines: ['361화 시작', '1. 첫 단계(1)', '2. 두 단계(1)', '3. 세 단계(1)', '362화 계속'],
+            expected: ['361화 시작', '362화 계속'],
+            fallback: []
+        },
+        { lines: [...regular, ...Array(4).fill('오늘은 집으로 돌아가야 한다.(2)')], expected: regular, fallback: [] },
+        { lines: ['3 Story(1)\nbody', '3 Story(1)\n', '4 Continue(2)'], expected: ['3 Story(1)', '4 Continue(2)'], fallback: [] },
+        { lines: [...regular, ...specials], expected: [...regular, ...specials], fallback: [] }
+    ];
+    for (const { lines, expected, fallback } of cases) {
+        for (const useMultiToc of [false, true]) {
+            const { context, messages } = loadWorker();
+            const options = { userRegex: defaultTitleRegex, preserveCustomMatches: false, useMultiToc };
+            const text = lines.join('\n본문\n\n');
+            await context.self.onmessage({ data: { type: 'PREVIEW_PARSER', payload: { ...options, text } } });
+            assert.deepEqual(Array.from(messages[0].payload.resultItems, (item) => item.text), expected, text);
+            assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), fallback, text);
+            await context.self.onmessage({ data: {
+                type: 'CONVERT',
+                payload: { ...options, id: 'filtered-patterns', title: 'Filtered Patterns', content: text, useAutoToc: true, useTrim: true }
+            } });
+            const ncx = messages[1].payload.blob.files.get('OEBPS/toc.ncx');
+            assert.deepEqual(Array.from(ncx.matchAll(/<navLabel><text>(.*?)<\/text><\/navLabel>/g), (match) => match[1]).filter((title) => title !== '시작'), expected, text);
+        }
+    }
+});
+
+test('a larger alternative pattern does not override explicit custom matches', async () => {
+    for (const useMultiToc of [false, true]) {
+        const { context, messages } = loadWorker();
+        await context.self.onmessage({ data: {
+            type: 'PREVIEW_PARSER',
+            payload: {
+                text: 'Marker Alpha\n\nMarker Beta\n\n첫 이야기(1)\n\n두 번째 이야기(1)\n\n세 번째 이야기(1)',
+                userRegex: '^Marker ',
+                preserveCustomMatches: true,
+                useMultiToc
+            }
+        } });
+        assert.deepEqual(Array.from(messages[0].payload.resultItems, (item) => item.text), ['Marker Alpha', 'Marker Beta']);
+        assert.equal(messages[0].payload.fallbackItems.length, 3);
+    }
 });
 
 test('automatic title groups prefer the expected next number', async () => {
@@ -1294,7 +1450,7 @@ test('parenthesized number suffixes are offered as a selectable fallback', async
             useMultiToc: true
         }
     } });
-    assert.deepEqual(Array.from(singleton.messages[0].payload.fallbackItems, (item) => item.text), ['내집 마련의 꿈(2)']);
+    assert.deepEqual(Array.from(singleton.messages[0].payload.fallbackItems), []);
 
     const prose = loadWorker();
     await prose.context.self.onmessage({ data: {
@@ -1328,6 +1484,47 @@ test('different titles sharing a parenthesized suffix are offered together', asy
         } });
 
         assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), titles);
+    }
+});
+
+test('isolated alternative titles and parenthesized prose stay out of the TOC', async () => {
+    const prose = '임당검사는 정상(135)인데 정상범위 끝에 좀 아슬아슬하다... 단 거 줄여야지ㅜㅜ';
+    const alternatives = ['첫 이야기(1)', '두 번째 이야기(1)'];
+    const cases = [
+        { middle: [prose], expectedFallback: [] },
+        { middle: [prose, prose], expectedFallback: [] },
+        { middle: ['내집 마련의 꿈(2)'], expectedFallback: [] },
+        { middle: [alternatives[0], prose], expectedFallback: [] },
+        { middle: [alternatives[0], "'다른 이야기(1)'"], expectedFallback: [] },
+        { middle: ['< 같은 이야기(1) >', '같은 이야기(2)'], expectedFallback: ['< 같은 이야기(1) >', '같은 이야기(2)'] },
+        { middle: [...alternatives, prose], expectedFallback: alternatives }
+    ];
+    for (const { middle, expectedFallback } of cases) {
+        const lines = ['169화', ...middle, '170화'];
+        const text = lines.join('\n\n');
+        for (const useMultiToc of [false, true]) {
+            const { context, messages } = loadWorker();
+            const options = { userRegex: defaultTitleRegex, preserveCustomMatches: false, useMultiToc };
+            await context.self.onmessage({ data: { type: 'PREVIEW_PARSER', payload: { ...options, text } } });
+            assert.deepEqual(Array.from(messages[0].payload.resultItems, (item) => item.text), ['169화', '170화'], text);
+            assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), expectedFallback, text);
+            await context.self.onmessage({ data: {
+                type: 'VALIDATE',
+                payload: { ...options, text, excludedIndices: [0, (lines.length - 1) * 2], selectedFallbackIndices: middle.map((_, index) => (index + 1) * 2) }
+            } });
+            assert.equal(messages[1].payload.isValid, expectedFallback.length ? 'ok' : 'no');
+            await context.self.onmessage({ data: {
+                type: 'CONVERT',
+                payload: { ...options, content: text, title: 'Isolated Candidates', useAutoToc: true, useTrim: true }
+            } });
+            const files = messages[2].payload.blob.files;
+            assert.deepEqual(Array.from(files.get('OEBPS/toc.ncx').matchAll(/<navLabel><text>(.*?)<\/text><\/navLabel>/g), (match) => match[1]), ['169화', '170화']);
+            const body = Array.from(files.entries()).filter(([name]) => name.endsWith('.xhtml')).map(([, content]) => content).join('\n');
+            for (const line of middle) {
+                const escaped = line.replace(/[<>&"']/g, (character) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[character]));
+                assert.ok(body.includes(escaped), 'Non-title content must stay in the book');
+            }
+        }
     }
 });
 
@@ -1372,38 +1569,38 @@ test('parenthesized fallback allows a leading quote decoration', async () => {
 
 test('parenthesized fallback allows a quoted angle-bracket title', async () => {
     const { context, messages } = loadWorker();
-    const title = "'< 이 프로그램은 보고 계신 스폰서의 제공으로 보내드립니다(5) >'";
+    const titles = [5, 6].map((number) => `'< 이 프로그램은 보고 계신 스폰서의 제공으로 보내드립니다(${number}) >'`);
     await context.self.onmessage({ data: {
         type: 'PREVIEW_PARSER',
         payload: {
             requestId: 1,
             fileName: 'sample.txt',
-            text: title,
+            text: titles.join('\n본문\n'),
             userRegex: defaultTitleRegex,
             preserveCustomMatches: false,
             useMultiToc: true
         }
     } });
 
-    assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), [title]);
+    assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), titles);
 });
 
 test('parenthesized fallback allows a fully quoted sentence title', async () => {
     const { context, messages } = loadWorker();
-    const title = "' 이 프로그램은 보고 계신 스폰서의 제공으로 보내드립니다(1) '";
+    const titles = [1, 2].map((number) => `' 이 프로그램은 보고 계신 스폰서의 제공으로 보내드립니다(${number}) '`);
     await context.self.onmessage({ data: {
         type: 'PREVIEW_PARSER',
         payload: {
             requestId: 1,
             fileName: 'sample.txt',
-            text: title,
+            text: titles.join('\n본문\n'),
             userRegex: defaultTitleRegex,
             preserveCustomMatches: false,
             useMultiToc: false
         }
     } });
 
-    assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), [title]);
+    assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), titles);
 });
 
 test('parenthesized fallback allows a trailing episode note', async () => {
@@ -1475,7 +1672,7 @@ test('a detected wrapped title promotes earlier matching parenthesized titles', 
 
 test('parenthesized fallback remains selectable alongside regular titles', async () => {
     const { context, messages } = loadWorker();
-    const content = '제1화 시작\n본문\n내집 마련의 꿈(2)\n본문\n제2화 계속';
+    const content = '제1화 시작\n본문\n내집 마련의 꿈(1)\n본문\n내집 마련의 꿈(2)\n본문\n제2화 계속';
     await context.self.onmessage({ data: {
         type: 'PREVIEW_PARSER',
         payload: {
@@ -1489,7 +1686,7 @@ test('parenthesized fallback remains selectable alongside regular titles', async
     } });
 
     assert.deepEqual(Array.from(messages[0].payload.resultItems, (item) => item.text), ['제1화 시작', '제2화 계속']);
-    assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), ['내집 마련의 꿈(2)']);
+    assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), ['내집 마련의 꿈(1)', '내집 마련의 꿈(2)']);
 
     await context.self.onmessage({ data: {
         type: 'CONVERT',
@@ -1513,7 +1710,7 @@ test('parenthesized fallback remains selectable alongside regular titles', async
 
     const ncx = messages[1].payload.blob.files.get('OEBPS/toc.ncx');
     assert.equal((ncx.match(/<navPoint /g) || []).length, 3);
-    assert.match(ncx, /내집 마련의 꿈\(2\)/);
+    assert.match(ncx, /내집 마련의 꿈\(1\)/);
 });
 
 test('parenthesized candidates exclude titles already detected by the main parser', async () => {
@@ -1523,7 +1720,7 @@ test('parenthesized candidates exclude titles already detected by the main parse
         payload: {
             requestId: 1,
             fileName: 'sample.txt',
-            text: '제1화 시작(1)\n본문\n100억을 벌었다(2)\n본문\n제2화 계속(2)',
+            text: '제1화 시작(1)\n본문\n100억을 벌었다(2)\n본문\n100억을 벌었다(3)\n본문\n제2화 계속(2)',
             userRegex: defaultTitleRegex,
             preserveCustomMatches: false,
             useMultiToc: true
@@ -1531,7 +1728,7 @@ test('parenthesized candidates exclude titles already detected by the main parse
     } });
 
     assert.deepEqual(Array.from(messages[0].payload.fallbackItems, (item) => item.text), [
-        '100억을 벌었다(2)'
+        '100억을 벌었다(2)', '100억을 벌었다(3)'
     ]);
 });
 

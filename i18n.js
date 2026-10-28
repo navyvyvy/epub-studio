@@ -103,8 +103,8 @@
                 featureCards: [
                     ['TXT에서 EPUB으로 변환', '여러 파일을 한꺼번에 처리하거나 목록에서 필요한 파일 하나만 EPUB으로 만들 수 있습니다.'],
                     ['공백 정제', '불필요한 연속 빈 줄은 줄이고, 문단 사이의 여백은 너무 과하게 건드리지 않습니다.'],
-                    ['목차 추출', '회차와 괄호 번호의 흐름을 함께 확인하고, 파일명에 1-200 같은 범위가 있으면 패턴 선택에 참고합니다.'],
-                    ['목차 미리보기', '자동 감지된 목차를 확인하고 필요 없는 줄은 뺄 수 있습니다. 같은 다른 형식이 훨씬 많으면 주 목차로 선택하고, 그 외에는 별도 후보로 보여줍니다.'],
+                    ['목차 추출', '파일 전체에서 유효한 제목이 가장 많은 형식을 고릅니다. 회차·괄호 번호의 흐름을 확인하고, 시각·날짜 범위는 제외합니다.'],
+                    ['목차 미리보기', '목차를 확인하고 필요 없는 줄은 뺄 수 있습니다. 다른 형식의 후보는 2개 이상 확인됐을 때만 보여주며, 직접 추가할 수 있습니다.'],
                     ['표지 적용', '제목을 검색하거나 클립보드의 이미지 URL과 이미지를 바로 붙일 수 있습니다.'],
                     ['인코딩 자동 감지', 'UTF-8, CP949 같은 흔한 인코딩을 자동으로 읽어들여 깨짐을 줄입니다.'],
                     ['ZIP 일괄 압축', '여러 EPUB 결과물을 한 번에 ZIP으로 묶어 받을 수 있습니다.']
@@ -309,8 +309,8 @@
                 featureCards: [
                     ['TXT to EPUB conversion', 'Convert every added file together or create an EPUB from just one selected row.'],
                     ['Whitespace cleanup', 'Reduce meaningless empty lines while keeping the spacing needed for paragraph breaks.'],
-                    ['Table of contents extraction', 'Check chapter and parenthesized part sequences, using filename ranges such as 1-200 to help choose a title pattern.'],
-                    ['TOC preview', 'Review detected chapters and exclude unwanted rows. A clearly dominant alternative format becomes the main TOC; otherwise it remains an optional candidate.'],
+                    ['Table of contents extraction', 'Choose the format with the most valid titles across the file. Check chapter and part sequences while excluding clock times and date ranges.'],
+                    ['TOC preview', 'Review detected chapters and exclude unwanted rows. Alternative candidates need at least two distinct entries before they can be shown and added manually.'],
                     ['Cover application', 'Search for a cover image or apply an image URL or clipboard image right away.'],
                     ['Automatic encoding detection', 'Automatically detects common encodings such as UTF-8 and CP949 to reduce read failures.'],
                     ['Batch ZIP packaging', 'Bundle multiple EPUB outputs into a single ZIP file for download.']
