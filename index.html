@@ -27,7 +27,7 @@
     <!-- 외부 라이브러리 로드 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jschardet/3.0.0/jschardet.min.js"></script>
-    <script src="./i18n.js?v=20260820-4"></script>
+    <script src="./i18n.js?v=20261029-1"></script>
     <link rel="stylesheet" href="./site-shared.css?v=20260814">
     <style>
         :root {
@@ -1603,6 +1603,235 @@
         .home-page .contact-action {
             padding-left: 0;
         }
+
+        .home-page .container {
+            background: linear-gradient(155deg, #152321, #10191a 55%);
+            border-top-color: var(--accent);
+            box-shadow: 0 28px 80px rgba(0, 0, 0, 0.3);
+        }
+
+        .home-page .option-item {
+            color: #c4d5cf;
+            transition: color 0.2s ease;
+        }
+
+        .home-page .option-item:has(input:checked) {
+            color: #effbf5;
+        }
+
+        .home-page .option-item input {
+            accent-color: var(--primary);
+        }
+
+        .home-page .btn-start:not(.is-stop):not(:disabled) {
+            background: linear-gradient(115deg, #7ce6c4, var(--primary));
+            box-shadow: inset 0 1px rgba(255, 255, 255, 0.35);
+        }
+
+        .home-page .file-list-area:not(:has(.table-wrapper.active)) {
+            border-color: rgba(124, 230, 196, 0.32);
+            background: radial-gradient(ellipse at center, rgba(82, 214, 173, 0.08), transparent 65%), #101b1b;
+        }
+
+        .home-page .empty-msg {
+            width: min(90%, 400px);
+            text-align: center;
+            color: #c6d8d1;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .home-page .empty-msg::before {
+            content: "+";
+            display: grid;
+            place-items: center;
+            width: 54px;
+            height: 54px;
+            margin: 0 auto 18px;
+            border: 1px solid rgba(124, 230, 196, 0.48);
+            border-radius: 16px;
+            color: var(--accent);
+            background: rgba(82, 214, 173, 0.08);
+            font-size: 2rem;
+            font-weight: 300;
+            line-height: 1;
+        }
+
+        #features .feature-grid {
+            counter-reset: feature;
+        }
+
+        #features .feature-card::before {
+            content: counter(feature, decimal-leading-zero);
+            width: auto;
+            height: auto;
+            margin-bottom: 18px;
+            background: none;
+            color: var(--accent);
+            font-family: Georgia, serif;
+            font-size: 0.85rem;
+            font-style: italic;
+        }
+
+        .home-page .file-list-area {
+            cursor: pointer;
+        }
+
+        .home-page .table-wrapper {
+            cursor: default;
+        }
+
+        .home-page button:not(:disabled),
+        .home-page input[type="checkbox"],
+        .home-page a {
+            cursor: pointer;
+        }
+
+        .home-page button:disabled {
+            cursor: not-allowed;
+        }
+
+        .home-page input[type="text"],
+        .home-page textarea {
+            cursor: text;
+        }
+
+        @media (min-width: 901px) {
+            .home-page .container,
+            .home-page .container:has(.regex-area.open) {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) minmax(270px, 310px);
+                grid-template-rows: minmax(0, 1fr) auto;
+                gap: 16px;
+                height: clamp(480px, calc(100dvh - 310px), 590px);
+                min-height: 0;
+            }
+
+            .home-page .file-list-area {
+                grid-column: 1;
+                grid-row: 1 / 3;
+                min-height: 0;
+                max-height: none;
+            }
+
+            .home-page .config-section {
+                grid-column: 2;
+                grid-row: 1;
+                min-height: 0;
+                overflow-y: auto;
+                margin: 0;
+                padding: 4px 8px 16px 4px;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .home-page .options-bar,
+            .home-page .options-group {
+                width: 100%;
+                flex-direction: column;
+                align-items: stretch;
+                justify-content: flex-start;
+            }
+
+            .home-page .option-item {
+                min-height: 38px;
+                padding: 0 10px;
+                border-bottom: 1px solid rgba(124, 230, 196, 0.1);
+            }
+
+            .home-page .container:has(.regex-area.open) .option-item {
+                min-height: 25px;
+            }
+
+            .home-page .container:has(.regex-area.open) .options-group {
+                gap: 2px;
+            }
+
+            .home-page .btn-advanced-toggle {
+                align-self: flex-start;
+            }
+
+            .home-page .process-panel {
+                grid-column: 2;
+                grid-row: 2;
+                grid-template-columns: 1fr;
+                margin: 0;
+            }
+
+            .home-page .controls,
+            .home-page .btn-start {
+                min-height: 60px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .home-page .empty-msg::before {
+                width: 44px;
+                height: 44px;
+                margin-bottom: 10px;
+            }
+
+            .home-page .file-table,
+            .home-page .file-table tbody,
+            .home-page .file-table thead {
+                display: block;
+                width: 100%;
+                min-width: 0;
+            }
+
+            .home-page .file-table colgroup {
+                display: none;
+            }
+
+            .home-page .file-table thead {
+                position: sticky;
+                top: 0;
+                z-index: 2;
+                background: #152023;
+            }
+
+            .home-page .file-table thead tr {
+                display: flex;
+                justify-content: flex-end;
+            }
+
+            .home-page .file-table th:not(:last-child) {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                padding: 0;
+                overflow: hidden;
+                clip-path: inset(50%);
+            }
+
+            .home-page .file-table tbody tr {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) auto;
+                gap: 4px 8px;
+                padding: 10px;
+                border-bottom: 1px solid var(--border);
+                background: #0b1214;
+            }
+
+            .home-page .file-table td,
+            .home-page .file-table td.col-title {
+                min-width: 0;
+                padding: 4px;
+                border: 0;
+                text-align: left;
+            }
+
+            .home-page .file-table td:nth-child(1) { grid-area: 1 / 1; }
+            .home-page .file-table td:nth-child(2) { grid-area: 2 / 1; }
+            .home-page .file-table td:nth-child(3) { grid-area: 2 / 2; }
+            .home-page .file-table td:nth-child(4) { grid-area: 3 / 1; }
+            .home-page .file-table td:nth-child(5) { grid-area: 3 / 2; }
+            .home-page .file-table td:nth-child(6) { grid-area: 1 / 2; }
+
+            .home-page .cover-btn-group,
+            .home-page .detect-cell {
+                justify-content: flex-start;
+            }
+        }
     </style>
 </head>
 <body class="home-page">
@@ -1719,7 +1948,7 @@
                             <th>인코딩</th>
                             <th>감지</th>
                             <th>상태</th>
-                            <th><button type="button" id="clearAllBtn" class="btn-header-action">✕</button></th>
+                            <th><button type="button" id="clearAllBtn" class="btn-header-action" title="파일 전체 삭제" aria-label="파일 전체 삭제">✕</button></th>
                         </tr>
                     </thead>
                     <tbody id="fileTbody"></tbody>
@@ -2469,7 +2698,7 @@
                         singleConvertBtn
                     )
                 ),
-                el('td', {}, el('button', { className: 'btn-header-action', onClick: () => store.dispatch({ type: 'REMOVE_FILE', payload: item.id }) }, '✕'))
+                el('td', {}, el('button', { className: 'btn-header-action', title: window.EPUB_STUDIO_I18N.t('tableRemoveOne'), 'aria-label': window.EPUB_STUDIO_I18N.t('tableRemoveOne'), onClick: () => store.dispatch({ type: 'REMOVE_FILE', payload: item.id }) }, '✕'))
             );
             dom.fileTbody.appendChild(row);
         });

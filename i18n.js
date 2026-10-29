@@ -95,6 +95,8 @@
                 tablePreview: '미리보기',
                 tableConvertOne: '변환',
                 tableConvertOneTitle: '이 파일만 EPUB으로 변환',
+                tableRemoveAll: '파일 전체 삭제',
+                tableRemoveOne: '이 파일 삭제',
                 tableSearch: '검색',
                 tableClipboard: '클립보드',
                 featureKicker: '기능 소개',
@@ -301,6 +303,8 @@
                 tablePreview: 'Preview',
                 tableConvertOne: 'Convert',
                 tableConvertOneTitle: 'Convert only this file to EPUB',
+                tableRemoveAll: 'Remove all files',
+                tableRemoveOne: 'Remove this file',
                 tableSearch: 'Search',
                 tableClipboard: 'Clipboard',
                 featureKicker: 'Features',
@@ -700,6 +704,11 @@
         setText('#previewList .preview-empty', 'previewEmpty');
         setText('#emptyMsg', 'dropEmpty');
         setOrdered('.file-table thead th', ['tableTitle', 'tableCover', 'tableEncoding', 'tableDetect', 'tableState']);
+        const clearAllButton = document.getElementById('clearAllBtn');
+        if (clearAllButton) {
+            clearAllButton.title = getString('tableRemoveAll');
+            clearAllButton.setAttribute('aria-label', getString('tableRemoveAll'));
+        }
 
         const cards = document.querySelectorAll('.feature-card');
         const titles = TEXT[current.lang].index.featureCards.map((item) => item[0]);
