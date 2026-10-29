@@ -1,3 +1,4 @@
+/* Hallmark · shared brand tokens · existing dark mint · v2.0.0 */
 :root {
     --bg: #090e10;
     --card: #11191b;
@@ -9,10 +10,75 @@
     --surface-soft: rgba(153, 190, 180, 0.055);
     --scroll-track: #0b1113;
     --scroll-thumb: #344649;
+    --font-body: 'Pretendard Variable', 'Pretendard', 'SUIT Variable', 'Noto Sans KR', sans-serif;
+    --font-editor: 'Pretendard', sans-serif;
+    --font-editorial: Georgia, serif;
+    --tone-rgba-17-25-27-0-94: rgba(17,25,27,0.94);
+    --tone-rgba-0-0-0-0-22: rgba(0,0,0,0.22);
+    --tone--0b1214: #0b1214;
+    --tone-rgba-124-230-196-0-5: rgba(124,230,196,0.5);
+    --tone-rgba-82-214-173-0-1: rgba(82,214,173,0.1);
+    --tone--090f11: #090f11;
+    --tone--06110d: #06110d;
+    --tone-rgba-82-214-173-0-025: rgba(82,214,173,0.025);
+    --tone--152023: #152023;
+    --tone--192326: #192326;
+    --tone-rgba-34-197-94-0-15: rgba(34,197,94,0.15);
+    --tone--1c282b: #1c282b;
+    --tone-rgba-82-214-173-0-12: rgba(82,214,173,0.12);
+    --tone-rgba-239-68-68-0-15: rgba(239,68,68,0.15);
+    --tone-rgba-124-230-196-0-45: rgba(124,230,196,0.45);
+    --tone-rgba-82-214-173-0-08: rgba(82,214,173,0.08);
+    --tone-rgba-255-255-255-0-02: rgba(255,255,255,0.02);
+    --tone-rgba-34-197-94-0-85: rgba(34,197,94,0.85);
+    --tone-rgba-34-197-94-0-08: rgba(34,197,94,0.08);
+    --tone-rgba-239-68-68-0-9: rgba(239,68,68,0.9);
+    --tone-rgba-239-68-68-0-08: rgba(239,68,68,0.08);
+    --tone--263538: #263538;
+    --tone-rgba-2-6-23-0-7: rgba(2,6,23,0.7);
+    --tone-rgba-34-197-94-0-7: rgba(34,197,94,0.7);
+    --tone-rgba-239-68-68-0-8: rgba(239,68,68,0.8);
+    --tone-rgba-124-230-196-0-7: rgba(124,230,196,0.7);
+    --tone-rgba-244-189-97-0-75: rgba(244,189,97,0.75);
+    --tone-rgba-11-18-20-0-97: rgba(11,18,20,0.97);
+    --tone-rgba-0-0-0-0-42: rgba(0,0,0,0.42);
+    --tone--fca5a5: #fca5a5;
+    --tone-rgba-239-68-68-0-36: rgba(239,68,68,0.36);
+    --tone-rgba-239-68-68-0-06: rgba(239,68,68,0.06);
+    --tone-rgba-239-68-68-0-42: rgba(239,68,68,0.42);
+    --tone--fecaca: #fecaca;
+    --tone-rgba-244-189-97-0-45: rgba(244,189,97,0.45);
+    --tone-rgba-244-189-97-0-07: rgba(244,189,97,0.07);
+    --tone-rgba-34-197-94-0-5: rgba(34,197,94,0.5);
+    --tone-rgba-34-197-94-0-07: rgba(34,197,94,0.07);
+    --tone-rgba-124-230-196-0-18: rgba(124,230,196,0.18);
+    --tone--090e10: #090e10;
+    --tone-rgba-0-0-0-0-34: rgba(0,0,0,0.34);
+    --tone-rgba-124-230-196-0-16: rgba(124,230,196,0.16);
+    --tone-rgba-124-230-196-0-025: rgba(124,230,196,0.025);
+    --tone-rgba-124-230-196-0-018: rgba(124,230,196,0.018);
+    --tone-rgba-17-25-27-0-72: rgba(17,25,27,0.72);
+    --tone-rgba-17-25-27-0-74: rgba(17,25,27,0.74);
+    --tone-rgba-124-230-196-0-08: rgba(124,230,196,0.08);
+    --tone-rgba-124-230-196-0-48: rgba(124,230,196,0.48);
+    --tone-rgba-20-31-33-0-92: rgba(20,31,33,0.92);
+    --tone--152321: #152321;
+    --tone--10191a: #10191a;
+    --tone-rgba-0-0-0-0-3: rgba(0,0,0,0.3);
+    --tone--c4d5cf: #c4d5cf;
+    --tone--effbf5: #effbf5;
+    --tone--7ce6c4: #7ce6c4;
+    --tone-rgba-255-255-255-0-35: rgba(255,255,255,0.35);
+    --tone-rgba-124-230-196-0-32: rgba(124,230,196,0.32);
+    --tone--101b1b: #101b1b;
+    --tone--c6d8d1: #c6d8d1;
+    --tone-rgba-124-230-196-0-1: rgba(124,230,196,0.1);
+    --tone-rgba-13-17-29-0-9: rgba(13,17,29,0.9);
 }
 
 html {
     scroll-behavior: smooth;
+    overflow-x: clip;
 }
 
 html, body {
@@ -20,17 +86,17 @@ html, body {
     min-height: 100%;
     background: var(--bg);
     color: var(--text);
-    font-family: 'Pretendard Variable', 'Pretendard', 'SUIT Variable', 'Noto Sans KR', sans-serif;
+    font-family: var(--font-body);
     word-break: keep-all;
     line-break: auto;
 }
 
 body {
-    overflow-x: hidden;
+    overflow-x: clip;
     background:
-        linear-gradient(rgba(124, 230, 196, 0.025) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(124, 230, 196, 0.025) 1px, transparent 1px),
-        radial-gradient(circle at 12% 0%, rgba(82, 214, 173, 0.1), transparent 26%),
+        linear-gradient(var(--tone-rgba-124-230-196-0-025) 1px, transparent 1px),
+        linear-gradient(90deg, var(--tone-rgba-124-230-196-0-025) 1px, transparent 1px),
+        radial-gradient(circle at 12% 0%, var(--tone-rgba-82-214-173-0-1), transparent 26%),
         var(--bg);
     background-size: 36px 36px, 36px 36px, auto, auto;
 }
@@ -49,7 +115,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
 }
 
 .page-shell {
-    width: min(1180px, calc(100vw - 40px));
+    width: min(1180px, calc(100% - 40px));
     margin: 0 auto;
     padding: 18px 0 36px;
 }
@@ -108,7 +174,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
 
 .lang-switch button {
     border: 1px solid var(--border);
-    background: rgba(13,17,29,0.9);
+    background: var(--tone-rgba-13-17-29-0-9);
     color: var(--text-dim);
     border-radius: 8px;
     width: 34px;
@@ -129,9 +195,9 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
 }
 
 .lang-switch button.active {
-    background: rgba(82, 214, 173, 0.12);
+    background: var(--tone-rgba-82-214-173-0-12);
     color: var(--text);
-    border-color: rgba(124, 230, 196, 0.5);
+    border-color: var(--tone-rgba-124-230-196-0-5);
 }
 
 .lang-switch button:active,
@@ -286,7 +352,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
 
 @media (max-width: 900px) {
     .page-shell {
-        width: min(100vw - 24px, 1180px);
+        width: min(100% - 24px, 1180px);
         padding-top: 10px;
     }
 }
@@ -306,18 +372,14 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
 
     .header-nav {
         width: 100%;
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         justify-content: flex-start;
-        overflow-x: auto;
-        scrollbar-width: none;
-    }
-
-    .header-nav::-webkit-scrollbar {
-        display: none;
+        overflow: visible;
     }
 
     .header-nav a {
         flex: 0 0 auto;
+        padding: 6px 8px;
     }
 
     .lang-switch {

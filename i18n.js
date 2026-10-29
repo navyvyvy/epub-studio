@@ -48,8 +48,11 @@
                 optMultiTocTitle: "체크하면 '몇 화'와 '070'처럼 형식이 다른 챕터 표기가 섞여 있어도 함께 목차로 잡습니다.",
                 optZip: 'ZIP 일괄 압축',
                 advancedToggle: '고급 설정',
+                addFiles: '파일 추가',
                 regexLabel: '목차 추출 커스텀 정규식',
                 testLabel: '파서 시뮬레이터 (엔진 테스트)',
+                testInputLabel: '테스트할 본문',
+                testResultLabel: '감지 결과',
                 testButton: '테스트 실행',
                 testOutput: '감지할 제목을 넣으면 여기서 바로 확인할 수 있습니다.',
                 convertStart: 'EPUB 변환 시작',
@@ -103,7 +106,7 @@
                 featureTitle: '지금 들어 있는 기능만 추려 적었습니다',
                 featureDesc: '지금 구현된 기능만 짧게 적었습니다.',
                 featureCards: [
-                    ['TXT에서 EPUB으로 변환', '여러 파일을 한꺼번에 처리하거나 목록에서 필요한 파일 하나만 EPUB으로 만들 수 있습니다.'],
+                    ['TXT에서 EPUB으로 변환', '목록의 + 버튼이나 빈 공간, 드래그로 파일을 더 추가하고, 전체 또는 필요한 파일 하나만 EPUB으로 만들 수 있습니다.'],
                     ['공백 정제', '불필요한 연속 빈 줄은 줄이고, 문단 사이의 여백은 너무 과하게 건드리지 않습니다.'],
                     ['목차 추출', '파일 전체에서 유효한 제목이 가장 많은 형식을 고릅니다. 회차·괄호 번호의 흐름을 확인하고, 시각·날짜 범위는 제외합니다.'],
                     ['목차 미리보기', '목차를 확인하고 필요 없는 줄은 뺄 수 있습니다. 다른 형식의 후보는 2개 이상 확인됐을 때만 보여주며, 직접 추가할 수 있습니다.'],
@@ -256,8 +259,11 @@
                 optMultiTocTitle: 'Include different chapter formats, such as numbered episodes and 070-style headings, in the same table of contents.',
                 optZip: 'Batch ZIP',
                 advancedToggle: 'Advanced settings',
+                addFiles: 'Add files',
                 regexLabel: 'Custom regex for TOC extraction',
                 testLabel: 'Parser simulator (engine test)',
+                testInputLabel: 'Sample text',
+                testResultLabel: 'Detected titles',
                 testButton: 'Run test',
                 testOutput: 'Enter a title candidate and it will appear here. (Priority engine active)',
                 convertStart: 'Start EPUB conversion',
@@ -311,7 +317,7 @@
                 featureTitle: 'A quick summary of what is included',
                 featureDesc: 'Only the features currently implemented are listed here.',
                 featureCards: [
-                    ['TXT to EPUB conversion', 'Convert every added file together or create an EPUB from just one selected row.'],
+                    ['TXT to EPUB conversion', 'Add more files with the list\'s + button, empty space, or drag and drop, then convert all files or just one selected file.'],
                     ['Whitespace cleanup', 'Reduce meaningless empty lines while keeping the spacing needed for paragraph breaks.'],
                     ['Table of contents extraction', 'Choose the format with the most valid titles across the file. Check chapter and part sequences while excluding clock times and date ranges.'],
                     ['TOC preview', 'Review detected chapters and exclude unwanted rows. Alternative candidates need at least two distinct entries before they can be shown and added manually.'],
@@ -519,18 +525,8 @@
     function setButton(id, key, vars = {}) {
         const el = document.getElementById(id);
         if (!el) return;
-        const arrow = el.querySelector('.arrow');
-        if (arrow) {
-            const textNode = Array.from(el.childNodes).find((node) => node.nodeType === Node.TEXT_NODE);
-            const nextText = `${getString(key, current.lang, vars)} `;
-            if (textNode) {
-                textNode.nodeValue = nextText;
-            } else {
-                el.insertBefore(document.createTextNode(nextText), arrow);
-            }
-            return;
-        }
-        el.textContent = getString(key, current.lang, vars);
+        const label = el.querySelector('[data-button-label]') || el;
+        label.textContent = getString(key, current.lang, vars);
     }
 
     function setHeadText() {
@@ -686,7 +682,14 @@
         if (multiLabel) multiLabel.title = getString('optMultiTocTitle');
 
         setButton('btnToggleAdvanced', 'advancedToggle');
+        setButton('addFilesBtn', 'addFiles');
         setText('#regexLabel', 'regexLabel');
+        setText('#advancedTitle', 'advancedToggle');
+        setText('#testInputLabel', 'testInputLabel');
+        setText('#testResultLabel', 'testResultLabel');
+        setButton('advancedCloseBtn', 'previewClose');
+        const dropZone = document.getElementById('dropZone');
+        if (dropZone) dropZone.setAttribute('aria-label', getString('addFiles'));
         setText('#testLabel', 'testLabel');
         setButton('btnTestParser', 'testButton');
         setText('#testOutput', 'testOutput');

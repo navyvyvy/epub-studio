@@ -49,6 +49,26 @@ function loadFileReader() {
     return Function(`${source}; return readFileText;`)();
 }
 
+test('button localization preserves the advanced settings icon and updates plain buttons', () => {
+    const i18n = readFileSync(new URL('../i18n.js', import.meta.url), 'utf8');
+    const source = i18n.match(/function setButton\([\s\S]*?\n    }/)[0];
+    const label = { textContent: '' };
+    const trigger = { querySelector: () => label, textContent: 'original icon and label' };
+    const plain = { querySelector: () => null, textContent: '' };
+    const context = vm.createContext({
+        document: { getElementById: id => ({ trigger, plain })[id] },
+        current: { lang: 'ko' },
+        getString: (key, lang) => `${lang}:${key}`
+    });
+    vm.runInContext(source, context);
+    context.setButton('trigger', 'advancedToggle');
+    context.setButton('plain', 'testButton');
+    context.setButton('missing', 'testButton');
+    assert.equal(label.textContent, 'ko:advancedToggle');
+    assert.equal(trigger.textContent, 'original icon and label');
+    assert.equal(plain.textContent, 'ko:testButton');
+});
+
 test('encoding detection prefers valid UTF-8 and recognizes short CP949 Korean text', () => {
     const detectEncoding = loadEncodingDetector();
     const utf8 = new TextEncoder().encode('옥션 하우스').buffer;
@@ -1819,15 +1839,38 @@ test('file-table clicks do not reopen the picker during a row rerender', () => {
 
     handler({
         target: { closest() { return null; } },
-        composedPath() { return [{}, tableWrapper, {}]; }
+        composedPath() { return [{ tagName: 'BUTTON' }, { tagName: 'TR' }, tableWrapper, {}]; }
     });
+    assert.equal(pickerClicks, 0);
+
+    handler({ composedPath() { return [{ tagName: 'path' }, { tagName: 'svg' }, { tagName: 'BUTTON' }, {}]; } });
     assert.equal(pickerClicks, 0);
 
     handler({
         target: { closest() { return null; } },
-        composedPath() { return [{}, {}]; }
+        composedPath() { return [{ tagName: 'DIV' }, tableWrapper, {}]; }
     });
     assert.equal(pickerClicks, 1);
+
+    handler({ composedPath() { return [{ tagName: 'INPUT' }, { tagName: 'TR' }, tableWrapper]; } });
+    assert.equal(pickerClicks, 1);
+    handler({ composedPath() { return [{ tagName: 'DIV' }, {}]; } });
+    assert.equal(pickerClicks, 2);
+});
+
+test('file-area keyboard shortcuts do not interfere with row inputs', () => {
+    const body = html.match(/dom\.dropZone\.onkeydown = \(e\) => \{([\s\S]*?)\n    \};/)[1];
+    let opened = 0;
+    let prevented = 0;
+    const dom = { dropZone: {}, fileInput: { click() { opened++; } } };
+    const handler = Function('dom', `return (e) => {${body}}`)(dom);
+    for (const key of ['Enter', ' ']) {
+        handler({ target: dom.dropZone, key, preventDefault() { prevented++; } });
+    }
+    handler({ target: {}, key: 'Enter', preventDefault() { prevented++; } });
+    handler({ target: dom.dropZone, key: 'Escape', preventDefault() { prevented++; } });
+    assert.equal(opened, 2);
+    assert.equal(prevented, 2);
 });
 
 test('file rows show pending title detection as analyzing', () => {
