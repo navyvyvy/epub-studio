@@ -1,0 +1,49 @@
+.ui-button {
+    --button-size: 32px;
+    --button-font-size: 0.75rem;
+    --button-padding: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: var(--button-size);
+    padding: 0 var(--button-padding);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--tone--192326);
+    color: var(--text-dim);
+    font-family: var(--font-body);
+    font-size: var(--button-font-size);
+    font-weight: 700;
+    line-height: normal;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 0.18s ease, border-color 0.18s ease, background-color 0.18s ease, transform 0.14s ease;
+}
+.ui-button:where(:not(:disabled):hover) { color: var(--text); border-color: var(--accent); }
+.ui-button:where(:not(:disabled):active) { transform: translateY(1px); }
+.ui-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.ui-button:disabled { opacity: 0.45; cursor: not-allowed; }
+.ui-button svg { flex-shrink: 0; }
+
+.ui-button--compact {
+    --button-size: 28px;
+    --button-font-size: 0.6875rem;
+    --button-padding: 8px;
+}
+.ui-button--large {
+    --button-size: 52px;
+    --button-font-size: 0.875rem;
+    --button-padding: 16px;
+    border-radius: 10px;
+}
+.ui-button--icon { width: var(--button-size); min-width: var(--button-size); padding: 0; flex-shrink: 0; }
+.ui-button--primary,
+.ui-button[aria-pressed="true"] { color: var(--tone--06110d); border-color: var(--primary); background: var(--primary); }
+.ui-button--primary:where(:not(:disabled):hover),
+.ui-button[aria-pressed="true"]:where(:not(:disabled):hover) { color: var(--tone--06110d); background: var(--accent); }
+.ui-button--quiet-danger:where(:not(:disabled):hover) { color: var(--danger); border-color: var(--danger); }
+
+@media (prefers-reduced-motion: reduce) {
+    .ui-button { transition: none; }
+}

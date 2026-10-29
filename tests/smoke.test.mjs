@@ -49,6 +49,148 @@ function loadFileReader() {
     return Function(`${source}; return readFileText;`)();
 }
 
+function loadStore() {
+    const source = html.match(/class Store \{[\s\S]*?(?=\n    const store =)/)[0];
+    return vm.runInNewContext(`${source}; Store;`);
+}
+
+test('changing one file multi-pattern setting preserves other files and resets only its output status', () => {
+    const Store = loadStore();
+    const first = { id: 'a', useMultiToc: false, state: 'done', isValid: 'ok', customTitle: 'first' };
+    const second = { id: 'b', useMultiToc: false, state: 'done', isValid: 'ok' };
+    const store = new Store({ files: [first, second] });
+    store.dispatch({ type: 'UPDATE_FILE_MULTI_TOC', payload: { id: 'a', useMultiToc: true } });
+    assert.equal(store.state.files[0].useMultiToc, true);
+    assert.equal(store.state.files[0].state, 'wait');
+    assert.equal(store.state.files[0].isValid, 'none');
+    assert.equal(store.state.statusKey, 'statusReady');
+    assert.equal(store.state.files[0].customTitle, 'first');
+    assert.equal(store.state.files[1], second);
+    assert.equal(first.useMultiToc, false);
+});
+
+test('file multi-pattern controls refresh only that file without changing the default', () => {
+    const Store = loadStore();
+    const store = new Store({ files: [{ id: 'a', useMultiToc: false }, { id: 'b', useMultiToc: true }], isProcessing: false });
+    const validated = [];
+    const previewed = [];
+    const dom = { optToc: { checked: true }, optMultiToc: { checked: false }, previewDialog: { open: true } };
+    const source = html.match(/function setFileMultiToc[\s\S]*?(?=\n    function handlePreviewOptionChange)/)[0];
+    const context = vm.createContext({ store, dom, currentPreviewFileId: 'a',
+        validateFileById: id => validated.push(id), previewFileById: id => previewed.push(id) });
+    vm.runInContext(source, context);
+    context.setFileMultiToc('a', true);
+    assert.deepEqual(validated, ['a']);
+    assert.deepEqual(previewed, ['a']);
+    assert.equal(dom.optMultiToc.checked, false);
+    context.setFileMultiToc('a', true);
+    context.setFileMultiToc('missing', false);
+    assert.deepEqual(validated, ['a']);
+    context.setFileMultiToc('b', false);
+    assert.deepEqual(validated, ['a', 'b']);
+    assert.deepEqual(previewed, ['a']);
+    store.state.isProcessing = true;
+    context.setFileMultiToc('a', false);
+    store.state.isProcessing = false;
+    dom.optToc.checked = false;
+    context.setFileMultiToc('a', false);
+    assert.equal(store.state.files[0].useMultiToc, true);
+    assert.deepEqual(validated, ['a', 'b']);
+});
+
+test('validation uses each file setting and discards outdated reads and worker responses', async () => {
+    const Store = loadStore();
+    const store = new Store({ files: [{ id: 'a', useMultiToc: false, file: {} }, { id: 'b', useMultiToc: true, file: {} }] });
+    const messages = [];
+    const requestIds = new Map();
+    const context = vm.createContext({ store, validationRequestIds: requestIds,
+        dom: { optMultiToc: { checked: false }, regexInput: { value: '', defaultValue: '' } },
+        readFileText: async () => '1화 시작\n\n2화 계속',
+        parserWorker: { postMessage: message => messages.push(message) },
+        getSelectedFallbackLines: () => new Set(), getExcludedPreviewLines: () => new Set() });
+    vm.runInContext(html.match(/async function validateFileById[\s\S]*?(?=\n    async function validateFiles)/)[0], context);
+    await context.validateFileById('a');
+    await context.validateFileById('b');
+    assert.deepEqual(messages.map(message => message.payload.useMultiToc), [false, true]);
+    let finishOldRead;
+    context.readFileText = () => new Promise(resolve => { finishOldRead = resolve; });
+    const outdated = context.validateFileById('a');
+    context.readFileText = async () => 'new';
+    store.dispatch({ type: 'UPDATE_FILE_MULTI_TOC', payload: { id: 'a', useMultiToc: true } });
+    await context.validateFileById('a');
+    finishOldRead('old');
+    await outdated;
+    assert.equal(messages.length, 3);
+    assert.equal(messages[2].payload.useMultiToc, true);
+    assert.equal(messages[2].payload.requestId, 3);
+    const responseBody = html.match(/else if \(type === 'VALIDATE_RESULT'\) \{([\s\S]*?)\n        }/)[1];
+    const respond = Function('payload', 'validationRequestIds', 'store', responseBody);
+    respond({ id: 'a', requestId: 1, isValid: 'no' }, requestIds, store);
+    assert.equal(store.state.files[0].isValid, 'none');
+    respond({ id: 'a', requestId: 3, isValid: 'ok' }, requestIds, store);
+    assert.equal(store.state.files[0].isValid, 'ok');
+    requestIds.delete('a');
+    respond({ id: 'a', requestId: 3, isValid: 'no' }, requestIds, store);
+    assert.equal(store.state.files[0].isValid, 'ok');
+});
+
+test('adding files analyzes only new TXT files and preserves existing analysis and settings', async () => {
+    const Store = loadStore();
+    const existing = { id: 'old', customTitle: 'edited title', useMultiToc: false, state: 'done', isValid: 'ok' };
+    const store = new Store({ files: [existing] });
+    const validated = [];
+    let additions = 0;
+    store.subscribe(() => additions++);
+    const dom = { optMultiToc: { checked: true } };
+    const source = html.match(/async function handleFiles[\s\S]*?(?=\n    async function validateFileById)/)[0];
+    const context = vm.createContext({ store, dom, detectFileEncoding: () => 'UTF-8',
+        validateFileById: async id => validated.push(id) });
+    vm.runInContext(source, context);
+    const file = name => ({ name, slice() { return { arrayBuffer: async () => {
+        dom.optMultiToc.checked = false;
+        return new ArrayBuffer(0);
+    } }; } });
+    await context.handleFiles([file('first.txt'), file('second.TXT'), file('ignored.pdf')]);
+    assert.equal(store.state.files.length, 3);
+    assert.equal(store.state.files[0], existing);
+    assert.deepEqual(validated, Array.from(store.state.files.slice(1), item => item.id));
+    assert.equal(validated.includes('old'), false);
+    assert.equal(store.state.files[1].useMultiToc, true);
+    assert.equal(store.state.files[2].useMultiToc, true);
+    await context.handleFiles([file('ignored.pdf')]);
+    await context.handleFiles([]);
+    assert.equal(additions, 1);
+    assert.equal(validated.length, 2);
+});
+
+test('preview toggle buttons invert only their current file setting without checkbox state', () => {
+    const store = { state: { files: [{ id: 'a', useMultiToc: false }, { id: 'b', useMultiToc: true }] } };
+    const calls = [];
+    const body = html.match(/dom\.previewMultiTocToggle\.addEventListener\('click', \(\) => \{([\s\S]*?)\n    }\);/)[1];
+    const context = vm.createContext({ store, currentPreviewFileId: 'a', setFileMultiToc(id, value) {
+        calls.push([id, value]);
+        store.state.files.find(file => file.id === id).useMultiToc = value;
+    } });
+    vm.runInContext(`function clickToggle() {${body}}`, context);
+    context.clickToggle();
+    context.clickToggle();
+    assert.deepEqual(calls, [['a', true], ['a', false]]);
+    assert.equal(store.state.files[1].useMultiToc, true);
+    context.currentPreviewFileId = 'missing';
+    context.clickToggle();
+    assert.equal(calls.length, 2);
+});
+
+test('worker validation echoes the request identity for rapid file setting changes', async () => {
+    const { context, messages } = loadWorker();
+    await context.self.onmessage({ data: { type: 'VALIDATE', payload: {
+        id: 'a', requestId: 42, text: '1화 시작\n\n2화 계속', userRegex: '', useMultiToc: false
+    } } });
+    assert.equal(messages[0].payload.id, 'a');
+    assert.equal(messages[0].payload.requestId, 42);
+    assert.equal(messages[0].payload.isValid, 'ok');
+});
+
 test('button localization preserves the advanced settings icon and updates plain buttons', () => {
     const i18n = readFileSync(new URL('../i18n.js', import.meta.url), 'utf8');
     const source = i18n.match(/function setButton\([\s\S]*?\n    }/)[0];
@@ -1917,6 +2059,42 @@ test('duplicate and unsafe output titles get safe unique filenames', () => {
     const used = new Set();
     assert.equal(context.getEpubFilename('a/b', used), 'a_b.epub');
     assert.equal(context.getEpubFilename('a/b', used), 'a_b (2).epub');
+});
+
+test('navigation highlights the most visible section below the header and clears the previous link', () => {
+    const positions = [{ top: 0, bottom: 700 }, { top: 700, bottom: 1600 }, { top: 1600, bottom: 2500 }];
+    const sections = ['tool', 'features', 'about'].map((id, index) => ({ id, getBoundingClientRect: () => positions[index] }));
+    const navLinks = sections.map(section => ({ hash: '#' + section.id, attributes: new Map(),
+        setAttribute(name, value) { this.attributes.set(name, value); },
+        removeAttribute(name) { this.attributes.delete(name); } }));
+    const context = vm.createContext({ sections, navLinks, activeSectionFrame: 1, innerHeight: 900,
+        header: { getBoundingClientRect: () => ({ bottom: 100 }) } });
+    vm.runInContext(html.match(/function updateActiveSection\(\) \{[\s\S]*?(?=\n        function scheduleActiveSectionUpdate)/)[0], context);
+    const active = () => navLinks.filter(link => link.attributes.get('aria-current') === 'location').map(link => link.hash);
+    context.updateActiveSection();
+    assert.deepEqual(active(), ['#tool']);
+    positions[0] = { top: -500, bottom: 200 };
+    positions[1] = { top: 200, bottom: 1100 };
+    positions[2] = { top: 1100, bottom: 2000 };
+    context.updateActiveSection();
+    assert.deepEqual(active(), ['#features']);
+    positions[1] = { top: -800, bottom: 100 };
+    positions[2] = { top: 100, bottom: 2000 };
+    context.innerHeight = 640;
+    context.updateActiveSection();
+    assert.deepEqual(active(), ['#about']);
+    assert.equal(context.activeSectionFrame, 0);
+});
+
+test('public pages load the shared button component stylesheet', () => {
+    const css = readFileSync(new URL('../ui-buttons.css', import.meta.url), 'utf8');
+    for (const selector of ['.ui-button {', '.ui-button--compact {', '.ui-button--large {', '.ui-button--icon {']) {
+        assert.ok(css.includes(selector), selector);
+    }
+    for (const file of ['index.html', 'about.html', 'privacy.html', 'contact.html']) {
+        const source = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
+        assert.match(source, /<link rel="stylesheet" href="\.\/ui-buttons\.css\?v=[^"]+">/);
+    }
 });
 
 test('public pages expose stable crawl metadata and sitemap entries', () => {

@@ -172,21 +172,12 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
     padding-left: 6px;
 }
 
-.lang-switch button {
-    border: 1px solid var(--border);
-    background: var(--tone-rgba-13-17-29-0-9);
-    color: var(--text-dim);
-    border-radius: 8px;
-    width: 34px;
-    height: 34px;
-    display: grid;
-    place-items: center;
-    padding: 0;
-    font-size: 1.05rem;
-    font-weight: 800;
-    cursor: pointer;
-    transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
-    line-height: 1;
+.lang-switch img {
+    display: block;
+    width: 24px;
+    height: 16px;
+    object-fit: contain;
+    pointer-events: none;
 }
 
 .lang-switch button:hover {

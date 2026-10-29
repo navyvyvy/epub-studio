@@ -27,8 +27,9 @@
     <!-- 외부 라이브러리 로드 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jschardet/3.0.0/jschardet.min.js"></script>
-    <script src="./i18n.js?v=20261029-4"></script>
-    <link rel="stylesheet" href="./site-shared.css?v=20261029-3">
+    <script src="./i18n.js?v=20261030-5"></script>
+    <link rel="stylesheet" href="./site-shared.css?v=20261030-2">
+    <link rel="stylesheet" href="./ui-buttons.css?v=20261030-1">
     <style>
         /* Hallmark · redesign: full · scope: app · theme: existing dark mint · v2.0.0 */
         /* Pre-emit critique: the conversion queue is the focus; inherited detail styling remains to be consolidated. */
@@ -188,23 +189,6 @@
         .btn-advanced-toggle {
             justify-self: center;
             align-self: center;
-            font-size: 0.74rem;
-            color: var(--text-dim);
-            background: var(--tone--0b1214);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 7px 12px;
-            word-break: keep-all;
-            white-space: nowrap;
-            transition: 0.2s ease;
-        }
-        .btn-advanced-toggle:hover {
-            color: var(--text);
-            border-color: var(--accent);
         }
         .btn-advanced-toggle.open {
             color: var(--text);
@@ -277,28 +261,6 @@
             resize: none;
         }
 
-        #btnTestParser {
-            background: var(--primary);
-            border: none;
-            color: var(--tone--06110d);
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.2s;
-            height: 52px;
-        }
-        #btnTestParser:hover { background: var(--accent); }
-
-        #btnTestParser:active,
-        .btn-start:active,
-        .btn-file-convert:active,
-        .btn-cover:active,
-        .btn-preview-action:active {
-            transform: translateY(1px);
-        }
-
         .file-list-area {
             flex-grow: 1;
             overflow: hidden;
@@ -327,11 +289,7 @@
         .file-table th.col-title, .file-table td.col-title { text-align: left; padding-left: 15px; }
 
         .title-input { background: none; border: none; color: var(--text); width: 100%; outline: none; font-size: 0.75rem; }
-        .btn-header-action { background: none; border: 1px solid var(--border); color: var(--text-dim); width: 22px; height: 22px; border-radius: 4px; cursor: pointer; }
-        .btn-header-action:hover { border-color: var(--accent); color: var(--text); }
-
-        .cover-btn-group { display: flex; gap: 4px; justify-content: center; }
-        .btn-cover { background: var(--tone--192326); border: 1px solid var(--border); color: var(--text-dim); padding: 4px 8px; font-size: 0.65rem; border-radius: 6px; cursor: pointer; }
+        .cover-btn-group { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
         .btn-cover.active { background: var(--tone-rgba-34-197-94-0-15); border-color: var(--success); color: var(--success); }
         .status-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.6rem; font-weight: 800; transition: 0.2s; }
         .status-badge.clickable { cursor: pointer; }
@@ -343,18 +301,10 @@
 
         .file-actions { display: flex; justify-content: center; align-items: center; gap: 5px; }
         .btn-file-convert {
-            padding: 4px 7px;
-            border: 1px solid var(--tone-rgba-124-230-196-0-45);
-            border-radius: 6px;
+            border-color: var(--tone-rgba-124-230-196-0-45);
             background: var(--tone-rgba-82-214-173-0-08);
             color: var(--accent);
-            font-size: 0.62rem;
-            font-weight: 800;
-            cursor: pointer;
-            white-space: nowrap;
         }
-        .btn-file-convert:hover { border-color: var(--accent); color: var(--text); }
-        .btn-file-convert:disabled { opacity: 0.4; cursor: not-allowed; }
 
         .detect-cell {
             display: flex;
@@ -364,16 +314,6 @@
 
         .detect-preview {
             min-width: 68px;
-            padding: 5px 10px;
-            border: 1px solid var(--border);
-            border-radius: 999px;
-            background: var(--tone-rgba-255-255-255-0-02);
-            color: var(--text-dim);
-            font-size: 0.66rem;
-            font-weight: 700;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: 0.2s ease;
         }
 
         .detect-preview.detect-hit {
@@ -392,18 +332,6 @@
             border-color: var(--border);
             color: var(--text-dim);
         }
-
-        .detect-preview:hover {
-            filter: brightness(1.08);
-        }
-
-        .detect-preview:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-            filter: none;
-        }
-
-        .empty-msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--text-dim); font-size: 0.85rem; pointer-events: none; }
 
         .process-panel {
             display: grid;
@@ -460,32 +388,13 @@
         }
         .btn-start {
             width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 72px;
-            background: var(--primary);
-            border: none;
-            border-radius: 10px;
-            font-weight: 800;
-            cursor: pointer;
-            color: var(--tone--06110d);
-            font-size: 0.92rem;
-            transition: 0.3s;
         }
         .btn-start.is-stop {
             background: transparent;
             border: 2px solid var(--danger);
             color: var(--danger);
         }
-        .btn-start:disabled {
-            background: var(--card);
-            color: var(--text-dim);
-            border: 1px solid var(--border);
-            cursor: not-allowed;
-        }
-
-        #status { font-size: 0.94rem; text-align: left; color: var(--text); min-height: 1.2rem; font-weight: 800; }
+        #status { font-size: 0.94rem; text-align: center; color: var(--text); min-height: 1.2rem; font-weight: 800; }
         .progress-bar {
             height: 3px;
             background: var(--tone--263538);
@@ -584,47 +493,6 @@
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
-        }
-
-        .preview-toggle {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 10px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            background: var(--tone--0b1214);
-            color: var(--text-dim);
-            font-size: 0.72rem;
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .preview-toggle input {
-            width: 14px;
-            height: 14px;
-            margin: 0;
-            accent-color: var(--accent);
-        }
-
-        .btn-preview-action {
-            border: 1px solid var(--border);
-            background: var(--tone--0b1214);
-            color: var(--text-dim);
-            border-radius: 8px;
-            padding: 6px 10px;
-            font-size: 0.72rem;
-            cursor: pointer;
-        }
-
-        .btn-preview-action:hover {
-            color: var(--text);
-            border-color: var(--accent);
-        }
-
-        .btn-preview-action:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
         }
 
         .preview-summary {
@@ -752,27 +620,6 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-        }
-
-        .preview-item-action {
-            flex: 0 0 auto;
-            width: 28px;
-            height: 28px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            background: var(--tone--090f11);
-            color: var(--text-dim);
-            cursor: pointer;
-            transition: 0.18s ease;
-        }
-
-        .preview-item-action:hover {
-            color: var(--text);
-            border-color: var(--accent);
-            transform: translateY(-1px);
         }
 
         .preview-action-icon {
@@ -1623,30 +1470,6 @@
             background: radial-gradient(ellipse at center, var(--tone-rgba-82-214-173-0-08), transparent 65%), var(--tone--101b1b);
         }
 
-        .home-page .empty-msg {
-            width: min(90%, 400px);
-            text-align: center;
-            color: var(--tone--c6d8d1);
-            font-size: 0.95rem;
-            line-height: 1.6;
-        }
-
-        .home-page .empty-msg::before {
-            content: "+";
-            display: grid;
-            place-items: center;
-            width: 54px;
-            height: 54px;
-            margin: 0 auto 18px;
-            border: 1px solid var(--tone-rgba-124-230-196-0-48);
-            border-radius: 16px;
-            color: var(--accent);
-            background: var(--tone-rgba-82-214-173-0-08);
-            font-size: 2rem;
-            font-weight: 300;
-            line-height: 1;
-        }
-
         #features .feature-grid {
             counter-reset: feature;
         }
@@ -1747,19 +1570,9 @@
                 margin: 0;
             }
 
-            .home-page .controls,
-            .home-page .btn-start {
-                min-height: 60px;
-            }
         }
 
         @media (max-width: 640px) {
-            .home-page .empty-msg::before {
-                width: 44px;
-                height: 44px;
-                margin-bottom: 10px;
-            }
-
             .home-page .file-table,
             .home-page .file-table tbody,
             .home-page .file-table thead {
@@ -1823,7 +1636,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="./hallmark-workspace.css?v=20261029-4">
+    <link rel="stylesheet" href="./hallmark-workspace.css?v=20261030-8">
 </head>
 <body class="home-page">
 
@@ -1844,8 +1657,8 @@
 
     <dialog id="advancedDialog" class="advanced-dialog" aria-labelledby="advancedTitle">
         <div class="advanced-head">
-            <h2 id="advancedTitle">고급 설정</h2>
-            <button type="button" id="advancedCloseBtn" class="btn-preview-action">닫기</button>
+            <h2 id="advancedTitle">목차 감지 도구</h2>
+            <button type="button" id="advancedCloseBtn" class="ui-button btn-preview-action">닫기</button>
         </div>
     </dialog>
 
@@ -1858,18 +1671,19 @@
             </div>
             <div>
 <div class="container">
+    <div class="settings-panel">
     <div class="config-section">
         <div class="options-bar">
             <div class="options-group">
                 <label class="option-item"><input type="checkbox" id="optTrim" checked> 공백 정제</label>
                 <label class="option-item"><input type="checkbox" id="optToc" checked> 목차 추출</label>
-                    <label class="option-item" title="체크하면 '몇 화'와 '070'처럼 형식이 다른 챕터 표기가 섞여 있어도 함께 목차로 잡습니다.">
-                    <input type="checkbox" id="optMultiToc"> 다중 패턴 허용
+                    <label class="option-item" title="새로 추가할 파일의 기본값입니다. 이미 추가한 파일은 목록이나 미리보기에서 따로 바꿀 수 있습니다.">
+                    <input type="checkbox" id="optMultiToc"> 여러 형식 감지
                 </label>
                 <label class="option-item"><input type="checkbox" id="optZip"> ZIP 일괄 압축</label>
             </div>
-            <button type="button" class="btn-advanced-toggle" id="btnToggleAdvanced" aria-haspopup="dialog" aria-controls="advancedDialog">
-                <span data-button-label>고급 설정</span>
+            <button type="button" class="ui-button btn-advanced-toggle" id="btnToggleAdvanced" aria-haspopup="dialog" aria-controls="advancedDialog">
+                <span data-button-label>목차 감지 도구</span>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 7h9m4 0h3M4 17h3m4 0h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
             </button>
         </div>
@@ -1889,10 +1703,20 @@
                     <div id="testOutput" class="regex-output" role="region" aria-labelledby="testResultLabel">감지된 제목이 여기에 표시됩니다.</div>
                 </div>
                 <div class="regex-test-row">
-                    <button type="button" id="btnTestParser">테스트 실행</button>
+                    <button type="button" id="btnTestParser" class="ui-button ui-button--primary">테스트 실행</button>
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="process-meta">
+        <div class="process-label">현재 상태</div>
+        <div class="status-stack">
+            <div id="status">대기 중</div>
+            <div class="status-detail" id="statusDetail">TXT 파일을 넣으면 변환을 시작할 수 있습니다.</div>
+            <div class="progress-bar" id="progBar"><div class="progress-fill" id="progFill"></div></div>
+        </div>
+    </div>
     </div>
 
     <dialog class="preview-dialog" id="previewDialog">
@@ -1903,12 +1727,9 @@
                     <span id="previewFileMeta">파일을 고르면 감지된 제목 후보를 보여줍니다.</span>
                 </div>
                 <div class="preview-actions">
-                    <label class="preview-toggle" title="다중 패턴을 바로 바꿔 미리보기를 다시 계산합니다.">
-                        <input type="checkbox" id="previewMultiTocToggle">
-                        <span>다중 패턴</span>
-                    </label>
-                    <button type="button" class="btn-preview-action" id="previewCopyBtn">복사</button>
-                    <button type="button" class="btn-preview-action" id="previewCloseBtn">닫기</button>
+                    <button type="button" id="previewMultiTocToggle" class="ui-button preview-toggle toc-mode-toggle" aria-pressed="false" title="이 파일의 다중 패턴 설정만 바꾸고 미리보기와 실제 변환에 적용합니다.">다중 패턴</button>
+                    <button type="button" class="ui-button btn-preview-action" id="previewCopyBtn">복사</button>
+                    <button type="button" class="ui-button btn-preview-action" id="previewCloseBtn">닫기</button>
                 </div>
             </div>
             <div class="preview-summary" id="previewSummary"></div>
@@ -1919,17 +1740,16 @@
         </div>
     </dialog>
 
-    <div class="file-list-area" id="dropZone" tabindex="0" role="group" aria-label="파일 추가">
-        <div class="empty-msg" id="emptyMsg">텍스트 파일을 드래그하거나 클릭해서 추가하세요</div>
+    <div class="file-list-area" id="dropZone" tabindex="0" role="group" aria-label="파일 추가" aria-describedby="fileAddHint">
         <div class="table-wrapper" id="tableWrapper">
             <div class="table-scroll-box">
                 <table class="file-table">
                     <colgroup>
                         <col style="width: auto;">
-                        <col style="width: 125px;">
+                        <col style="width: 145px;">
                         <col style="width: 85px;">
-                        <col style="width: 110px;">
-                        <col style="width: 120px;">
+                        <col style="width: 155px;">
+                        <col style="width: 125px;">
                         <col style="width: 45px;">
                     </colgroup>
                     <thead>
@@ -1939,29 +1759,25 @@
                             <th>인코딩</th>
                             <th>감지</th>
                             <th>상태</th>
-                            <th><button type="button" id="clearAllBtn" class="btn-header-action" title="파일 전체 삭제" aria-label="파일 전체 삭제">✕</button></th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody id="fileTbody"></tbody>
                 </table>
             </div>
         </div>
-        <button type="button" id="addFilesBtn" class="file-list-add" hidden>
+        <div id="fileAddHint" class="file-add-hint">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-            <span data-button-label>파일 추가</span>
-        </button>
+            <span>빈 공간을 클릭하거나 파일을 끌어 놓아 추가하세요</span>
+        </div>
     </div>
     <div class="process-panel">
+        <button type="button" id="clearAllBtn" class="ui-button ui-button--large ui-button--quiet-danger btn-reset-list" title="추가한 파일 목록 비우기" disabled>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></svg>
+            <span data-button-label>목록 초기화</span>
+        </button>
         <div class="controls">
-            <button type="button" class="btn-start" id="convertBtn">EPUB 변환 시작</button>
-        </div>
-        <div class="process-meta">
-            <div class="process-label">현재 상태</div>
-            <div class="status-stack">
-                <div id="status">대기 중</div>
-                <div class="status-detail" id="statusDetail">TXT 파일을 넣으면 변환을 시작할 수 있습니다.</div>
-                <div class="progress-bar" id="progBar"><div class="progress-fill" id="progFill"></div></div>
-            </div>
+            <button type="button" class="ui-button ui-button--large ui-button--primary btn-start" id="convertBtn">EPUB 변환 시작</button>
         </div>
     </div>
     <input type="file" id="fileInput" multiple accept=".txt" style="display:none">
@@ -1978,7 +1794,7 @@
             <div class="feature-grid">
                 <article class="feature-card" data-reveal>
                     <h3>TXT에서 EPUB으로 변환</h3>
-                    <p>목록의 + 버튼이나 빈 공간, 드래그로 파일을 더 추가하고, 전체 또는 필요한 파일 하나만 EPUB으로 만들 수 있습니다.</p>
+                    <p>파일 목록의 빈 공간을 클릭하거나 드래그해 파일을 더 추가할 수 있습니다. 새 파일만 분석하며, 기존 결과는 유지합니다. 개별·전체 변환과 목록 초기화도 가능합니다.</p>
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>공백 정제</h3>
@@ -1990,7 +1806,7 @@
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>목차 미리보기</h3>
-                    <p>목차를 확인하고 필요 없는 줄은 뺄 수 있습니다. 다른 형식의 후보는 2개 이상 확인됐을 때만 보여주며, 직접 추가할 수 있습니다.</p>
+                    <p>파일별로 다중 패턴을 바꾸고 필요 없는 줄은 뺄 수 있습니다. 다른 형식의 후보는 2개 이상 확인됐을 때만 보여주며, 직접 추가할 수 있습니다.</p>
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>표지 설정</h3>
@@ -2086,14 +1902,12 @@
         </section>
 
         <footer class="footer-panel">
-            <p>© 2026 EPUB STUDIO. TXT를 EPUB으로 바꾸는 브라우저 도구.</p>
-            <div class="footer-links">
-                <a href="#tool">변환 도구</a>
-                <a href="#features">기능 소개</a>
-                <a href="#about">사이트 소개</a>
+            <p>© 2026 EPUB STUDIO.</p>
+            <nav class="footer-links" aria-label="하단 바로가기">
                 <a href="#privacy">개인정보처리방침</a>
                 <a href="#contact">문의</a>
-            </div>
+                <a href="#tool" class="footer-return">변환 도구로 돌아가기</a>
+            </nav>
         </footer>
     </main>
 </div>
@@ -2119,6 +1933,7 @@
                 case 'CLEAR_FILES': return { ...state, files: [], progress: 0, statusKey: 'statusIdle', statusDetailKey: 'statusIdleDetail', statusDetailVars: {} };
                 case 'UPDATE_FILE_TITLE': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, customTitle: action.payload.title } : f) };
                 case 'UPDATE_FILE_COVER': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, coverBlob: action.payload.blob } : f) };
+                case 'UPDATE_FILE_MULTI_TOC': return { ...state, statusKey: 'statusReady', files: state.files.map(f => f.id === action.payload.id ? { ...f, useMultiToc: action.payload.useMultiToc, isValid: 'none', state: 'wait' } : f) };
                 case 'UPDATE_FILE_VALIDITY': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, isValid: action.payload.isValid } : f) };
                 case 'UPDATE_FILE_STATUS': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, state: action.payload.status } : f) };
                 case 'START_PROCESSING': return { ...state, isProcessing: true, shouldStop: false, progress: 0, statusKey: 'statusProcessing', statusDetailKey: 'statusProgress', statusDetailVars: { done: 0, total: action.payload.totalCount } };
@@ -2179,11 +1994,9 @@
 
     const dom = {
         fileInput: document.getElementById('fileInput'),
-        addFilesBtn: document.getElementById('addFilesBtn'),
         dropZone: document.getElementById('dropZone'),
         fileTbody: document.getElementById('fileTbody'),
         tableWrapper: document.getElementById('tableWrapper'),
-        emptyMsg: document.getElementById('emptyMsg'),
         convertBtn: document.getElementById('convertBtn'),
         regexInput: document.getElementById('regexInput'),
         optToc: document.getElementById('optToc'),
@@ -2222,6 +2035,7 @@
     let currentPreviewRequestId = 0;
     const excludedPreviewLinesByFile = new Map();
     const selectedFallbackLinesByFile = new Map();
+    const validationRequestIds = new Map();
 
     function getExcludedPreviewLines(fileId) {
         return excludedPreviewLinesByFile.get(fileId) || new Set();
@@ -2396,7 +2210,7 @@
 
             const candidateAction = document.createElement('button');
             candidateAction.type = 'button';
-            candidateAction.className = 'preview-item-action';
+            candidateAction.className = 'ui-button ui-button--compact ui-button--icon preview-item-action';
             const candidateActionKey = isFallbackSelected ? 'previewFallbackRemove' : 'previewFallbackAdd';
             const candidateActionLabel = window.EPUB_STUDIO_I18N.t(candidateActionKey);
             candidateAction.title = candidateActionLabel;
@@ -2425,7 +2239,7 @@
 
             const actionButton = document.createElement('button');
             actionButton.type = 'button';
-            actionButton.className = 'preview-item-action';
+            actionButton.className = 'ui-button ui-button--compact ui-button--icon preview-item-action';
             const actionKey = isExcluded ? 'previewRestore' : 'previewExclude';
             const actionLabel = window.EPUB_STUDIO_I18N.t(actionKey);
             actionButton.title = actionLabel;
@@ -2474,19 +2288,22 @@
         if (e.target === dom.previewDialog) closePreviewDialog();
     });
     dom.optToc.addEventListener('change', handlePreviewOptionChange);
-    dom.optMultiToc.addEventListener('change', handlePreviewOptionChange);
     dom.regexInput.addEventListener('change', handlePreviewOptionChange);
-    dom.previewMultiTocToggle.addEventListener('change', () => {
-        if (dom.optMultiToc.checked !== dom.previewMultiTocToggle.checked) {
-            dom.optMultiToc.checked = dom.previewMultiTocToggle.checked;
-        }
-        handlePreviewOptionChange();
+    dom.previewMultiTocToggle.addEventListener('click', () => {
+        const item = store.state.files.find(file => file.id === currentPreviewFileId);
+        if (item) setFileMultiToc(item.id, !item.useMultiToc);
     });
 
+    function setFileMultiToc(id, useMultiToc) {
+        if (store.state.isProcessing || !dom.optToc.checked) return;
+        const item = store.state.files.find(file => file.id === id);
+        if (!item || item.useMultiToc === useMultiToc) return;
+        store.dispatch({ type: 'UPDATE_FILE_MULTI_TOC', payload: { id, useMultiToc } });
+        validateFileById(id);
+        if (dom.previewDialog.open && currentPreviewFileId === id) previewFileById(id);
+    }
+
     function handlePreviewOptionChange() {
-        if (dom.previewMultiTocToggle.checked !== dom.optMultiToc.checked) {
-            dom.previewMultiTocToggle.checked = dom.optMultiToc.checked;
-        }
         renderList(store.state.files);
         if (!dom.optToc.checked) {
             closePreviewDialog();
@@ -2504,7 +2321,7 @@
         if (!dom.previewDialog.open) dom.previewDialog.showModal();
         dom.previewFileName.innerText = title || window.EPUB_STUDIO_I18N.t('previewTitle');
         dom.previewFileMeta.innerText = meta || '';
-        dom.previewMultiTocToggle.checked = dom.optMultiToc.checked;
+        dom.previewMultiTocToggle.setAttribute('aria-pressed', String(store.state.files.find(file => file.id === currentPreviewFileId)?.useMultiToc ?? false));
 
         if (previewState === 'loading') {
             dom.previewDialog.dataset.previewState = 'loading';
@@ -2552,7 +2369,7 @@
         dom.previewCandidate.innerHTML = '';
         dom.previewList.innerHTML = '<div class="preview-empty">' + window.EPUB_STUDIO_I18N.t('previewEmpty') + '</div>';
         dom.previewSummary.innerText = '';
-        dom.previewMultiTocToggle.checked = dom.optMultiToc.checked;
+        dom.previewMultiTocToggle.setAttribute('aria-pressed', 'false');
         dom.previewCopyBtn.disabled = true;
         dom.previewCopyBtn.innerText = window.EPUB_STUDIO_I18N.t('previewCopy');
     }
@@ -2581,6 +2398,7 @@
             openPreviewDialog(item.customTitle || item.file.name, `${item.file.name} · ${item.encoding}`, [], [], 'loading');
 
             const text = await readFileText(item.file, item.encoding);
+            if (requestId !== currentPreviewRequestId) return;
 
             parserWorker.postMessage({
                 type: 'PREVIEW_PARSER',
@@ -2591,10 +2409,11 @@
                     text,
                     userRegex: dom.regexInput.value,
                     preserveCustomMatches: dom.regexInput.value !== dom.regexInput.defaultValue,
-                    useMultiToc: dom.optMultiToc.checked
+                    useMultiToc: item.useMultiToc
                 }
             });
         } catch (error) {
+            if (requestId !== currentPreviewRequestId) return;
             openPreviewDialog(item.customTitle || item.file.name, `${item.file.name} · ${item.encoding}`, [], [], 'miss');
             dom.previewSummary.innerText = window.EPUB_STUDIO_I18N.t('previewNoResult');
             dom.previewList.innerHTML = '<div class="preview-empty">' + window.EPUB_STUDIO_I18N.t('previewError') + '</div>';
@@ -2625,10 +2444,12 @@
 
     store.subscribe((state, action) => {
         if (action.type === 'REMOVE_FILE') {
+            validationRequestIds.delete(action.payload);
             excludedPreviewLinesByFile.delete(action.payload);
             selectedFallbackLinesByFile.delete(action.payload);
             if (currentPreviewFileId === action.payload) closePreviewDialog();
         } else if (action.type === 'CLEAR_FILES') {
+            validationRequestIds.clear();
             excludedPreviewLinesByFile.clear();
             selectedFallbackLinesByFile.clear();
             closePreviewDialog();
@@ -2650,8 +2471,7 @@
             }
         }
         dom.statusDetail.innerText = detail;
-        dom.emptyMsg.style.display = state.files.length ? 'none' : 'block';
-        dom.addFilesBtn.hidden = !state.files.length;
+        dom.clearAllBtn.disabled = state.isProcessing || !state.files.length;
         dom.tableWrapper.classList.toggle('active', state.files.length > 0);
 
         if (state.isAdvancedOpen) {
@@ -2664,7 +2484,7 @@
             if (dom.advancedDialog.open) dom.advancedDialog.close();
         }
 
-        if (['ADD_FILES', 'REMOVE_FILE', 'CLEAR_FILES', 'UPDATE_FILE_VALIDITY', 'UPDATE_FILE_STATUS', 'UPDATE_FILE_COVER', 'START_PROCESSING', 'FINISH_PROCESSING', 'STOP_PROCESSING', 'REFRESH_LANGUAGE'].includes(action.type)) {
+        if (['ADD_FILES', 'REMOVE_FILE', 'CLEAR_FILES', 'UPDATE_FILE_MULTI_TOC', 'UPDATE_FILE_VALIDITY', 'UPDATE_FILE_STATUS', 'UPDATE_FILE_COVER', 'START_PROCESSING', 'FINISH_PROCESSING', 'STOP_PROCESSING', 'REFRESH_LANGUAGE'].includes(action.type)) {
             renderList(state.files);
         }
     });
@@ -2672,6 +2492,7 @@
     window.addEventListener('epub-langchange', () => store.dispatch({ type: 'REFRESH_LANGUAGE' }));
 
     function renderList(files) {
+        const focusedMultiId = document.activeElement?.closest('.file-multi-toggle')?.dataset.fileId;
         dom.fileTbody.innerHTML = '';
         files.forEach((item) => {
             const hasCover = !!item.coverBlob;
@@ -2680,7 +2501,7 @@
             const isDetecting = dom.optToc.checked && item.isValid === 'none';
             const detectState = item.isValid === 'ok' ? 'hit' : item.isValid === 'no' ? 'miss' : 'wait';
             const detectBtn = el('button', {
-                className: `detect-preview detect-${detectState}`,
+                className: `ui-button ui-button--compact detect-preview detect-${detectState}`,
                 onClick: () => {
                     if (canPreview) previewFileById(item.id);
                 }
@@ -2690,23 +2511,36 @@
                 ? window.EPUB_STUDIO_I18N.t(isDetecting ? 'previewLoading' : 'tablePreview')
                 : window.EPUB_STUDIO_I18N.t('previewScanning');
             const singleConvertBtn = el('button', {
-                className: 'btn-file-convert',
+                className: 'ui-button ui-button--compact btn-file-convert',
                 title: window.EPUB_STUDIO_I18N.t('tableConvertOneTitle'),
                 onClick: () => convertFiles([item.id])
             }, window.EPUB_STUDIO_I18N.t('tableConvertOne'));
             singleConvertBtn.disabled = store.state.isProcessing;
+            const multiToggle = el('button', {
+                type: 'button',
+                className: 'ui-button ui-button--compact file-multi-toggle toc-mode-toggle',
+                'data-file-id': item.id,
+                'aria-label': window.EPUB_STUDIO_I18N.t('fileMultiTocTitle'),
+                'aria-pressed': String(item.useMultiToc),
+                title: window.EPUB_STUDIO_I18N.t('fileMultiTocTitle'),
+                onClick: () => setFileMultiToc(item.id, !item.useMultiToc)
+            }, window.EPUB_STUDIO_I18N.t('fileMultiToc'));
+            multiToggle.disabled = !canPreview;
 
             const row = el('tr', {},
                 el('td', { className: 'col-title' }, el('input', { type: 'text', className: 'title-input', value: item.customTitle, onInput: (e) => store.dispatch({ type: 'UPDATE_FILE_TITLE', payload: { id: item.id, title: e.target.value } }) })),
                 el('td', {},
                     el('div', { className: 'cover-btn-group' },
-                        el('button', { className: 'btn-cover', onClick: () => window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(item.customTitle)}`, '_blank', 'noopener,noreferrer') }, window.EPUB_STUDIO_I18N.t('tableSearch')),
-                        el('button', { className: 'btn-cover' + (hasCover ? ' active' : ''), onClick: () => readClipboardImage(item.id) }, window.EPUB_STUDIO_I18N.t('tableClipboard'))
+                        el('button', { className: 'ui-button ui-button--compact btn-cover', onClick: () => window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(item.customTitle)}`, '_blank', 'noopener,noreferrer') }, window.EPUB_STUDIO_I18N.t('tableSearch')),
+                        el('button', { className: 'ui-button ui-button--compact btn-cover' + (hasCover ? ' active' : ''), onClick: () => readClipboardImage(item.id) }, window.EPUB_STUDIO_I18N.t('tableClipboard'))
                     )
                 ),
                 el('td', {}, item.encoding),
                 el('td', {},
-                    el('div', { className: 'detect-cell' }, detectBtn)
+                    el('div', { className: 'detect-cell' },
+                        multiToggle,
+                        detectBtn
+                    )
                 ),
                 el('td', {},
                     el('div', { className: 'file-actions' },
@@ -2722,9 +2556,10 @@
                         singleConvertBtn
                     )
                 ),
-                el('td', {}, el('button', { className: 'btn-header-action', title: window.EPUB_STUDIO_I18N.t('tableRemoveOne'), 'aria-label': window.EPUB_STUDIO_I18N.t('tableRemoveOne'), onClick: () => store.dispatch({ type: 'REMOVE_FILE', payload: item.id }) }, '✕'))
+                el('td', {}, el('button', { className: 'ui-button ui-button--compact ui-button--icon ui-button--quiet-danger btn-header-action', title: window.EPUB_STUDIO_I18N.t('tableRemoveOne'), 'aria-label': window.EPUB_STUDIO_I18N.t('tableRemoveOne'), onClick: () => store.dispatch({ type: 'REMOVE_FILE', payload: item.id }) }, '✕'))
             );
             dom.fileTbody.appendChild(row);
+            if (focusedMultiId === item.id && !multiToggle.disabled) multiToggle.focus({ preventScroll: true });
         });
     }
 
@@ -3568,7 +3403,7 @@
                     if (payload.excludedIndices && payload.excludedIndices.length) {
                         for (const idx of payload.excludedIndices) validIndices.delete(idx);
                     }
-                    self.postMessage({ type: 'VALIDATE_RESULT', payload: { id: payload.id, isValid: validIndices.size > 0 ? 'ok' : 'no' } });
+                    self.postMessage({ type: 'VALIDATE_RESULT', payload: { id: payload.id, requestId: payload.requestId, isValid: validIndices.size > 0 ? 'ok' : 'no' } });
                 }
                 else if (type === 'CONVERT') {
                     const { id, title, fileName, content, useTrim, useAutoToc, useMultiToc, userRegex, coverBuffer, coverType, language } = payload;
@@ -3700,6 +3535,7 @@
             );
         }
         else if (type === 'VALIDATE_RESULT') {
+            if (payload.requestId !== validationRequestIds.get(payload.id)) return;
             store.dispatch({ type: 'UPDATE_FILE_VALIDITY', payload });
         }
         else if (type === 'CONVERT_RESULT') {
@@ -3719,7 +3555,6 @@
         }
     };
 
-    dom.addFilesBtn.onclick = () => dom.fileInput.click();
     dom.dropZone.onclick = (e) => { if (!e.composedPath().some(node => ['TR', 'BUTTON', 'INPUT', 'A', 'TEXTAREA'].includes(node.tagName))) dom.fileInput.click(); };
     dom.dropZone.onkeydown = (e) => {
         if (e.target === dom.dropZone && (e.key === 'Enter' || e.key === ' ')) {
@@ -3734,6 +3569,7 @@
 
     async function handleFiles(files) {
         const newFiles = [];
+        const useMultiToc = dom.optMultiToc.checked;
         for (const file of Array.from(files)) {
             if (!file.name.toLowerCase().endsWith('.txt')) continue;
 
@@ -3745,29 +3581,35 @@
                 file,
                 customTitle: file.name.replace(/\.[^/.]+$/, "").replace(/(?<=[가-힣\w])\+(?=[가-힣\w])/g, ' '),
                 encoding: enc,
+                useMultiToc,
                 state: 'wait',
                 isValid: 'none',
                 coverBlob: null
             });
         }
+        if (!newFiles.length) return;
         store.dispatch({ type: 'ADD_FILES', payload: newFiles });
-        validateFiles();
+        for (const item of newFiles) await validateFileById(item.id);
     }
 
     async function validateFileById(id) {
         const item = store.state.files.find((file) => file.id === id);
         if (!item) return;
+        const requestId = (validationRequestIds.get(id) || 0) + 1;
+        validationRequestIds.set(id, requestId);
         store.dispatch({ type: 'UPDATE_FILE_VALIDITY', payload: { id, isValid: 'none' } });
         const text = await readFileText(item.file, item.encoding);
+        if (validationRequestIds.get(id) !== requestId) return;
         parserWorker.postMessage({
             type: 'VALIDATE',
             payload: {
                 id: item.id,
+                requestId,
                 fileName: item.file.name,
                 text,
                 userRegex: dom.regexInput.value,
                 preserveCustomMatches: dom.regexInput.value !== dom.regexInput.defaultValue,
-                useMultiToc: dom.optMultiToc.checked,
+                useMultiToc: item.useMultiToc,
                 selectedFallbackIndices: Array.from(getSelectedFallbackLines(item.id)),
                 excludedIndices: Array.from(getExcludedPreviewLines(item.id))
             }
@@ -3798,7 +3640,6 @@
 
         const finalZip = !isSingle && dom.optZip.checked ? new JSZip() : null;
         const usedZipNames = new Set();
-        const useMultiToc = dom.optMultiToc.checked;
 
         for (let i = 0; i < filesToProcess.length; i++) {
             if (store.state.shouldStop) break;
@@ -3827,7 +3668,7 @@
                             content: text,
                             useTrim: dom.optTrim.checked,
                             useAutoToc: dom.optToc.checked,
-                            useMultiToc,
+                            useMultiToc: item.useMultiToc,
                             userRegex: dom.regexInput.value,
                             preserveCustomMatches: dom.regexInput.value !== dom.regexInput.defaultValue,
                             coverBuffer: coverBuf,
@@ -3895,6 +3736,39 @@
         }
 
         const sections = Array.from(document.querySelectorAll('.section-block'));
+        const navLinks = Array.from(document.querySelectorAll('.site-header .header-nav a'));
+        const header = document.querySelector('.site-header');
+        let activeSectionFrame = 0;
+
+        function updateActiveSection() {
+            activeSectionFrame = 0;
+            const headerBottom = Math.max(0, header.getBoundingClientRect().bottom);
+            let activeSection = sections[0];
+            let largestVisibleArea = 0;
+            for (const section of sections) {
+                const bounds = section.getBoundingClientRect();
+                const visibleArea = Math.max(0, Math.min(bounds.bottom, innerHeight) - Math.max(bounds.top, headerBottom));
+                if (visibleArea > largestVisibleArea) {
+                    largestVisibleArea = visibleArea;
+                    activeSection = section;
+                }
+            }
+            for (const link of navLinks) {
+                if (link.hash === '#' + activeSection.id) link.setAttribute('aria-current', 'location');
+                else link.removeAttribute('aria-current');
+            }
+        }
+
+        function scheduleActiveSectionUpdate() {
+            if (!activeSectionFrame) activeSectionFrame = requestAnimationFrame(updateActiveSection);
+        }
+
+        window.addEventListener('scroll', scheduleActiveSectionUpdate, { passive: true });
+        for (const event of ['resize', 'hashchange', 'load', 'epub-langchange']) {
+            window.addEventListener(event, scheduleActiveSectionUpdate);
+        }
+        scheduleActiveSectionUpdate();
+
         let wheelLocked = false;
         window.addEventListener('wheel', (event) => {
             if (innerWidth <= 640 || event.ctrlKey || Math.abs(event.deltaY) < 24 || wheelLocked) return;

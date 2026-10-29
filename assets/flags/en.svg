@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 40">
+  <path fill="#fff" d="M0 0h60v40H0z"/>
+  <path stroke="#b22234" stroke-width="3.076923" d="M0 1.538462h60M0 7.692308h60M0 13.846154h60M0 20h60M0 26.153846h60M0 32.307692h60M0 38.461538h60"/>
+  <path fill="#3c3b6e" d="M0 0h24v21.538462H0z"/>
+  <defs>
+    <path id="star" fill="#fff" d="M0-.9 .202-.278 .856-.278 .327.106 .529.728 0 .344-.529.728-.327.106-.856-.278-.202-.278Z"/>
+    <g id="six">
+      <use href="#star" x="2"/><use href="#star" x="6"/><use href="#star" x="10"/><use href="#star" x="14"/><use href="#star" x="18"/><use href="#star" x="22"/>
+    </g>
+    <g id="five">
+      <use href="#star" x="4"/><use href="#star" x="8"/><use href="#star" x="12"/><use href="#star" x="16"/><use href="#star" x="20"/>
+    </g>
+  </defs>
+  <use href="#six" y="2"/><use href="#five" y="4.15"/><use href="#six" y="6.3"/><use href="#five" y="8.45"/><use href="#six" y="10.6"/><use href="#five" y="12.75"/><use href="#six" y="14.9"/><use href="#five" y="17.05"/><use href="#six" y="19.2"/>
+</svg>

@@ -44,11 +44,14 @@
                 heroDesc: '공백 정리, 목차 추출, 표지 적용, 인코딩 자동 감지, ZIP 묶음 출력까지 모두 브라우저에서 처리합니다.',
                 optTrim: '공백 정제',
                 optToc: '목차 추출',
-                optMultiToc: '다중 패턴 허용',
-                optMultiTocTitle: "체크하면 '몇 화'와 '070'처럼 형식이 다른 챕터 표기가 섞여 있어도 함께 목차로 잡습니다.",
+                optMultiToc: '여러 형식 감지',
+                optMultiTocTitle: '새로 추가할 파일의 기본값입니다. 이미 추가한 파일은 목록이나 미리보기에서 따로 바꿀 수 있습니다.',
+                fileMultiToc: '다중',
+                fileMultiTocTitle: '이 파일의 다중 패턴 허용',
                 optZip: 'ZIP 일괄 압축',
-                advancedToggle: '고급 설정',
+                advancedToggle: '목차 감지 도구',
                 addFiles: '파일 추가',
+                dropHint: '빈 공간을 클릭하거나 파일을 끌어 놓아 추가하세요',
                 regexLabel: '목차 추출 커스텀 정규식',
                 testLabel: '파서 시뮬레이터 (엔진 테스트)',
                 testInputLabel: '테스트할 본문',
@@ -70,7 +73,7 @@
                 previewTitle: '목차 미리보기',
                 previewMeta: '파일을 고르면 감지된 제목 후보를 보여줍니다.',
                 previewMulti: '다중 패턴',
-                previewToggleTitle: '다중 패턴을 바로 바꿔서 미리보기를 다시 계산합니다.',
+                previewToggleTitle: '이 파일의 다중 패턴 설정만 바꾸고 미리보기와 실제 변환에 적용합니다.',
                 previewCopy: '복사',
                 previewClose: '닫기',
                 previewExclude: '제외',
@@ -89,7 +92,6 @@
                 previewLoading: '분석 중...',
                 previewError: '파일을 읽는 동안 문제가 생겼습니다. 인코딩이나 브라우저 권한을 확인해 보세요.',
                 copyFail: '선택한 줄을 복사하지 못했습니다.',
-                dropEmpty: '텍스트 파일을 드래그하거나 클릭해서 추가하세요',
                 tableTitle: '제목',
                 tableCover: '표지 설정',
                 tableEncoding: '인코딩',
@@ -98,7 +100,8 @@
                 tablePreview: '미리보기',
                 tableConvertOne: '변환',
                 tableConvertOneTitle: '이 파일만 EPUB으로 변환',
-                tableRemoveAll: '파일 전체 삭제',
+                resetList: '목록 초기화',
+                tableRemoveAll: '추가한 파일 목록과 목차 선택을 비웁니다. 원본 파일과 공통 설정은 유지합니다.',
                 tableRemoveOne: '이 파일 삭제',
                 tableSearch: '검색',
                 tableClipboard: '클립보드',
@@ -106,10 +109,10 @@
                 featureTitle: '지금 들어 있는 기능만 추려 적었습니다',
                 featureDesc: '지금 구현된 기능만 짧게 적었습니다.',
                 featureCards: [
-                    ['TXT에서 EPUB으로 변환', '목록의 + 버튼이나 빈 공간, 드래그로 파일을 더 추가하고, 전체 또는 필요한 파일 하나만 EPUB으로 만들 수 있습니다.'],
+                    ['TXT에서 EPUB으로 변환', '파일 목록의 빈 공간을 클릭하거나 드래그해 파일을 더 추가할 수 있습니다. 새 파일만 분석하며, 기존 결과는 유지합니다. 개별·전체 변환과 목록 초기화도 가능합니다.'],
                     ['공백 정제', '불필요한 연속 빈 줄은 줄이고, 문단 사이의 여백은 너무 과하게 건드리지 않습니다.'],
                     ['목차 추출', '파일 전체에서 유효한 제목이 가장 많은 형식을 고릅니다. 회차·괄호 번호의 흐름을 확인하고, 시각·날짜 범위는 제외합니다.'],
-                    ['목차 미리보기', '목차를 확인하고 필요 없는 줄은 뺄 수 있습니다. 다른 형식의 후보는 2개 이상 확인됐을 때만 보여주며, 직접 추가할 수 있습니다.'],
+                    ['목차 미리보기', '파일별로 다중 패턴을 바꾸고 필요 없는 줄은 뺄 수 있습니다. 다른 형식의 후보는 2개 이상 확인됐을 때만 보여주며, 직접 추가할 수 있습니다.'],
                     ['표지 적용', '제목을 검색하거나 클립보드의 이미지 URL과 이미지를 바로 붙일 수 있습니다.'],
                     ['인코딩 자동 감지', 'UTF-8, CP949 같은 흔한 인코딩을 자동으로 읽어들여 깨짐을 줄입니다.'],
                     ['ZIP 일괄 압축', '여러 EPUB 결과물을 한 번에 ZIP으로 묶어 받을 수 있습니다.']
@@ -130,7 +133,9 @@
                 contactTitle: '이상한 제목 패턴을 발견했나요',
                 contactDesc: '감지되지 않는 제목 형식이나 변환 중 생긴 문제를 파일 예시와 함께 보내주세요.',
                 contactEmail: '이메일로 문의하기',
-                footerCopy: '© 2026 EPUB STUDIO. TXT를 EPUB으로 바꾸는 브라우저 도구입니다.',
+                footerCopy: '© 2026 EPUB STUDIO.',
+                footerReturn: '변환 도구로 돌아가기',
+                footerNav: '하단 바로가기',
                 fileState: {
                     wait: '대기',
                     ing: '진행',
@@ -255,11 +260,14 @@
                 heroDesc: 'Whitespace cleanup, table of contents extraction, cover application, automatic encoding detection, and ZIP output all run inside the browser.',
                 optTrim: 'Trim whitespace',
                 optToc: 'Extract TOC',
-                optMultiToc: 'Allow multi-patterns',
-                optMultiTocTitle: 'Include different chapter formats, such as numbered episodes and 070-style headings, in the same table of contents.',
+                optMultiToc: 'Include multiple formats',
+                optMultiTocTitle: 'Default for newly added files. Change existing files individually in the list or preview.',
+                fileMultiToc: 'Multi',
+                fileMultiTocTitle: 'Allow multi-patterns for this file',
                 optZip: 'Batch ZIP',
-                advancedToggle: 'Advanced settings',
+                advancedToggle: 'TOC detection tools',
                 addFiles: 'Add files',
+                dropHint: 'Click empty list space or drop files to add more',
                 regexLabel: 'Custom regex for TOC extraction',
                 testLabel: 'Parser simulator (engine test)',
                 testInputLabel: 'Sample text',
@@ -281,7 +289,7 @@
                 previewTitle: 'TOC preview',
                 previewMeta: 'Select a file to see detected title candidates.',
                 previewMulti: 'Multi-pattern',
-                previewToggleTitle: 'Switch multi-pattern mode and recalculate the preview right away.',
+                previewToggleTitle: 'Change multi-pattern mode for this file only, in both preview and conversion.',
                 previewCopy: 'Copy',
                 previewClose: 'Close',
                 previewExclude: 'Exclude',
@@ -300,7 +308,6 @@
                 previewLoading: 'Analyzing...',
                 previewError: 'There was a problem reading the file. Check encoding or browser permissions.',
                 copyFail: 'Failed to copy the selected row.',
-                dropEmpty: 'Drag TXT files here or click to add them',
                 tableTitle: 'Title',
                 tableCover: 'Cover',
                 tableEncoding: 'Encoding',
@@ -309,7 +316,8 @@
                 tablePreview: 'Preview',
                 tableConvertOne: 'Convert',
                 tableConvertOneTitle: 'Convert only this file to EPUB',
-                tableRemoveAll: 'Remove all files',
+                resetList: 'Reset list',
+                tableRemoveAll: 'Clear added files and TOC selections. Original files and shared settings stay unchanged.',
                 tableRemoveOne: 'Remove this file',
                 tableSearch: 'Search',
                 tableClipboard: 'Clipboard',
@@ -317,10 +325,10 @@
                 featureTitle: 'A quick summary of what is included',
                 featureDesc: 'Only the features currently implemented are listed here.',
                 featureCards: [
-                    ['TXT to EPUB conversion', 'Add more files with the list\'s + button, empty space, or drag and drop, then convert all files or just one selected file.'],
+                    ['TXT to EPUB conversion', 'Add files by clicking empty list space or using drag and drop. Only new files are analyzed; existing results stay unchanged. Convert individually or together, or reset the list.'],
                     ['Whitespace cleanup', 'Reduce meaningless empty lines while keeping the spacing needed for paragraph breaks.'],
                     ['Table of contents extraction', 'Choose the format with the most valid titles across the file. Check chapter and part sequences while excluding clock times and date ranges.'],
-                    ['TOC preview', 'Review detected chapters and exclude unwanted rows. Alternative candidates need at least two distinct entries before they can be shown and added manually.'],
+                    ['TOC preview', 'Set multi-pattern mode per file and exclude unwanted rows. Alternative candidates need at least two distinct entries before they can be shown and added manually.'],
                     ['Cover application', 'Search for a cover image or apply an image URL or clipboard image right away.'],
                     ['Automatic encoding detection', 'Automatically detects common encodings such as UTF-8 and CP949 to reduce read failures.'],
                     ['Batch ZIP packaging', 'Bundle multiple EPUB outputs into a single ZIP file for download.']
@@ -341,7 +349,9 @@
                 contactTitle: 'Found an unusual title pattern?',
                 contactDesc: 'Send an example when a title format is missed or a conversion behaves unexpectedly.',
                 contactEmail: 'Send an email',
-                footerCopy: '© 2026 EPUB STUDIO. A browser-based TXT to EPUB tool.',
+                footerCopy: '© 2026 EPUB STUDIO.',
+                footerReturn: 'Back to converter',
+                footerNav: 'Footer shortcuts',
                 fileState: {
                     wait: 'Ready',
                     ing: 'Working',
@@ -647,8 +657,15 @@
         ['ko', 'en'].forEach((lang) => {
             const button = document.createElement('button');
             button.type = 'button';
+            button.className = 'ui-button ui-button--icon';
             button.dataset.lang = lang;
-            button.textContent = lang === 'ko' ? '🇰🇷' : '🇺🇸';
+            const flag = document.createElement('img');
+            flag.src = `./assets/flags/${lang}.svg`;
+            flag.alt = '';
+            flag.width = 24;
+            flag.height = 16;
+            flag.setAttribute('aria-hidden', 'true');
+            button.appendChild(flag);
             const label = getString(lang === 'ko' ? 'langKo' : 'langEn');
             button.title = label;
             button.setAttribute('aria-label', label);
@@ -682,7 +699,7 @@
         if (multiLabel) multiLabel.title = getString('optMultiTocTitle');
 
         setButton('btnToggleAdvanced', 'advancedToggle');
-        setButton('addFilesBtn', 'addFiles');
+        setText('#fileAddHint span', 'dropHint');
         setText('#regexLabel', 'regexLabel');
         setText('#advancedTitle', 'advancedToggle');
         setText('#testInputLabel', 'testInputLabel');
@@ -699,18 +716,18 @@
         setText('#statusDetail', 'statusIdleDetail');
         setText('#previewFileName', 'previewTitle');
         setText('#previewFileMeta', 'previewMeta');
-        setLabel('previewMultiTocToggle', 'previewMulti');
+        setButton('previewMultiTocToggle', 'previewMulti');
         const previewToggle = document.querySelector('.preview-toggle');
         if (previewToggle) previewToggle.title = getString('previewToggleTitle');
         setButton('previewCopyBtn', 'previewCopy');
         setButton('previewCloseBtn', 'previewClose');
         setText('#previewList .preview-empty', 'previewEmpty');
-        setText('#emptyMsg', 'dropEmpty');
         setOrdered('.file-table thead th', ['tableTitle', 'tableCover', 'tableEncoding', 'tableDetect', 'tableState']);
         const clearAllButton = document.getElementById('clearAllBtn');
         if (clearAllButton) {
+            setButton('clearAllBtn', 'resetList');
             clearAllButton.title = getString('tableRemoveAll');
-            clearAllButton.setAttribute('aria-label', getString('tableRemoveAll'));
+            clearAllButton.setAttribute('aria-label', getString('resetList'));
         }
 
         const cards = document.querySelectorAll('.feature-card');
@@ -756,7 +773,9 @@
         setText('#contact .contact-action > p', 'contactDesc');
         setText('#contact .contact-email', 'contactEmail');
         setText('.footer-panel > p', 'footerCopy');
-        applyFooterLinks(['navTool', 'navFeatures', 'navAbout', 'navPrivacy', 'navContact']);
+        applyFooterLinks(['navPrivacy', 'navContact', 'footerReturn']);
+        const footerNav = document.querySelector('.footer-panel nav');
+        if (footerNav) footerNav.setAttribute('aria-label', getString('footerNav'));
     }
 
     function applyAboutText() {
