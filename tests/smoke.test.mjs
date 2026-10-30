@@ -6,7 +6,7 @@ import vm from 'node:vm';
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const defaultTitleRegex = html.match(/id="regexInput" value="([^"]+)"/)[1];
 
-function loadWorker() {
+function loadWorker(reportProgress = false) {
     const template = html.match(/const workerCode = `([\s\S]*?)`;\s*\n\s*const workerBlob/)[1];
     const source = Function(`return \`${template}\`;`)();
     const messages = [];
@@ -23,7 +23,8 @@ function loadWorker() {
         folder(name) {
             return new FakeZip(this.files, this.prefix + name + '/');
         }
-        async generateAsync() {
+        async generateAsync(options, onUpdate) {
+            if (reportProgress) [10, 60, 100].forEach(percent => onUpdate({ percent }));
             return { files: this.files };
         }
     }
@@ -103,7 +104,7 @@ test('validation uses each file setting and discards outdated reads and worker r
     const store = new Store({ files: [{ id: 'a', useMultiToc: false, file: {} }, { id: 'b', useMultiToc: true, file: {} }] });
     const messages = [];
     const requestIds = new Map();
-    const context = vm.createContext({ store, validationRequestIds: requestIds,
+    const context = vm.createContext({ store, validationRequestIds: requestIds, workerFailed: false,
         dom: { optMultiToc: { checked: false }, regexInput: { value: '', defaultValue: '' } },
         readFileText: async () => '1화 시작\n\n2화 계속',
         parserWorker: { postMessage: message => messages.push(message) },
@@ -189,6 +190,148 @@ test('worker validation echoes the request identity for rapid file setting chang
     assert.equal(messages[0].payload.id, 'a');
     assert.equal(messages[0].payload.requestId, 42);
     assert.equal(messages[0].payload.isValid, 'ok');
+});
+
+test('preview mode label shows the current file setting even while results are loading', () => {
+    const attributes = new Map();
+    const toggle = { setAttribute: (name, value) => attributes.set(name, value), textContent: '' };
+    const store = { state: { files: [{ id: 'a', useMultiToc: false }, { id: 'b', useMultiToc: true }] } };
+    const context = vm.createContext({ store, currentPreviewFileId: 'a', currentPreviewItems: [], currentPreviewFallbackItems: [],
+        window: { EPUB_STUDIO_I18N: { t: key => key } },
+        dom: { previewDialog: { open: true, dataset: {} }, previewFileName: {}, previewFileMeta: {},
+            previewMultiTocToggle: toggle, previewSummary: {}, previewCandidate: {}, previewList: {}, previewCopyBtn: {} } });
+    vm.runInContext(html.match(/function openPreviewDialog[\s\S]*?(?=\n    async function copyPreviewLine)/)[0], context);
+    for (const [id, label, pressed] of [['a', 'tocModeSingle', 'false'], ['b', 'tocModeMultiple', 'true'], ['missing', 'tocModeSingle', 'false']]) {
+        context.currentPreviewFileId = id;
+        context.openPreviewDialog('file', '', [], [], 'loading');
+        assert.equal(toggle.textContent, label);
+        assert.equal(attributes.get('aria-pressed'), pressed);
+    }
+});
+
+test('file removal is blocked during conversion and works after it finishes', () => {
+    const Store = loadStore();
+    const file = { id: 'a' };
+    const store = new Store({ files: [file], isProcessing: true });
+    const processingState = store.state;
+    store.dispatch({ type: 'REMOVE_FILE', payload: 'a' });
+    assert.equal(store.state, processingState);
+    store.dispatch({ type: 'FINISH_PROCESSING' });
+    store.dispatch({ type: 'REMOVE_FILE', payload: 'a' });
+    assert.equal(store.state.files.length, 0);
+    assert.match(html, /removeBtn\.disabled = store\.state\.isProcessing/);
+});
+
+test('new files reset completed status without overwriting an active conversion', () => {
+    const Store = loadStore();
+    const completed = { id: 'a', state: 'done' };
+    const store = new Store({ files: [completed], statusKey: 'statusDone', progress: 100 });
+    store.dispatch({ type: 'ADD_FILES', payload: [{ id: 'b', state: 'wait' }] });
+    assert.equal(store.state.statusKey, 'statusReady');
+    assert.equal(store.state.progress, 0);
+    assert.equal(store.state.files[0], completed);
+    store.dispatch({ type: 'START_PROCESSING', payload: { totalCount: 2 } });
+    store.dispatch({ type: 'SET_PROGRESS', payload: 50 });
+    store.dispatch({ type: 'ADD_FILES', payload: [{ id: 'c', state: 'wait' }] });
+    assert.equal(store.state.statusKey, 'statusProcessing');
+    assert.equal(store.state.progress, 50);
+});
+
+test('a failed file read does not strand later files or overwrite newer validation', async () => {
+    const Store = loadStore();
+    const store = new Store({ files: [{ id: 'a', file: {} }, { id: 'b', file: {} }] });
+    const messages = [];
+    const context = vm.createContext({ store, validationRequestIds: new Map(), workerFailed: false,
+        dom: { regexInput: { value: '', defaultValue: '' } },
+        readFileText: async file => { if (file === store.state.files[0].file) throw new Error('read failed'); return 'text'; },
+        parserWorker: { postMessage: message => messages.push(message) },
+        getSelectedFallbackLines: () => new Set(), getExcludedPreviewLines: () => new Set() });
+    vm.runInContext(html.match(/async function validateFileById[\s\S]*?(?=\n    async function convertFiles)/)[0], context);
+    await context.validateFiles();
+    assert.equal(store.state.files[0].isValid, 'error');
+    assert.deepEqual(messages.map(message => message.payload.id), ['b']);
+    let failOldRead;
+    context.readFileText = () => new Promise((resolve, reject) => { failOldRead = reject; });
+    const old = context.validateFileById('a');
+    context.readFileText = async () => 'new';
+    await context.validateFileById('a');
+    store.dispatch({ type: 'UPDATE_FILE_VALIDITY', payload: { id: 'a', isValid: 'ok' } });
+    failOldRead(new Error('outdated failure'));
+    await old;
+    assert.equal(store.state.files[0].isValid, 'ok');
+    context.parserWorker.postMessage = () => { throw new Error('worker unavailable'); };
+    await context.validateFileById('b');
+    assert.equal(store.state.files[1].isValid, 'error');
+});
+
+test('failure to read an encoding sample preserves the row and allows later files to load', async () => {
+    const Store = loadStore();
+    const store = new Store({ files: [] });
+    const validated = [];
+    const context = vm.createContext({ store, dom: { optMultiToc: { checked: false } },
+        detectFileEncoding: () => 'CP949', validateFileById: async id => validated.push(id) });
+    vm.runInContext(html.match(/async function handleFiles[\s\S]*?(?=\n    async function validateFileById)/)[0], context);
+    const file = (name, fails) => ({ name, slice: () => ({ arrayBuffer: async () => {
+        if (fails) throw new Error('sample unreadable');
+        return new ArrayBuffer(0);
+    } }) });
+    await context.handleFiles([file('bad.txt', true), file('good.txt', false)]);
+    assert.equal(store.state.files.length, 2);
+    assert.equal(store.state.files[0].isValid, 'error');
+    assert.equal(store.state.files[1].encoding, 'CP949');
+    assert.deepEqual(validated, [store.state.files[1].id]);
+});
+
+test('worker validation failures include the request identity and operation', async () => {
+    const { context, messages } = loadWorker();
+    await context.self.onmessage({ data: { type: 'VALIDATE', payload: {
+        id: 'a', requestId: 42, get text() { throw new Error('invalid text'); }
+    } } });
+    assert.equal(messages[0].type, 'ERROR');
+    assert.equal(messages[0].payload.operation, 'VALIDATE');
+    assert.equal(messages[0].payload.requestId, 42);
+    assert.equal(messages[0].payload.id, 'a');
+});
+
+test('worker sends actual compression progress before the EPUB result', async () => {
+    const { context, messages } = loadWorker(true);
+    await context.self.onmessage({ data: { type: 'CONVERT', payload: {
+        id: 'book', title: 'Book', content: '본문', useAutoToc: false, useTrim: false, userRegex: ''
+    } } });
+    assert.deepEqual(messages.filter(message => message.type === 'CONVERT_PROGRESS').map(message => message.payload.percent), [10, 60, 100]);
+    assert.equal(messages.at(-1).type, 'CONVERT_RESULT');
+    assert.equal(messages.at(-1).payload.id, 'book');
+});
+
+test('conversion progress covers individual files and final batch ZIP compression', async () => {
+    for (const zip of [false, true]) {
+        const Store = loadStore();
+        const store = new Store({ files: [{ id: 'a', state: 'wait', file: {}, customTitle: 'a' },
+            { id: 'b', state: 'wait', file: {}, customTitle: 'b' }] });
+        const progress = [];
+        const downloads = [];
+        const resolvers = new Map();
+        store.subscribe((state, action) => { if (action.type === 'SET_PROGRESS') progress.push(state.progress); });
+        const context = vm.createContext({ store, conversionResolvers: resolvers, workerFailed: false,
+            dom: { optZip: { checked: zip }, optTrim: {}, optToc: {}, regexInput: {} },
+            window: { EPUB_STUDIO_I18N: { lang: 'ko' } }, readFileText: async () => 'text',
+            JSZip: class { file() {} async generateAsync(options, onUpdate) { onUpdate({ percent: 50 }); onUpdate({ percent: 100 }); return {}; } },
+            parserWorker: { postMessage: ({ payload }) => {
+                const pending = resolvers.get(payload.id);
+                pending.onProgress(50);
+                pending.resolve({});
+                resolvers.delete(payload.id);
+            } },
+            getFileStats: files => ({ done: files.filter(file => file.state === 'done').length, error: 0 }),
+            getEpubFilename: title => title + '.epub', triggerDownload: (blob, name) => downloads.push(name),
+            getSelectedFallbackLines: () => new Set(), getExcludedPreviewLines: () => new Set() });
+        vm.runInContext(html.match(/async function convertFiles[\s\S]*?(?=\n    dom\.convertBtn\.onclick)/)[0], context);
+        await context.convertFiles();
+        assert.deepEqual(progress, zip ? [22.5, 45, 67.5, 90, 95, 100] : [25, 50, 75, 100]);
+        assert.deepEqual(downloads, zip ? ['EPUB_COLLECTION.zip'] : ['a.epub', 'b.epub']);
+        assert.equal(store.state.isProcessing, false);
+        assert.equal(store.state.statusKey, 'statusDone');
+    }
 });
 
 test('button localization preserves the advanced settings icon and updates plain buttons', () => {
@@ -2019,9 +2162,33 @@ test('file rows show pending title detection as analyzing', () => {
     const renderList = html.match(/function renderList[\s\S]*?(?=\n\s*async function readClipboardImage)/)[0];
     const validateFile = html.match(/async function validateFileById[\s\S]*?(?=\n\s*async function validateFiles)/)[0];
 
-    assert.match(renderList, /isDetecting \? 'previewLoading' : 'tablePreview'/);
+    assert.match(renderList, /isDetecting \? 'previewLoading' : analysisFailed \? 'previewAnalysisFailed' : 'tablePreview'/);
     assert.match(renderList, /detectBtn\.disabled = !canPreview \|\| isDetecting/);
     assert.match(validateFile, /UPDATE_FILE_VALIDITY[\s\S]*isValid: 'none'/);
+});
+
+test('file status uses the shared compact button and resets only completed or failed files when idle', () => {
+    const Store = loadStore();
+    const source = html.match(/const statusBtn = el\('button',[\s\S]*?statusBtn\.disabled = [^;]+;/)[0];
+    for (const state of ['wait', 'ing', 'done', 'error']) {
+        for (const isProcessing of [false, true]) {
+            const item = { id: 'a', state };
+            const store = new Store({ files: [item], isProcessing });
+            const isClickable = ['done', 'error'].includes(state);
+            const context = vm.createContext({ item, store, isClickable,
+                window: { EPUB_STUDIO_I18N: { t: key => key } },
+                el: (tag, attributes, label) => ({ tag, ...attributes, label }) });
+            vm.runInContext(`${source}\nglobalThis.button = statusBtn;`, context);
+            const button = context.button;
+            assert.equal(button.tag, 'button');
+            assert.equal(button.type, 'button');
+            assert.match(button.className, /ui-button ui-button--compact/);
+            assert.equal(button.label, 'fileState.' + state);
+            assert.equal(button.disabled, isProcessing || !isClickable);
+            button.onClick();
+            assert.equal(store.state.files[0].state, !isProcessing && isClickable ? 'wait' : state);
+        }
+    }
 });
 
 test('EPUB metadata stays consistent and long chapters are split', async () => {

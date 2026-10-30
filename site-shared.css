@@ -172,14 +172,6 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
     padding-left: 6px;
 }
 
-.lang-switch img {
-    display: block;
-    width: 24px;
-    height: 16px;
-    object-fit: contain;
-    pointer-events: none;
-}
-
 .lang-switch button:hover {
     color: var(--text);
     border-color: var(--accent);

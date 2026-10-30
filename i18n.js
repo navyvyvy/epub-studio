@@ -46,8 +46,9 @@
                 optToc: '목차 추출',
                 optMultiToc: '여러 형식 감지',
                 optMultiTocTitle: '새로 추가할 파일의 기본값입니다. 이미 추가한 파일은 목록이나 미리보기에서 따로 바꿀 수 있습니다.',
-                fileMultiToc: '다중',
-                fileMultiTocTitle: '이 파일의 다중 패턴 허용',
+                tocModeSingle: '단일 패턴',
+                tocModeMultiple: '여러 패턴',
+                fileMultiTocTitle: '이 파일에서 여러 제목 형식을 함께 목차에 반영합니다.',
                 optZip: 'ZIP 일괄 압축',
                 advancedToggle: '목차 감지 도구',
                 addFiles: '파일 추가',
@@ -60,6 +61,8 @@
                 testOutput: '감지할 제목을 넣으면 여기서 바로 확인할 수 있습니다.',
                 convertStart: 'EPUB 변환 시작',
                 convertStop: '중단',
+                convertProgress: '변환 중 {percent}%',
+                convertStopping: '중단 요청 중',
                 statusLabel: '현재 상태',
                 statusIdle: '대기 중',
                 statusIdleDetail: 'TXT 파일을 추가하면 변환을 시작할 수 있습니다.',
@@ -72,8 +75,7 @@
                 statusSummaryWait: '{done}개 완료 · {error}개 오류 · {wait}개 대기',
                 previewTitle: '목차 미리보기',
                 previewMeta: '파일을 고르면 감지된 제목 후보를 보여줍니다.',
-                previewMulti: '다중 패턴',
-                previewToggleTitle: '이 파일의 다중 패턴 설정만 바꾸고 미리보기와 실제 변환에 적용합니다.',
+                previewToggleTitle: '이 파일의 단일 패턴·여러 패턴 설정을 바꾸며, 미리보기와 실제 변환에 함께 적용합니다.',
                 previewCopy: '복사',
                 previewClose: '닫기',
                 previewExclude: '제외',
@@ -90,6 +92,7 @@
                 previewFallbackAdd: '목차에 추가',
                 previewFallbackRemove: '후보 선택 해제',
                 previewLoading: '분석 중...',
+                previewAnalysisFailed: '분석 오류',
                 previewError: '파일을 읽는 동안 문제가 생겼습니다. 인코딩이나 브라우저 권한을 확인해 보세요.',
                 copyFail: '선택한 줄을 복사하지 못했습니다.',
                 tableTitle: '제목',
@@ -109,10 +112,10 @@
                 featureTitle: '지금 들어 있는 기능만 추려 적었습니다',
                 featureDesc: '지금 구현된 기능만 짧게 적었습니다.',
                 featureCards: [
-                    ['TXT에서 EPUB으로 변환', '파일 목록의 빈 공간을 클릭하거나 드래그해 파일을 더 추가할 수 있습니다. 새 파일만 분석하며, 기존 결과는 유지합니다. 개별·전체 변환과 목록 초기화도 가능합니다.'],
+                    ['TXT에서 EPUB으로 변환', '파일을 개별·일괄 변환할 수 있습니다. 새 파일만 분석해 기존 결과를 유지하며, 목록 초기화도 가능합니다. 진행률은 변환 버튼 안에 표시하며, 같은 버튼으로 중단을 요청할 수 있습니다.'],
                     ['공백 정제', '불필요한 연속 빈 줄은 줄이고, 문단 사이의 여백은 너무 과하게 건드리지 않습니다.'],
                     ['목차 추출', '파일 전체에서 유효한 제목이 가장 많은 형식을 고릅니다. 회차·괄호 번호의 흐름을 확인하고, 시각·날짜 범위는 제외합니다.'],
-                    ['목차 미리보기', '파일별로 다중 패턴을 바꾸고 필요 없는 줄은 뺄 수 있습니다. 다른 형식의 후보는 2개 이상 확인됐을 때만 보여주며, 직접 추가할 수 있습니다.'],
+                    ['목차 미리보기', '파일별로 단일 패턴·여러 패턴을 전환하고 필요 없는 줄은 뺄 수 있습니다. 다른 형식의 후보는 2개 이상 확인됐을 때만 보여주며, 직접 추가할 수 있습니다.'],
                     ['표지 적용', '제목을 검색하거나 클립보드의 이미지 URL과 이미지를 바로 붙일 수 있습니다.'],
                     ['인코딩 자동 감지', 'UTF-8, CP949 같은 흔한 인코딩을 자동으로 읽어들여 깨짐을 줄입니다.'],
                     ['ZIP 일괄 압축', '여러 EPUB 결과물을 한 번에 ZIP으로 묶어 받을 수 있습니다.']
@@ -262,8 +265,9 @@
                 optToc: 'Extract TOC',
                 optMultiToc: 'Include multiple formats',
                 optMultiTocTitle: 'Default for newly added files. Change existing files individually in the list or preview.',
-                fileMultiToc: 'Multi',
-                fileMultiTocTitle: 'Allow multi-patterns for this file',
+                tocModeSingle: 'Single',
+                tocModeMultiple: 'Multiple',
+                fileMultiTocTitle: 'Include multiple title patterns in the TOC for this file.',
                 optZip: 'Batch ZIP',
                 advancedToggle: 'TOC detection tools',
                 addFiles: 'Add files',
@@ -276,6 +280,8 @@
                 testOutput: 'Enter a title candidate and it will appear here. (Priority engine active)',
                 convertStart: 'Start EPUB conversion',
                 convertStop: 'Stop',
+                convertProgress: 'Converting {percent}%',
+                convertStopping: 'Stopping',
                 statusLabel: 'Current status',
                 statusIdle: 'Ready',
                 statusIdleDetail: 'Add TXT files to start converting.',
@@ -288,8 +294,7 @@
                 statusSummaryWait: '{done} done · {error} errors · {wait} waiting',
                 previewTitle: 'TOC preview',
                 previewMeta: 'Select a file to see detected title candidates.',
-                previewMulti: 'Multi-pattern',
-                previewToggleTitle: 'Change multi-pattern mode for this file only, in both preview and conversion.',
+                previewToggleTitle: 'Switch this file between single and multiple title patterns, in both preview and conversion.',
                 previewCopy: 'Copy',
                 previewClose: 'Close',
                 previewExclude: 'Exclude',
@@ -306,6 +311,7 @@
                 previewFallbackAdd: 'Add to TOC',
                 previewFallbackRemove: 'Remove candidate',
                 previewLoading: 'Analyzing...',
+                previewAnalysisFailed: 'Analysis failed',
                 previewError: 'There was a problem reading the file. Check encoding or browser permissions.',
                 copyFail: 'Failed to copy the selected row.',
                 tableTitle: 'Title',
@@ -325,10 +331,10 @@
                 featureTitle: 'A quick summary of what is included',
                 featureDesc: 'Only the features currently implemented are listed here.',
                 featureCards: [
-                    ['TXT to EPUB conversion', 'Add files by clicking empty list space or using drag and drop. Only new files are analyzed; existing results stay unchanged. Convert individually or together, or reset the list.'],
+                    ['TXT to EPUB conversion', 'Convert files individually or together, or reset the list. Only new files are analyzed; existing results stay unchanged. Watch progress fill the conversion button, and click it to request a stop.'],
                     ['Whitespace cleanup', 'Reduce meaningless empty lines while keeping the spacing needed for paragraph breaks.'],
                     ['Table of contents extraction', 'Choose the format with the most valid titles across the file. Check chapter and part sequences while excluding clock times and date ranges.'],
-                    ['TOC preview', 'Set multi-pattern mode per file and exclude unwanted rows. Alternative candidates need at least two distinct entries before they can be shown and added manually.'],
+                    ['TOC preview', 'Switch each file between single and multiple title patterns, and exclude unwanted rows. Alternative candidates need at least two distinct entries before they can be shown and added manually.'],
                     ['Cover application', 'Search for a cover image or apply an image URL or clipboard image right away.'],
                     ['Automatic encoding detection', 'Automatically detects common encodings such as UTF-8 and CP949 to reduce read failures.'],
                     ['Batch ZIP packaging', 'Bundle multiple EPUB outputs into a single ZIP file for download.']
@@ -659,13 +665,7 @@
             button.type = 'button';
             button.className = 'ui-button ui-button--icon';
             button.dataset.lang = lang;
-            const flag = document.createElement('img');
-            flag.src = `./assets/flags/${lang}.svg`;
-            flag.alt = '';
-            flag.width = 24;
-            flag.height = 16;
-            flag.setAttribute('aria-hidden', 'true');
-            button.appendChild(flag);
+            button.textContent = lang.toUpperCase();
             const label = getString(lang === 'ko' ? 'langKo' : 'langEn');
             button.title = label;
             button.setAttribute('aria-label', label);
@@ -716,7 +716,8 @@
         setText('#statusDetail', 'statusIdleDetail');
         setText('#previewFileName', 'previewTitle');
         setText('#previewFileMeta', 'previewMeta');
-        setButton('previewMultiTocToggle', 'previewMulti');
+        setButton('previewMultiTocToggle', document.getElementById('previewMultiTocToggle')?.getAttribute('aria-pressed') === 'true'
+            ? 'tocModeMultiple' : 'tocModeSingle');
         const previewToggle = document.querySelector('.preview-toggle');
         if (previewToggle) previewToggle.title = getString('previewToggleTitle');
         setButton('previewCopyBtn', 'previewCopy');
