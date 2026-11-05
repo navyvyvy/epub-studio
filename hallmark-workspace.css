@@ -102,7 +102,7 @@ body:has(.advanced-dialog[open]) {
 }
 
 .home-page .btn-advanced-toggle {
-    --button-size: 44px;
+    --button-padding: 10px;
     width: 100%;
     justify-content: space-between;
     font-size: inherit;
@@ -165,6 +165,14 @@ body:has(.advanced-dialog[open]) {
     grid-column: auto;
     font-size: 0.875rem;
 }
+.home-page .advanced-dialog .regex-field-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 44px;
+}
+.home-page .advanced-dialog #btnTestParser { min-width: 104px; flex-shrink: 0; }
 .home-page .advanced-dialog #testInput {
     height: 240px;
     min-height: 160px;
@@ -173,13 +181,14 @@ body:has(.advanced-dialog[open]) {
     line-height: 1.5;
 }
 .home-page .advanced-dialog #testOutput {
-    min-height: 240px;
-    max-height: 360px;
+    min-height: 0;
+    max-height: none;
+    /* Match the resizable input height instead of growing with long results. */
+    contain: size;
     font-size: 0.875rem;
     line-height: 1.5;
     overflow-wrap: anywhere;
 }
-.home-page .advanced-dialog .regex-test-row { grid-column: 1 / -1; justify-content: flex-end; }
 .home-page .advanced-dialog :is(button, input, textarea):focus-visible {
     outline: 2px solid var(--workbench-accent);
     outline-offset: 3px;
@@ -191,7 +200,6 @@ body:has(.advanced-dialog[open]) {
     .home-page .advanced-dialog .regex-test-panel { grid-template-columns: minmax(0, 1fr); }
     .home-page .advanced-dialog #testInput { height: 180px; }
     .home-page .advanced-dialog #testOutput { min-height: 160px; }
-    .home-page .advanced-dialog #btnTestParser { width: 100%; }
 }
 
 .home-page .header-nav a,

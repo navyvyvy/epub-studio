@@ -31,6 +31,11 @@
     --button-font-size: 0.6875rem;
     --button-padding: 8px;
 }
+.ui-button--action {
+    --button-size: 44px;
+    --button-font-size: 0.875rem;
+    --button-padding: 16px;
+}
 .ui-button--large {
     --button-size: 52px;
     --button-font-size: 0.875rem;

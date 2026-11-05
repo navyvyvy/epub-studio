@@ -29,7 +29,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jschardet/3.0.0/jschardet.min.js"></script>
     <script src="./i18n.js?v=20261030-8"></script>
     <link rel="stylesheet" href="./site-shared.css?v=20261030-3">
-    <link rel="stylesheet" href="./ui-buttons.css?v=20261030-1">
+    <link rel="stylesheet" href="./ui-buttons.css?v=20261030-2">
     <style>
         /* Hallmark · redesign: full · scope: app · theme: existing dark mint · v2.0.0 */
         /* Pre-emit critique: the conversion queue is the focus; inherited detail styling remains to be consolidated. */
@@ -204,11 +204,6 @@
             border-top: 1px dashed var(--border);
         }
         .regex-area.open { display: grid; gap: 6px; }
-
-        .regex-test-row {
-            display: flex;
-            align-items: center;
-        }
 
         .regex-test-panel {
             display: grid;
@@ -1645,7 +1640,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="./hallmark-workspace.css?v=20261030-11">
+    <link rel="stylesheet" href="./hallmark-workspace.css?v=20261030-12">
 </head>
 <body class="home-page">
 
@@ -1691,7 +1686,7 @@
                 </label>
                 <label class="option-item"><input type="checkbox" id="optZip"> ZIP 일괄 압축</label>
             </div>
-            <button type="button" class="ui-button btn-advanced-toggle" id="btnToggleAdvanced" aria-haspopup="dialog" aria-controls="advancedDialog">
+            <button type="button" class="ui-button ui-button--action btn-advanced-toggle" id="btnToggleAdvanced" aria-haspopup="dialog" aria-controls="advancedDialog">
                 <span data-button-label>목차 감지 도구</span>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 7h9m4 0h3M4 17h3m4 0h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
             </button>
@@ -1704,15 +1699,17 @@
             <div class="regex-test-panel">
                 <h3 id="testLabel">파서 시뮬레이터 (엔진 테스트)</h3>
                 <div class="regex-test-field">
-                    <label id="testInputLabel" for="testInput">테스트할 본문</label>
-                <textarea id="testInput" rows="4"></textarea>
+                    <div class="regex-field-head">
+                        <label id="testInputLabel" for="testInput">테스트할 본문</label>
+                        <button type="button" id="btnTestParser" class="ui-button ui-button--action ui-button--primary">테스트 실행</button>
+                    </div>
+                    <textarea id="testInput" rows="4"></textarea>
                 </div>
                 <div class="regex-test-field">
-                    <div id="testResultLabel">감지 결과</div>
+                    <div class="regex-field-head">
+                        <div id="testResultLabel">감지 결과</div>
+                    </div>
                     <div id="testOutput" class="regex-output" role="region" aria-labelledby="testResultLabel">감지된 제목이 여기에 표시됩니다.</div>
-                </div>
-                <div class="regex-test-row">
-                    <button type="button" id="btnTestParser" class="ui-button ui-button--primary">테스트 실행</button>
                 </div>
             </div>
         </div>

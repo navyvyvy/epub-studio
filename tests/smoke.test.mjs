@@ -2255,13 +2255,23 @@ test('navigation highlights the most visible section below the header and clears
 
 test('public pages load the shared button component stylesheet', () => {
     const css = readFileSync(new URL('../ui-buttons.css', import.meta.url), 'utf8');
-    for (const selector of ['.ui-button {', '.ui-button--compact {', '.ui-button--large {', '.ui-button--icon {']) {
+    for (const selector of ['.ui-button {', '.ui-button--compact {', '.ui-button--action {', '.ui-button--large {', '.ui-button--icon {']) {
         assert.ok(css.includes(selector), selector);
     }
     for (const file of ['index.html', 'about.html', 'privacy.html', 'contact.html']) {
         const source = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
         assert.match(source, /<link rel="stylesheet" href="\.\/ui-buttons\.css\?v=[^"]+">/);
     }
+});
+
+test('the simulator run action belongs to the input header and uses the shared action size', () => {
+    const inputField = html.match(/<div class="regex-test-field">([\s\S]*?)<\/textarea>/)[1];
+    assert.match(inputField, /class="regex-field-head"/);
+    assert.match(inputField, /<label id="testInputLabel" for="testInput">/);
+    assert.match(inputField, /id="btnTestParser" class="ui-button ui-button--action ui-button--primary"/);
+    assert.ok(inputField.indexOf('id="btnTestParser"') < inputField.indexOf('id="testInput"'));
+    assert.equal([...html.matchAll(/id="btnTestParser"/g)].length, 1);
+    assert.doesNotMatch(html, /class="regex-test-row"/);
 });
 
 test('public pages expose stable crawl metadata and sitemap entries', () => {
