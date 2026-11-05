@@ -192,6 +192,36 @@ test('worker validation echoes the request identity for rapid file setting chang
     assert.equal(messages[0].payload.isValid, 'ok');
 });
 
+test('preview worker returns a language-neutral total line count', async () => {
+    for (const text of ['One line', '1화 시작\n\n본문\n\n2화 계속']) {
+        const { context, messages } = loadWorker();
+        await context.self.onmessage({ data: { type: 'PREVIEW_PARSER', payload: {
+            fileName: 'sample.txt', requestId: 7, text, userRegex: '', useMultiToc: false
+        } } });
+        assert.equal(messages[0].type, 'PREVIEW_RESULT');
+        assert.equal(messages[0].payload.lineCount, text.split('\n').length);
+        assert.equal(messages[0].payload.fileName, 'sample.txt');
+        assert.equal('meta' in messages[0].payload, false);
+    }
+});
+
+test('preview metadata translates line counts and uses the English singular for one line', () => {
+    const i18n = readFileSync(new URL('../i18n.js', import.meta.url), 'utf8');
+    const single = [...i18n.matchAll(/previewLine: '([^']+)'/g)].map(match => match[1]);
+    const plural = [...i18n.matchAll(/previewLines: '([^']+)'/g)].map(match => match[1]);
+    let language = 0;
+    const context = vm.createContext({ window: { EPUB_STUDIO_I18N: {
+        t: (key, { count }) => (key === 'previewLine' ? single : plural)[language].replace('{count}', count)
+    } } });
+    vm.runInContext(html.match(/function formatPreviewFileMeta[\s\S]*?(?=\n    function openPreviewDialog)/)[0], context);
+    assert.equal(context.formatPreviewFileMeta('sample.txt', 1), 'sample.txt · 1줄');
+    assert.equal(context.formatPreviewFileMeta('sample.txt', 5), 'sample.txt · 5줄');
+    language = 1;
+    assert.equal(context.formatPreviewFileMeta('sample.txt', 1), 'sample.txt · 1 line');
+    assert.equal(context.formatPreviewFileMeta('sample.txt', 5), 'sample.txt · 5 lines');
+    assert.equal(context.formatPreviewFileMeta('', 0), '0 lines');
+});
+
 test('preview mode label shows the current file setting even while results are loading', () => {
     const attributes = new Map();
     const toggle = { setAttribute: (name, value) => attributes.set(name, value), textContent: '' };

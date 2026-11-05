@@ -27,7 +27,7 @@
     <!-- 외부 라이브러리 로드 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jschardet/3.0.0/jschardet.min.js"></script>
-    <script src="./i18n.js?v=20261030-8"></script>
+    <script src="./i18n.js?v=20261105-1"></script>
     <link rel="stylesheet" href="./site-shared.css?v=20261030-3">
     <link rel="stylesheet" href="./ui-buttons.css?v=20261030-2">
     <style>
@@ -2036,6 +2036,7 @@
     dom.advancedDialog.appendChild(dom.advancedArea);
     let currentPreviewFallbackItems = [];
     let currentPreviewFileId = null;
+    let currentPreviewLineCount = null;
     let currentPreviewRequestId = 0;
     const excludedPreviewLinesByFile = new Map();
     const selectedFallbackLinesByFile = new Map();
@@ -2319,6 +2320,11 @@
         }
     }
 
+    function formatPreviewFileMeta(fileName, count) {
+        const lines = window.EPUB_STUDIO_I18N.t(count === 1 ? 'previewLine' : 'previewLines', { count });
+        return (fileName ? `${fileName} · ` : '') + lines;
+    }
+
     function openPreviewDialog(title, meta, items, fallbackItems = [], previewState = null) {
         currentPreviewItems = Array.isArray(items) ? items.slice() : [];
         currentPreviewFallbackItems = Array.isArray(fallbackItems) ? fallbackItems.slice() : [];
@@ -2370,6 +2376,7 @@
         currentPreviewItems = [];
         currentPreviewFallbackItems = [];
         currentPreviewFileId = null;
+        currentPreviewLineCount = null;
         delete dom.previewDialog.dataset.previewState;
         dom.previewCandidate.hidden = true;
         dom.previewCandidate.innerHTML = '';
@@ -2399,6 +2406,7 @@
         const item = store.state.files.find(f => f.id === id);
         if (!item) return;
         currentPreviewFileId = id;
+        currentPreviewLineCount = null;
         const requestId = ++currentPreviewRequestId;
 
         try {
@@ -2501,7 +2509,15 @@
         }
     });
 
-    window.addEventListener('epub-langchange', () => store.dispatch({ type: 'REFRESH_LANGUAGE' }));
+    window.addEventListener('epub-langchange', () => {
+        store.dispatch({ type: 'REFRESH_LANGUAGE' });
+        const item = store.state.files.find(file => file.id === currentPreviewFileId);
+        if (dom.previewDialog.open && item) {
+            dom.previewFileMeta.innerText = currentPreviewLineCount === null
+                ? `${item.file.name} · ${item.encoding}`
+                : formatPreviewFileMeta(item.file.name, currentPreviewLineCount);
+        }
+    });
 
     function renderList(files) {
         const focusedMultiId = document.activeElement?.closest('.file-multi-toggle')?.dataset.fileId;
@@ -3407,7 +3423,7 @@
                             requestId: payload.requestId,
                             title: payload.customTitle || payload.fileName || '목차 미리보기',
                             fileName: payload.fileName || '',
-                            meta: (payload.fileName || '') + (payload.fileName ? ' · ' : '') + lines.length + '줄',
+                            lineCount: lines.length,
                             resultItems,
                             fallbackItems
                         }
@@ -3556,9 +3572,10 @@
         }
         else if (type === 'PREVIEW_RESULT') {
             if (payload.requestId !== currentPreviewRequestId) return;
+            currentPreviewLineCount = payload.lineCount;
             openPreviewDialog(
                 payload.title || payload.fileName || window.EPUB_STUDIO_I18N.t('previewTitle'),
-                payload.meta || '',
+                formatPreviewFileMeta(payload.fileName, payload.lineCount),
                 payload.resultItems || [],
                 payload.fallbackItems || []
             );
