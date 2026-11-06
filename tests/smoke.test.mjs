@@ -2005,6 +2005,87 @@ test('a detected wrapped title promotes earlier matching parenthesized titles', 
     assert.deepEqual(Array.from(messages[0].payload.resultItems, (item) => item.text), titles);
 });
 
+test('selected candidates stay separate from automatic preview titles and appear once in EPUB', async () => {
+    const regular = ['제1화 시작', '제2화 계속', '제3화 마지막'];
+    const extra = ['내집 마련의 꿈(1)', '내집 마련의 꿈(2)'];
+    const content = [...regular, ...extra].join('\n본문\n');
+    for (const useMultiToc of [false, true]) {
+        const { context, messages } = loadWorker();
+        const options = { fileName: 'overlap.txt', userRegex: defaultTitleRegex, preserveCustomMatches: false,
+            useMultiToc, selectedFallbackIndices: [6, 8] };
+        await context.self.onmessage({ data: { type: 'PREVIEW_PARSER', payload: { ...options, requestId: 1, text: content } } });
+        const preview = messages[0].payload;
+        assert.deepEqual(Array.from(preview.resultItems, item => item.text), regular);
+        assert.deepEqual(Array.from(preview.fallbackItems, item => item.text), extra);
+        const detected = new Set(Array.from(preview.resultItems, item => item.idx));
+        assert.equal(preview.fallbackItems.some(item => detected.has(item.idx)), false);
+        await context.self.onmessage({ data: { type: 'VALIDATE', payload: { ...options, id: 'book', text: content,
+            excludedIndices: [0, 2, 4, 6, 8] } } });
+        assert.equal(messages[1].payload.isValid, 'no');
+        await context.self.onmessage({ data: { type: 'CONVERT', payload: { ...options, id: 'book', title: 'Book',
+            content, useAutoToc: true, useTrim: true, language: 'ko', excludedIndices: [6] } } });
+        const ncx = messages[2].payload.blob.files.get('OEBPS/toc.ncx');
+        const titles = Array.from(ncx.matchAll(/<navLabel><text>(.*?)<\/text><\/navLabel>/g), match => match[1]);
+        assert.deepEqual(titles, [...regular, extra[1]]);
+    }
+});
+
+test('preview selection separates available candidates from added rows and preserves exclusions', () => {
+    const context = vm.createContext({
+        currentPreviewFileId: 'a',
+        currentPreviewItems: [{ idx: 0, text: '제1화 시작' }, { idx: 4, text: '제2화 계속' }],
+        currentPreviewFallbackItems: [{ idx: 0, text: '제1화 시작' }, { idx: 2, text: '추가 제목(1)' },
+            { idx: 6, text: '다른 제목(1)' }, { idx: 6, text: '다른 제목(1)' }],
+        getSelectedFallbackLines: () => new Set([2]), getExcludedPreviewLines: () => new Set([2])
+    });
+    vm.runInContext(html.match(/function getPreviewSelection[\s\S]*?(?=\n    function renderPreviewDialog)/)[0], context);
+    const selection = context.getPreviewSelection();
+    assert.deepEqual(Array.from(selection.items, item => item.idx), [0, 2, 4]);
+    assert.deepEqual(Array.from(selection.activeItems, item => item.idx), [0, 4]);
+    assert.deepEqual(Array.from(selection.addedItems, item => item.idx), [2]);
+    assert.deepEqual(Array.from(selection.candidates, item => item.idx), [6]);
+});
+
+test('candidate selections accumulate per file and can be cleared without changing other files', () => {
+    const selectedFallbackLinesByFile = new Map([['b', new Set([20])]]);
+    const context = vm.createContext({ selectedFallbackLinesByFile });
+    vm.runInContext(html.match(/function getSelectedFallbackLines[\s\S]*?(?=\n    function changePreviewFallbackSelection)/)[0], context);
+    context.setFallbackSelection('a', [{ idx: 2 }], true);
+    context.setFallbackSelection('a', [{ idx: 6 }, { idx: 2 }], true);
+    assert.deepEqual(Array.from(context.getSelectedFallbackLines('a')), [2, 6]);
+    context.setFallbackSelection('a', [], false);
+    assert.equal(context.getSelectedFallbackLines('a').size, 0);
+    assert.deepEqual(Array.from(context.getSelectedFallbackLines('b')), [20]);
+});
+
+test('pattern switching does not offer manually selected titles again after automatic promotion', async () => {
+    const regular = Array.from({ length: 5 }, (_, index) => `제${index + 1}화 제목`);
+    const extra = [
+        '이 프로그램은 보고 계신 스폰서의 제공으로 보내드립니다(1)',
+        '이 프로그램은 보고 계신 스폰서의 제공으로 보내드립니다(2) 리하르트 슈트라우스.',
+        '이 프로그램은 보고 계신 스폰서의 제공으로 보내드립니다(3)(무료 마지막화입니다!)',
+        '< [유료화 시작]이 프로그램은 보고 계신 스폰서의 제공으로 보내드립니다(4) >'
+    ];
+    const content = [...regular, ...extra].join('\n본문\n');
+    const selectedFallbackIndices = [10, 12, 14, 16];
+    const { context, messages } = loadWorker();
+    for (const useMultiToc of [false, true, false]) {
+        const options = { fileName: 'sample.txt', userRegex: defaultTitleRegex, preserveCustomMatches: false,
+            selectedFallbackIndices, useMultiToc };
+        await context.self.onmessage({ data: { type: 'PREVIEW_PARSER', payload: { ...options, requestId: 1, text: content } } });
+        const preview = messages.at(-1).payload;
+        const automaticIds = new Set(Array.from(preview.resultItems, item => item.idx));
+        assert.equal(preview.fallbackItems.some(item => automaticIds.has(item.idx)), false);
+        assert.equal(new Set(Array.from(preview.resultItems, item => item.text)).size, preview.resultItems.length);
+        await context.self.onmessage({ data: { type: 'CONVERT', payload: { ...options, id: 'book', title: 'Book',
+            content, useAutoToc: true, useTrim: true, language: 'ko' } } });
+        const ncx = messages.at(-1).payload.blob.files.get('OEBPS/toc.ncx');
+        const titles = Array.from(ncx.matchAll(/<navLabel><text>(.*?)<\/text><\/navLabel>/g), match => match[1]);
+        assert.equal(titles.length, 9);
+        assert.equal(new Set(titles).size, 9);
+    }
+});
+
 test('parenthesized fallback remains selectable alongside regular titles', async () => {
     const { context, messages } = loadWorker();
     const content = '제1화 시작\n본문\n내집 마련의 꿈(1)\n본문\n내집 마련의 꿈(2)\n본문\n제2화 계속';
