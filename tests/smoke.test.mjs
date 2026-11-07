@@ -229,7 +229,7 @@ test('preview mode label shows the current file setting even while results are l
     const context = vm.createContext({ store, currentPreviewFileId: 'a', currentPreviewItems: [], currentPreviewFallbackItems: [],
         window: { EPUB_STUDIO_I18N: { t: key => key } },
         dom: { previewDialog: { open: true, dataset: {} }, previewFileName: {}, previewFileMeta: {},
-            previewMultiTocToggle: toggle, previewSummary: {}, previewCandidate: {}, previewList: {}, previewCopyBtn: {} } });
+            previewMultiTocToggle: toggle, previewSummary: {}, previewCandidate: {}, previewRepairCandidates: {}, previewList: {}, previewCopyBtn: {} } });
     vm.runInContext(html.match(/function openPreviewDialog[\s\S]*?(?=\n    async function copyPreviewLine)/)[0], context);
     for (const [id, label, pressed] of [['a', 'tocModeSingle', 'false'], ['b', 'tocModeMultiple', 'true'], ['missing', 'tocModeSingle', 'false']]) {
         context.currentPreviewFileId = id;
@@ -742,6 +742,32 @@ test('part numbers alone do not override the expected chapter sequence', async (
             } });
             assert.deepEqual(Array.from(messages[0].payload.resultItems, (item) => item.text), regularTitles);
             assert.deepEqual(Array.from(messages[0].payload.fallbackItems), []);
+        }
+    }
+});
+
+test('angle-bracketed episode numbers allow a title after the closing bracket', async () => {
+    for (const useMultiToc of [false, true]) {
+        for (const [open, close] of [['〈', '〉'], ['<', '>']]) {
+            const titles = [open + ' 1화 ' + close + ' 이사', open + '2화' + close + ' 면접과 첫 요리'];
+            const content = [
+                titles[0], '본문에서 〈 10화 〉 내용을 언급했다.',
+                '〈 2화 > 잘못 닫힌 괄호', '< 2화 〉 잘못 닫힌 괄호',
+                open + ' 2화 ' + close + ' 에서는 이전 일을 설명한다.',
+                titles[1], open + ' 2화 ' + close + ' 끝', '뒤 본문'
+            ].join('\n');
+            const { context, messages } = loadWorker();
+            const options = { userRegex: defaultTitleRegex, preserveCustomMatches: false, useMultiToc, repairLineBreaks: false };
+            await context.self.onmessage({ data: { type: 'PREVIEW_PARSER', payload: { ...options, text: content } } });
+            const preview = messages.at(-1).payload;
+            assert.deepEqual(Array.from(preview.resultItems, item => item.text), titles);
+            assert.equal(preview.fallbackItems.length, 0);
+            await context.self.onmessage({ data: { type: 'CONVERT', payload: {
+                ...options, id: 'book', title: 'Book', content, useAutoToc: true
+            } } });
+            const ncx = messages.at(-1).payload.blob.files.get('OEBPS/toc.ncx');
+            assert.deepEqual(Array.from(ncx.matchAll(/<navLabel><text>(.*?)<\/text><\/navLabel>/g),
+                match => match[1].replaceAll('&lt;', '<').replaceAll('&gt;', '>')), titles);
         }
     }
 });
@@ -1757,6 +1783,242 @@ test('legacy numbered titles stay detected after an earlier number sequence', as
             '085.여름의 문턱(3)',
             '086. 여름의 문턱(4)'
         ]);
+    }
+});
+
+test('line-break repair separates joined body text without moving source indexes', async () => {
+    const stem = '내 딸은 천재화백';
+    const titles = [stem + ' 112화', stem + ' 113화'];
+    const sentence = '우리들은 다시금 벽화를 향해 걸어가기 시작했다.';
+    const body = Array(4).fill(sentence).join(' ') + '  ';
+    const joined = titles[1] + body;
+    const references = [
+        titles[1] + '에서는 등장인물들이 어떤 일을 하는지 알아볼 수 있었다.',
+        titles[1] + '짧은 부제',
+        stem + ' 120화' + sentence,
+        '다른 제목 113화' + sentence
+    ];
+    const lines = [titles[0], '본문입니다.', ...references, joined, '끝 문단입니다.'];
+    const content = lines.join('\n');
+    const joinedIndex = lines.indexOf(joined);
+    assert.ok(joined.length > 90);
+    for (const useMultiToc of [false, true]) {
+        const { context, messages } = loadWorker();
+        const options = { userRegex: defaultTitleRegex, preserveCustomMatches: false, useMultiToc };
+        for (const repairLineBreaks of [false, true]) {
+            await context.self.onmessage({ data: { type: 'PREVIEW_PARSER', payload: {
+                ...options, text: content, repairLineBreaks
+            } } });
+            const preview = messages.at(-1).payload;
+            assert.equal(preview.lineCount, lines.length);
+            assert.deepEqual(Array.from(preview.resultItems, item => [item.idx, item.text]),
+                repairLineBreaks ? [[0, titles[0]], [joinedIndex, titles[1]]] : []);
+        }
+
+        for (const [repairLineBreaks, excludedIndices, useAutoToc, expectedTitles] of [
+            [true, [], true, titles],
+            [true, [joinedIndex], true, [titles[0]]],
+            [false, [], true, ['시작']],
+            [true, [], false, ['시작']]
+        ]) {
+            await context.self.onmessage({ data: { type: 'CONVERT', payload: {
+                ...options, id: 'book', title: 'Book', content, useAutoToc, useTrim: false, repairLineBreaks, excludedIndices
+            } } });
+            const files = messages.at(-1).payload.blob.files;
+            const ncx = files.get('OEBPS/toc.ncx');
+            assert.deepEqual(Array.from(ncx.matchAll(/<navLabel><text>(.*?)<\/text><\/navLabel>/g), match => match[1]), expectedTitles);
+            const repaired = repairLineBreaks && useAutoToc && !excludedIndices.length;
+            const page = files.get(repaired ? 'OEBPS/ch_1.xhtml' : 'OEBPS/ch_0.xhtml');
+            assert.ok(page.includes('<p>' + (repaired ? body : joined) + '</p>'));
+            if (repaired) assert.equal(page.includes(joined), false);
+            const allPages = [...files].filter(([name]) => /ch_\d+\.xhtml$/.test(name)).map(([, value]) => value).join('');
+            for (const reference of references) assert.ok(allPages.includes('<p>' + reference + '</p>'));
+        }
+    }
+});
+
+test('line-break repair uses adjacent episode numbers on either side to recover short sentences', async () => {
+    const stem = '내 딸은 천재화백';
+    const title = episode => stem + ' ' + episode + '화';
+    const sentence = '주무관님의 차는 귀여운 소형차였다.';
+    const shortSentence = '그는 떠났다.';
+    assert.equal(sentence.length, 19);
+    const { context, messages } = loadWorker();
+    for (const useMultiToc of [false, true]) {
+        const options = { useMultiToc, repairLineBreaks: true, userRegex: defaultTitleRegex };
+        for (const [before, after, body, expected] of [
+            [115, null, sentence, true],
+            [null, 117, sentence, true],
+            [115, 117, shortSentence, true],
+            [115, null, shortSentence, false],
+            [null, 117, shortSentence, false],
+            [114, 118, sentence, false],
+            [115, 117, '늦은 여름.', false],
+            [115, 117, '에서는 ' + sentence, false]
+        ]) {
+            const lines = ['앞 문단', ...(before ? [title(before), '이전 본문'] : []), title(116) + body,
+                '다음 문단', ...(after ? [title(after), '나머지 본문'] : [])];
+            const index = lines.indexOf(title(116) + body);
+            await context.self.onmessage({ data: { type: 'PREVIEW_PARSER', payload: { ...options, text: lines.join('\n') } } });
+            const items = messages.at(-1).payload.resultItems;
+            assert.equal(items.some(item => item.idx === index && item.text === title(116)), expected);
+            if (!expected) continue;
+            await context.self.onmessage({ data: { type: 'CONVERT', payload: {
+                ...options, id: 'book', title: 'Book', content: lines.join('\n'), useAutoToc: true
+            } } });
+            const files = messages.at(-1).payload.blob.files;
+            const ncx = files.get('OEBPS/toc.ncx');
+            assert.ok(ncx.includes('<text>' + title(116) + '</text>'));
+            assert.ok([...files].some(([name, value]) => /ch_\d+\.xhtml$/.test(name) && value.includes('<p>' + body + '</p>')));
+        }
+        const repair = vm.runInContext('resolveTocSelection', context);
+        const unanchored = [title(115) + sentence, title(116) + sentence, title(117) + sentence];
+        assert.equal(repair(unanchored, options).repairs.size, 0);
+        const anchored = repair([...unanchored, title(118)], options);
+        assert.deepEqual([...anchored.repairs.keys()], [0, 1, 2]);
+    }
+});
+
+test('two-sided episode evidence repairs short repeated sounds but keeps other short tails as candidates', async () => {
+    const { context, messages } = loadWorker();
+    const title = number => '내 딸은 천재화백 ' + number + '화';
+    for (const useMultiToc of [false, true]) {
+        const options = { userRegex: defaultTitleRegex, repairLineBreaks: true, useMultiToc };
+        for (const [body, next, expected] of [['슥슥.', 131, 'auto'], ['사각사각.', 131, 'auto'],
+            ['슥슥.', null, 'candidate'], ['재회.', 131, 'candidate'], ['에서는 그대로 읽었다.', 131, 'none']]) {
+            const text = [title(129), '앞 본문', title(130) + body, '뒤 본문',
+                ...(next ? [title(next), '다음 본문'] : [])].join('\n');
+            await context.self.onmessage({ data: { type: 'PREVIEW_PARSER', payload: { ...options, text } } });
+            const { resultItems, repairCandidates, fallbackItems } = messages.at(-1).payload;
+            assert.equal(resultItems.some(item => item.idx === 2 && item.text === title(130)), expected === 'auto');
+            assert.equal(fallbackItems.some(item => item.idx === 2), false);
+            assert.deepEqual(Array.from(repairCandidates, item => [item.idx, item.title, item.body]),
+                expected === 'candidate' ? [[2, title(130), body]] : []);
+        }
+    }
+});
+
+test('line-break repair recovers successive joined episodes after one intact title', async () => {
+    const title = n => '내 딸은 천재화백 ' + n + '화';
+    const sound = '슥슥.';
+    const sentence = '방송국에 도착하자 처음 김찬미 PD님을 만나러 왔을 때가 떠올랐다.';
+    const joined = [title(130) + sound, title(131) + sentence];
+    const lines = [title(129), '앞 본문', ...joined, '마지막 문단'];
+    const { context, messages } = loadWorker();
+    for (const useMultiToc of [false, true]) {
+        const options = { userRegex: defaultTitleRegex, repairLineBreaks: true, useMultiToc };
+        await context.self.onmessage({ data: { type: 'PREVIEW_PARSER', payload: { ...options, text: lines.join('\n') } } });
+        assert.deepEqual(Array.from(messages.at(-1).payload.resultItems, item => [item.idx, item.text]),
+            [[0, title(129)], [2, title(130)], [3, title(131)]]);
+        await context.self.onmessage({ data: { type: 'CONVERT', payload: {
+            ...options, id: 'book', title: 'Book', content: lines.join('\n'), useAutoToc: true
+        } } });
+        const files = messages.at(-1).payload.blob.files;
+        assert.ok(files.get('OEBPS/ch_1.xhtml').includes('<p>' + sound + '</p>'));
+        assert.ok(files.get('OEBPS/ch_2.xhtml').includes('<p>' + sentence + '</p>'));
+        const resolve = vm.runInContext('resolveTocSelection', context);
+        assert.equal(resolve(joined, options).repairs.size, 0);
+        const ambiguous = resolve([...lines.slice(0, 3), title(131) + '재회.'], options);
+        assert.equal(ambiguous.repairs.size, 0);
+    }
+});
+
+test('recurring titles relax body checks only after 100 distinct intact episodes of that title', () => {
+    const { context } = loadWorker();
+    const resolve = vm.runInContext('resolveTocSelection', context);
+    const title = n => '산책의 기록 ' + n + '화';
+    const makeLines = count => Array.from({ length: count }, (_, index) => [title(index + 1), '본문']).flat();
+    const options = { userRegex: defaultTitleRegex, repairLineBreaks: true };
+    const ninetyNine = makeLines(99);
+    const duplicate = [...ninetyNine, title(99), '다시 본문', title(100) + '슥'];
+    const duplicateResult = resolve(duplicate, options);
+    assert.equal(duplicateResult.repairs.size, 0);
+    assert.equal(duplicateResult.repairCandidates.at(-1).title, title(100));
+    const lines = [...makeLines(100), title(101) + '슥', title(102) + '에서는 본문을 읽는다.',
+        title(103) + '소리', '다른 제목 101화소리'];
+    const result = resolve(lines, options);
+    assert.deepEqual(Array.from(result.repairs, ([idx, item]) => [idx, item.title, item.body]), [[200, title(101), '슥']]);
+    assert.ok(result.validIndices.has(200));
+    assert.equal(resolve(lines, { ...options, repairLineBreaks: false }).repairs.size, 0);
+});
+
+test('an explicitly selected line-break candidate becomes a chapter only while repair is enabled and not excluded', async () => {
+    const { context, messages } = loadWorker();
+    const title = '내 딸은 천재화백 130화';
+    const tail = '재회.';
+    const joined = title + tail;
+    const lines = ['내 딸은 천재화백 129화', '앞 본문', joined, '뒤 본문',
+        'Chapter 1 First', 'Body.', 'Chapter 2 Next', 'Body.', 'Chapter 3 Last', 'Body.'];
+    const content = lines.join('\n');
+    const options = { id: 'book', title: 'Book', content, userRegex: defaultTitleRegex, useAutoToc: true, useMultiToc: false };
+    const chosen = { ...options, repairLineBreaks: true, selectedRepairIndices: [2] };
+    await context.self.onmessage({ data: { type: 'PREVIEW_PARSER', payload: { ...chosen, text: content } } });
+    const preview = messages.at(-1).payload;
+    assert.equal(preview.lineCount, lines.length);
+    assert.equal(preview.resultItems.some(item => item.idx === 2 && item.text === title), true);
+    assert.equal(preview.repairCandidates.length, 0);
+    for (const [overrides, accepted] of [[{}, true], [{ excludedIndices: [2] }, false],
+        [{ repairLineBreaks: false }, false], [{ selectedRepairIndices: [] }, false]]) {
+        await context.self.onmessage({ data: { type: 'CONVERT', payload: { ...chosen, ...overrides } } });
+        const files = messages.at(-1).payload.blob.files;
+        assert.equal(files.get('OEBPS/toc.ncx').includes('<text>' + title + '</text>'), accepted);
+        const pages = [...files].filter(([name]) => /ch_\d+\.xhtml$/.test(name)).map(([, page]) => page).join('');
+        assert.ok(pages.includes('<p>' + (accepted ? tail : joined) + '</p>'));
+        if (accepted) assert.equal(pages.includes(joined), false);
+    }
+});
+
+test('line-break repair resets only the selected file and its containing bundle', () => {
+    const Store = loadStore();
+    const other = { id: 'b', state: 'done', repairLineBreaks: false };
+    const store = new Store({ files: [{ id: 'a', state: 'done', isValid: 'no', useMultiToc: true }, other],
+        groups: [{ id: 'group-a', fileIds: ['a', 'b'], state: 'done' }] });
+    const scanned = [], previewed = [];
+    const body = html.match(/dom\.previewRepairToggle\.addEventListener\('click', \(\) => \{([\s\S]*?)\n    \}\);/)[1];
+    const toggle = vm.runInNewContext('() => {' + body + '}', {
+        store, currentPreviewFileId: 'a', dom: { optToc: { checked: true } },
+        validateFileById: id => scanned.push(id), previewFileById: id => previewed.push(id)
+    });
+    toggle();
+    assert.equal(store.state.files[0].repairLineBreaks, true);
+    assert.equal(store.state.files[0].useMultiToc, true);
+    assert.equal(store.state.files[0].state, 'wait');
+    assert.equal(store.state.files[1], other);
+    assert.equal(store.state.groups[0].state, 'wait');
+    toggle();
+    assert.equal(store.state.files[0].repairLineBreaks, false);
+    assert.deepEqual(scanned, ['a', 'a']);
+    assert.deepEqual(previewed, ['a', 'a']);
+});
+
+test('repeated suffix titles accept consecutive episodes without blank lines or with a question mark', async () => {
+    const title = '내 딸은 천재화백';
+    for (const useMultiToc of [false, true]) {
+        for (const ending of ['', '?', '？']) {
+            const titles = [title + ' 001화' + ending, title + ' 002화' + ending];
+            const content = [titles[0], '본문입니다.', '다른 이야기 002화?', '본문입니다.', titles[1], '본문입니다.'].join('\n');
+            const { context, messages } = loadWorker();
+            const options = { userRegex: defaultTitleRegex, preserveCustomMatches: false, useMultiToc };
+            await context.self.onmessage({ data: { type: 'PREVIEW_PARSER', payload: { ...options, text: content } } });
+            assert.deepEqual(Array.from(messages.at(-1).payload.resultItems, item => item.text), titles);
+            await context.self.onmessage({ data: { type: 'CONVERT', payload: {
+                ...options, id: 'book', title: 'Book', content, useAutoToc: true, useTrim: true
+            } } });
+            const ncx = messages.at(-1).payload.blob.files.get('OEBPS/toc.ncx');
+            assert.deepEqual(Array.from(ncx.matchAll(/<navLabel><text>(.*?)<\/text><\/navLabel>/g), match => match[1]), titles);
+        }
+    }
+});
+
+test('suffix questions need a matching title and a consecutive episode', async () => {
+    const { context, messages } = loadWorker();
+    for (const useMultiToc of [false, true]) {
+        for (const text of ['지금 001화?', '지금 001화?\n다음 002화?', '지금 001화?\n지금 003화?', '지금 002화?\n지금 001화?']) {
+            await context.self.onmessage({ data: { type: 'PREVIEW_PARSER', payload: {
+                text, userRegex: defaultTitleRegex, preserveCustomMatches: false, useMultiToc
+            } } });
+            assert.equal(messages.at(-1).payload.resultItems.length, 0);
+        }
     }
 });
 

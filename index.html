@@ -27,7 +27,7 @@
     <!-- 외부 라이브러리 로드 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jschardet/3.0.0/jschardet.min.js"></script>
-    <script src="./i18n.js?v=20261107-3"></script>
+    <script src="./i18n.js?v=20261108-2"></script>
     <link rel="stylesheet" href="./site-shared.css?v=20261030-3">
     <link rel="stylesheet" href="./ui-buttons.css?v=20261107-1">
     <style>
@@ -492,18 +492,28 @@
             display: flex;
             align-items: center;
             gap: 6px;
-            flex-wrap: nowrap;
+            flex-wrap: wrap;
             justify-content: flex-end;
             justify-self: end;
+            min-width: 0;
+            max-width: 100%;
         }
-        .preview-actions > button { flex-shrink: 0; }
+
+        .preview-action-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 0 0 auto;
+        }
 
         .preview-summary {
             display: flex;
             align-items: center;
             flex-wrap: wrap;
             gap: 6px;
+            min-width: 0;
             margin: 0 0 10px;
+            word-break: keep-all;
             font-size: 0.8rem;
             color: var(--accent);
             font-weight: 700;
@@ -619,6 +629,24 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
+
+        .preview-repair-candidates { margin-bottom: 10px; }
+        .preview-repair-candidates summary {
+            padding: 6px 0;
+            color: var(--warning);
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+        .preview-repair-list {
+            display: grid;
+            gap: 6px;
+            max-height: min(24vh, 200px);
+            overflow: auto;
+            overscroll-behavior: contain;
+        }
+        .preview-repair-list .preview-candidate { margin: 0; }
+        .preview-repair-list .preview-candidate-copy { overflow-wrap: anywhere; }
+        .preview-repair-list .preview-candidate-copy small { white-space: normal; }
 
         .preview-action-icon {
             width: 14px;
@@ -1727,13 +1755,22 @@
                     <span id="previewFileMeta">파일을 고르면 감지된 제목 후보를 보여줍니다.</span>
                 </div>
                 <div class="preview-actions">
-                    <button type="button" id="previewMultiTocToggle" class="ui-button preview-toggle toc-mode-toggle" aria-pressed="false" title="이 파일의 단일 패턴·여러 패턴 설정을 바꾸며, 미리보기와 실제 변환에 함께 적용합니다.">단일 패턴</button>
-                    <button type="button" class="ui-button btn-preview-action" id="previewCopyBtn">복사</button>
-                    <button type="button" class="ui-button btn-preview-action" id="previewCloseBtn">닫기</button>
+                    <div class="preview-action-group">
+                        <button type="button" id="previewMultiTocToggle" class="ui-button preview-toggle toc-mode-toggle" aria-pressed="false" title="이 파일의 단일 패턴·여러 패턴 설정을 바꾸며, 미리보기와 실제 변환에 함께 적용합니다.">단일 패턴</button>
+                        <button type="button" class="ui-button" id="previewRepairToggle" aria-pressed="false" title="이 파일에서 본문에 붙어 놓친 회차 제목을 다시 찾습니다.">회차 추가 감지</button>
+                    </div>
+                    <div class="preview-action-group">
+                        <button type="button" class="ui-button btn-preview-action" id="previewCopyBtn">복사</button>
+                        <button type="button" class="ui-button btn-preview-action" id="previewCloseBtn">닫기</button>
+                    </div>
                 </div>
             </div>
             <div class="preview-summary" id="previewSummary"></div>
             <div class="preview-candidate" id="previewCandidate" hidden></div>
+            <details class="preview-repair-candidates" id="previewRepairCandidates" hidden>
+                <summary id="previewRepairCount"></summary>
+                <div class="preview-repair-list" id="previewRepairList"></div>
+            </details>
             <div class="preview-list" id="previewList">
                 <div class="preview-empty">아직 미리보기 결과가 없습니다. 파일 목록에서 목차 미리보기를 눌러보세요.</div>
             </div>
@@ -1810,7 +1847,7 @@
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>목차 미리보기</h3>
-                    <p>파일별로 단일 패턴·여러 패턴을 전환하고 제목을 제외할 수 있습니다. 중복을 뺀 다른 형식 후보는 2개 이상일 때 제안하며, 추가 후에는 목차에서만 보여주고 취소할 수 있습니다.</p>
+                    <p>파일별로 제목 패턴을 바꾸거나, 회차 추가 감지로 본문에 붙어 놓친 제목을 찾을 수 있습니다. 애매한 줄은 추가 회차 후보에서 확인하고, 필요 없는 제목은 목차에서 제외할 수 있습니다.</p>
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>표지 설정</h3>
@@ -1982,6 +2019,10 @@
                 case 'UPDATE_FILE_TITLE': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, customTitle: action.payload.title } : f) };
                 case 'UPDATE_FILE_COVER': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, coverBlob: action.payload.blob } : f) };
                 case 'UPDATE_FILE_MULTI_TOC': return { ...state, statusKey: 'statusReady', files: state.files.map(f => f.id === action.payload.id ? { ...f, useMultiToc: action.payload.useMultiToc, isValid: 'none', state: 'wait' } : f) };
+                case 'UPDATE_FILE_TOC_REPAIR': return { ...state, statusKey: 'statusReady', files: state.files.map(f => f.id === action.payload.id ? { ...f, repairLineBreaks: action.payload.enabled, isValid: 'none', state: 'wait' } : f) };
+                case 'SELECT_FILE_REPAIR_TITLE': return { ...state, statusKey: 'statusReady', files: state.files.map(f => f.id === action.payload.id ? {
+                    ...f, selectedRepairIndices: [...new Set([...(f.selectedRepairIndices || []), action.payload.index])], isValid: 'none', state: 'wait'
+                } : f) };
                 case 'UPDATE_FILE_VALIDITY': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, isValid: action.payload.isValid } : f) };
                 case 'UPDATE_FILE_STATUS': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, state: action.payload.status } : f) };
                 case 'START_PROCESSING': return { ...state, isProcessing: true, shouldStop: false, progress: 0, statusKey: 'statusProcessing', statusDetailKey: 'statusProgress', statusDetailVars: { done: 0, total: action.payload.totalCount } };
@@ -2067,6 +2108,10 @@
         previewFileName: document.getElementById('previewFileName'),
         previewFileMeta: document.getElementById('previewFileMeta'),
         previewSummary: document.getElementById('previewSummary'),
+        previewRepairToggle: document.getElementById('previewRepairToggle'),
+        previewRepairCandidates: document.getElementById('previewRepairCandidates'),
+        previewRepairCount: document.getElementById('previewRepairCount'),
+        previewRepairList: document.getElementById('previewRepairList'),
         previewMultiTocToggle: document.getElementById('previewMultiTocToggle'),
         previewCandidate: document.getElementById('previewCandidate'),
         previewList: document.getElementById('previewList'),
@@ -2081,6 +2126,7 @@
     let currentPreviewItems = [];
     dom.advancedDialog.appendChild(dom.advancedArea);
     let currentPreviewFallbackItems = [];
+    let currentPreviewRepairItems = [];
     let currentPreviewFileId = null;
     let currentPreviewLineCount = null;
     let currentPreviewRequestId = 0;
@@ -2230,18 +2276,45 @@
         };
     }
 
+    function renderPreviewRepairCandidates() {
+        const t = window.EPUB_STUDIO_I18N.t;
+        dom.previewRepairCandidates.hidden = !currentPreviewRepairItems.length;
+        dom.previewRepairCount.textContent = t('previewRepairCount', { count: currentPreviewRepairItems.length });
+        dom.previewRepairList.replaceChildren(...currentPreviewRepairItems.map(item => {
+            const add = el('button', {
+                type: 'button', className: 'ui-button ui-button--compact ui-button--icon',
+                title: t('previewRepairAdd'), 'aria-label': t('previewRepairAdd'),
+                onClick: () => {
+                    const id = currentPreviewFileId;
+                    if (!id || store.state.isProcessing) return;
+                    store.dispatch({ type: 'SELECT_FILE_REPAIR_TITLE', payload: { id, index: item.idx } });
+                    store.dispatch({ type: 'RESET_GROUP_FOR_FILE', payload: id });
+                    validateFileById(id);
+                    previewFileById(id);
+                    dom.previewRepairToggle.focus({ preventScroll: true });
+                }
+            }, createPreviewActionIcon('add'));
+            return el('div', { className: 'preview-candidate' },
+                el('div', { className: 'preview-candidate-copy' }, el('strong', {}, item.title), el('small', {}, item.body)),
+                add);
+        }));
+    }
+
     function renderPreviewDialog() {
+        renderPreviewRepairCandidates();
         const excluded = currentPreviewFileId ? getExcludedPreviewLines(currentPreviewFileId) : new Set();
         const { items: displayItems, activeItems: visibleItems, candidates, addedItems } = getPreviewSelection();
         const hasFallback = candidates.length > 0;
+        const hasRepairs = currentPreviewRepairItems.length > 0;
         const excludedCount = displayItems.length - visibleItems.length;
 
         if (!displayItems.length && !hasFallback) {
-            dom.previewDialog.dataset.previewState = 'miss';
-            dom.previewSummary.innerText = window.EPUB_STUDIO_I18N.t('previewNoResult');
+            dom.previewDialog.dataset.previewState = hasRepairs ? 'candidate' : 'miss';
+            const emptyMessage = window.EPUB_STUDIO_I18N.t(hasRepairs ? 'previewNoConfirmedTitles' : 'previewNoResult');
+            dom.previewSummary.innerText = emptyMessage;
             dom.previewCandidate.hidden = true;
             dom.previewCandidate.innerHTML = '';
-            dom.previewList.innerHTML = '<div class="preview-empty">' + window.EPUB_STUDIO_I18N.t('previewNoResult') + '</div>';
+            dom.previewList.replaceChildren(el('div', { className: 'preview-empty' }, emptyMessage));
             dom.previewCopyBtn.disabled = true;
             dom.previewCopyBtn.innerText = window.EPUB_STUDIO_I18N.t('previewCopy');
             return;
@@ -2249,7 +2322,7 @@
 
         dom.previewDialog.dataset.previewState = visibleItems.length
             ? 'hit'
-            : (hasFallback ? 'candidate' : 'miss');
+            : (hasFallback || hasRepairs ? 'candidate' : 'miss');
         const summaryParts = [];
         if (!displayItems.length && hasFallback) {
             summaryParts.push(el('span', {}, window.EPUB_STUDIO_I18N.t('previewFallbackFound', { count: candidates.length })));
@@ -2369,6 +2442,14 @@
         const item = store.state.files.find(file => file.id === currentPreviewFileId);
         if (item) setFileMultiToc(item.id, !item.useMultiToc);
     });
+    dom.previewRepairToggle.addEventListener('click', () => {
+        const item = store.state.files.find(file => file.id === currentPreviewFileId);
+        if (!item || store.state.isProcessing || !dom.optToc.checked) return;
+        store.dispatch({ type: 'UPDATE_FILE_TOC_REPAIR', payload: { id: item.id, enabled: !item.repairLineBreaks } });
+        store.dispatch({ type: 'RESET_GROUP_FOR_FILE', payload: item.id });
+        validateFileById(item.id);
+        previewFileById(item.id);
+    });
 
     function setFileMultiToc(id, useMultiToc) {
         if (store.state.isProcessing || !dom.optToc.checked) return;
@@ -2397,9 +2478,10 @@
         return (fileName ? `${fileName} · ` : '') + lines;
     }
 
-    function openPreviewDialog(title, meta, items, fallbackItems = [], previewState = null) {
+    function openPreviewDialog(title, meta, items, fallbackItems = [], previewState = null, repairItems = []) {
         currentPreviewItems = Array.isArray(items) ? items.slice() : [];
         currentPreviewFallbackItems = Array.isArray(fallbackItems) ? fallbackItems.slice() : [];
+        currentPreviewRepairItems = repairItems;
         if (!dom.previewDialog.open) dom.previewDialog.showModal();
         dom.previewFileName.innerText = title || window.EPUB_STUDIO_I18N.t('previewTitle');
         dom.previewFileMeta.innerText = meta || '';
@@ -2411,6 +2493,7 @@
             dom.previewDialog.dataset.previewState = 'loading';
             dom.previewSummary.innerText = window.EPUB_STUDIO_I18N.t('previewLoading');
             dom.previewCandidate.hidden = true;
+            dom.previewRepairCandidates.hidden = true;
             dom.previewCandidate.innerHTML = '';
             dom.previewList.innerHTML = '<div class="preview-empty">' + window.EPUB_STUDIO_I18N.t('previewScanning') + '</div>';
             dom.previewCopyBtn.disabled = true;
@@ -2447,6 +2530,10 @@
         if (dom.previewDialog.open) dom.previewDialog.close();
         currentPreviewItems = [];
         currentPreviewFallbackItems = [];
+        currentPreviewRepairItems = [];
+        dom.previewRepairCandidates.hidden = true;
+        dom.previewRepairCandidates.open = false;
+        dom.previewRepairList.replaceChildren();
         currentPreviewFileId = null;
         currentPreviewLineCount = null;
         delete dom.previewDialog.dataset.previewState;
@@ -2480,6 +2567,7 @@
         currentPreviewFileId = id;
         currentPreviewLineCount = null;
         const requestId = ++currentPreviewRequestId;
+        dom.previewRepairToggle.setAttribute('aria-pressed', String(!!item.repairLineBreaks));
 
         try {
             openPreviewDialog(item.customTitle || item.file.name, `${item.file.name} · ${item.encoding}`, [], [], 'loading');
@@ -2496,7 +2584,9 @@
                     text,
                     userRegex: dom.regexInput.value,
                     preserveCustomMatches: dom.regexInput.value !== dom.regexInput.defaultValue,
-                    useMultiToc: item.useMultiToc
+                    useMultiToc: item.useMultiToc,
+                    repairLineBreaks: item.repairLineBreaks,
+                    selectedRepairIndices: item.selectedRepairIndices
                 }
             });
         } catch (error) {
@@ -2778,6 +2868,11 @@
         };
 
         const NUMBERED_TITLE_START = /^(?:\u25C8\\s*\\d{1,5}\\.(?!\\d)\\s*\\S|\\d+[.)](?!\\d))/;
+        const KOR_SUFFIX_SEQUENCE_PATTERN = /^([^.!?。！？]{1,50}?)\\s+(?:제\\s*)?(\\d{1,5})\\s*화[?？]?$/;
+        const matchBracketedEpisodePrefix = (text) => {
+            const match = text.match(/^([<〈])\\s*(?:제\\s*)?(\\d{1,5})\\s*([화회장막편부수])\\s*([>〉])\\s+(?!(?:에서는|에서도|부터|까지)(?:\\s|$))(?=\\S)/);
+            return match && match[4] === (match[1] === '<' ? '>' : '〉') ? match : null;
+        };
         const TITLE_RULES = {
             maxLineLength: 90,
             strongStartPatterns: [
@@ -2807,6 +2902,7 @@
             profileRowPattern: /^(?:[^|]{1,20}\\||[^:]{1,12}:)\\s*.+\\((?:18|19|20)\\d{2}\\)/,
             titleNoisePattern: /(?:제\\s*)?\\d+\\s*[화회장막편부수]/,
             groupMatchers: [
+                { group: 'KOR', test: matchBracketedEpisodePrefix, resolve: (_, match) => 'KOR_' + match[3] },
                 { group: 'KOR', test: (t) => t.match(/^(?:[<【〔\\[(=\\-~◈]?|[─━═]+)\\s*(?:외전|프롤로그|에필로그)?\\s*(?:제\\s*)?\\d+\\s*([화회장막편부수])(?:◈|\\]|\\s|:|\\.|-|$)/), resolve: (_, match) => 'KOR_' + match[1] },
                 { group: 'KOR_SUFFIX', test: (t) => t.match(/^[^.!?。！？]{1,50}\\s+(?:제\\s*)?\\d+\\s*([화회장막편부수])\\.?$/), resolve: (_, match) => 'KOR_SUFFIX_' + match[1] },
                 { group: 'ENG', test: (t) => t.match(/^(Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\.?\\s*\\d+/i), resolve: (_, match) => 'ENG_' + match[1].toUpperCase() },
@@ -2921,7 +3017,7 @@
 
             lines.forEach((line, idx) => {
                 const text = cleanLine(line);
-                if (!text || text.length > DISCOVERED_TITLE_MAX_LENGTH) return;
+                if (!text || text.length > DISCOVERED_TITLE_MAX_LENGTH || !/[0-9]/.test(text)) return;
                 const isStrongStart = parser.isStrongStart(text);
                 if (!isStrongStart && /[\\(（]\\s*\\d{1,5}\\s*[\\)）]$/.test(text)) return;
                 if (parser.shouldSkipCandidate(text, isStrongStart)) return;
@@ -2945,11 +3041,11 @@
             const seenTexts = new Set();
             const candidates = lines.flatMap((line, idx) => {
                 const text = cleanLine(line);
-                if (parser.rules.endMarkerPattern.test(text)) return [];
+                if (text.length > 70) return [];
+                const numberMatch = text.match(numberPattern);
+                if (!numberMatch || parser.rules.endMarkerPattern.test(text)) return [];
                 const group = parser.classifyLine(text);
                 if (group && group !== 'CUSTOM') return [];
-                const numberMatch = text.match(numberPattern);
-                if (!numberMatch) return [];
                 if (parser.rules.profileRowPattern.test(text)) return [];
                 const isAngleWrapped = /^\\s*["'”’]*\\s*[<【〔\\[]/.test(text) && /[>】〕\\]〉》」』]\\s*["'”’]*\\s*$/.test(text);
                 const isQuoteWrapped = /^\\s*(?:'[^']+'|"[^"]+"|“[^”]+”|‘[^’]+’)\\s*$/.test(text);
@@ -2962,7 +3058,7 @@
                 if (trailing && !isEpisodeNote && !isShortSubtitle) return [];
                 const title = text.slice(0, numberMatch.index);
                 const normalizedTitle = title.replace(/^\\s*["'”’「『“‘]\\s*/, '');
-                if (!normalizedTitle || text.length > 70 || !/[A-Za-z가-힣一-龥ぁ-んァ-ヶ]/.test(normalizedTitle)) return [];
+                if (!normalizedTitle || !/[A-Za-z가-힣一-龥ぁ-んァ-ヶ]/.test(normalizedTitle)) return [];
                 const key = normalizedTitle
                     .replace(/^\\s*[<【〔\\[]\\s*/, '')
                     .replace(/^\\s*\\[[^\\]]{1,30}\\]\\s*/, '')
@@ -2995,9 +3091,8 @@
             });
         };
 
-        const collectAdditionalTitleCandidates = (validIndices, lines, parser) => {
+        const collectAdditionalTitleCandidates = (validIndices, lines, parser, fallbackItems) => {
             const detectedTexts = new Set(Array.from(validIndices, (idx) => parser.normalizeLine(lines[idx])));
-            const fallbackItems = findParenthesizedTitleFallback(lines, parser);
             const anchoredKeys = new Set(fallbackItems
                 .filter((item) => detectedTexts.has(item.text))
                 .map((item) => item.key));
@@ -3025,7 +3120,7 @@
             }
 
             isStrongStart(text) {
-                return matchesAny(this.rules.strongStartPatterns, text);
+                return matchesAny(this.rules.strongStartPatterns, text) || !!matchBracketedEpisodePrefix(text);
             }
 
             // 새로 추가할 제목 예외는 shouldSkipCandidate()와 groupMatchers에 넣으면 됩니다.
@@ -3036,8 +3131,9 @@
                 if (this.rules.dateRangePattern.test(text)) return true;
                 if (this.rules.profileRowPattern.test(text)) return true;
                 const isBracketed = this.rules.bracketOpenPattern.test(text) && this.rules.bracketClosePattern.test(text);
-                const isBracketTitle = matchesAny(this.rules.bracketTitlePatterns, text);
-                const isExplicitWrappedTitle = BRACKET_SUFFIX_TITLE_PATTERN.test(text) || WRAPPED_NUMBER_TITLE_PATTERN.test(text);
+                const hasBracketedEpisodePrefix = isBracketed && !!matchBracketedEpisodePrefix(text);
+                const isBracketTitle = hasBracketedEpisodePrefix || matchesAny(this.rules.bracketTitlePatterns, text);
+                const isExplicitWrappedTitle = hasBracketedEpisodePrefix || BRACKET_SUFFIX_TITLE_PATTERN.test(text) || WRAPPED_NUMBER_TITLE_PATTERN.test(text);
 
                 if (isBracketed && !isBracketTitle) return true;
 
@@ -3073,6 +3169,8 @@
             }
 
             getChapterNum(text) {
+                const bracketedEpisode = matchBracketedEpisodePrefix(text);
+                if (bracketedEpisode) return Number(bracketedEpisode[2]);
                 const match = text.match(/(?:제\\s*)?(\\d+)\\s*[화회장막편부수](?:◈|\\]|\\s|:|\\.|-|$)/) ||
                     text.match(/(?:Chapter|Stage|Episode|Ep|Part|Track|Season)\\s*\\.?\\s*(\\d+)/i) ||
                     text.match(/[#＃]\\s*(\\d+)/) ||
@@ -3137,8 +3235,9 @@
                 return activeGroups;
             }
 
-            analyze(lines, useMultiToc = false, fileName = '') {
+            analyze(lines, useMultiToc = false, fileName = '', fallbackItems) {
                 const lineData = new Array(lines.length).fill(null);
+                const suffixNumbersByTitle = new Map();
 
                 // --- 1단계: 유전자 판별 ---
                 for (let i = 0; i < lines.length; i++) {
@@ -3147,6 +3246,23 @@
 
                     const isStrongStart = this.isStrongStart(t);
                     if (this.shouldSkipCandidate(t, isStrongStart)) continue;
+
+                    // A matching title and preceding episode can replace the blank-line evidence.
+                    if (!isStrongStart && (t.endsWith('화') || t.endsWith('화?') || t.endsWith('화？'))) {
+                        const suffix = t.match(KOR_SUFFIX_SEQUENCE_PATTERN);
+                        if (suffix) {
+                            const title = suffix[1].trim().replace(/\\s+/g, ' ');
+                            const number = Number(suffix[2]);
+                            if (!suffixNumbersByTitle.has(title)) suffixNumbersByTitle.set(title, new Map());
+                            const numbers = suffixNumbersByTitle.get(title);
+                            const previous = numbers.get(number - 1);
+                            if (previous !== undefined) {
+                                lineData[previous] ??= 'KOR_SUFFIX_화';
+                                lineData[i] = 'KOR_SUFFIX_화';
+                            }
+                            if (!numbers.has(number)) numbers.set(number, i);
+                        }
+                    }
 
                     const prevE = (i === 0 || lines[i-1].trim() === "");
                     const nextE = (i === lines.length-1 || lines[i+1].trim() === "");
@@ -3477,7 +3593,7 @@
 
                 if (!this.preserveCustomMatches && groupedItems.some((item) => item.group !== 'SPECIAL')) {
                     const titleIndicesByText = new Map(groupedItems.map((item) => [item.t, item.idx]));
-                    for (const item of findParenthesizedTitleFallback(lines, this)) {
+                    for (const item of fallbackItems ?? findParenthesizedTitleFallback(lines, this)) {
                         groupedItems.push({ idx: titleIndicesByText.get(item.text) ?? item.idx, t: item.text, num: -1, group: item.wrapped ? 'FALLBACK_WRAPPED' : 'FALLBACK_PLAIN' });
                     }
                 }
@@ -3516,10 +3632,93 @@
             }
         }
 
+        const repairJoinedChapterLines = (lines, parser, selectedIndices) => {
+            const chapters = [];
+            const intactNumbersByTitle = new Map();
+            const repairs = new Map();
+            const repairCandidates = [];
+            const selected = new Set(selectedIndices || []);
+            const titleKey = title => title.trim().replace(/\\s+/g, ' ');
+            const joinedLinePattern = /^(\\s*([^.!?。！？]{1,50}?)\\s+(?:제\\s*)?(\\d{1,5})\\s*화)([A-Za-z가-힣].*)$/;
+            const episodeReference = /^(?:에서는|에서도|에서부터|으로는|부터는|까지는|(?:[이가을를은는에로와과의도만]|에서|으로|부터|까지|쯤|정도|분량|라는|란|때|아닌|인가|인지)(?=\\s|[.!?。！？,]|$))/;
+            const isCandidate = title => !parser.shouldSkipCandidate(title, parser.isStrongStart(title));
+            lines.forEach((line, index) => {
+                if (!line.includes('화')) return;
+                const text = cleanLine(line);
+                const intact = text.match(KOR_SUFFIX_SEQUENCE_PATTERN);
+                if (intact) {
+                    if (isCandidate(text)) {
+                        const key = titleKey(intact[1]);
+                        const number = Number(intact[2]);
+                        chapters.push({ key, number });
+                        if (!intactNumbersByTitle.has(key)) intactNumbersByTitle.set(key, new Set());
+                        intactNumbersByTitle.get(key).add(number);
+                    }
+                    return;
+                }
+                const joined = line.match(joinedLinePattern);
+                if (!joined) return;
+                const [, heading, title, digits, body] = joined;
+                if (episodeReference.test(body)) return;
+                const sentence = body.trimEnd();
+                const short = sentence.length < 20;
+                const sentenceLike = /\\s/.test(sentence) && /[.!?。！？]$/.test(sentence)
+                    && (!short || parser.rules.sentenceSuffixPattern.test(sentence));
+                const repeatedSound = /^([가-힣]{1,2})\\1[.!?。！？]$/.test(sentence);
+                const repairedTitle = cleanLine(heading);
+                if (!isCandidate(repairedTitle)) return;
+                chapters.push({
+                    index, key: titleKey(title), number: Number(digits), repair: { title: repairedTitle, body },
+                    oneSideEnough: selected.has(index) || (sentenceLike && (!short || sentence.split(/\\s+/).length >= 3)),
+                    bothSidesEnough: sentenceLike || repeatedSound
+                });
+            });
+
+            // Start from intact headings, so joined lines cannot confirm each other without evidence.
+            const nextChapters = new Map();
+            const nextCandidates = new Map();
+            for (let i = chapters.length - 1; i >= 0; i--) {
+                const chapter = chapters[i];
+                if (chapter.repair && intactNumbersByTitle.get(chapter.key)?.size >= 100) chapter.oneSideEnough = true;
+                const next = nextCandidates.get(chapter.key);
+                chapter.hasClearNextCandidate = next?.number === chapter.number + 1 && next.oneSideEnough;
+                nextCandidates.set(chapter.key, chapter);
+                chapter.hasNext = nextChapters.get(chapter.key) === chapter.number + 1;
+                if (!chapter.repair || (chapter.hasNext && chapter.oneSideEnough)) {
+                    nextChapters.set(chapter.key, chapter.number);
+                }
+            }
+            const previousChapters = new Map();
+            for (const chapter of chapters) {
+                const hasPrevious = previousChapters.get(chapter.key) === chapter.number - 1;
+                if (chapter.repair) {
+                    if (!(hasPrevious || chapter.hasNext)) continue;
+                    const twoSided = hasPrevious && (chapter.hasNext || chapter.hasClearNextCandidate);
+                    if (!chapter.oneSideEnough && !(chapter.bothSidesEnough && twoSided)) {
+                        repairCandidates.push({ idx: chapter.index, ...chapter.repair });
+                        continue;
+                    }
+                    repairs.set(chapter.index, chapter.repair);
+                }
+                previousChapters.set(chapter.key, chapter.number);
+            }
+            return { repairs, repairCandidates };
+        };
+
         const resolveTocSelection = (lines, payload) => {
             const parser = new ClusterParser(payload.userRegex, payload.preserveCustomMatches);
-            const automaticIndices = parser.analyze(lines, payload.useMultiToc, payload.fileName);
-            const fallbackItems = collectAdditionalTitleCandidates(automaticIndices, lines, parser);
+            const { repairs, repairCandidates } = payload.repairLineBreaks
+                ? repairJoinedChapterLines(lines, parser, payload.selectedRepairIndices)
+                : { repairs: new Map(), repairCandidates: [] };
+            const titleLines = repairs.size ? lines.slice() : lines;
+            // Keep source indexes stable for TOC exclusions and manual selections.
+            for (const [index, repair] of repairs) titleLines[index] = repair.title;
+            const candidates = findParenthesizedTitleFallback(titleLines, parser);
+            const automaticIndices = parser.analyze(titleLines, payload.useMultiToc, payload.fileName, candidates);
+            for (const index of payload.selectedRepairIndices || []) {
+                if (repairs.has(index)) automaticIndices.add(index);
+            }
+            const fallbackItems = collectAdditionalTitleCandidates(automaticIndices, titleLines, parser, candidates);
             const selected = new Set(payload.selectedFallbackIndices || []);
             const excluded = new Set(payload.excludedIndices || []);
             const validIndices = new Set(automaticIndices);
@@ -3527,7 +3726,7 @@
                 if (selected.has(item.idx)) validIndices.add(item.idx);
             }
             for (const idx of excluded) validIndices.delete(idx);
-            return { automaticIndices, fallbackItems, validIndices };
+            return { automaticIndices, fallbackItems, validIndices, repairs, repairCandidates };
         };
 
         const esc = (s) => String(s).replace(/[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]/g, '').replace(/[<>&"']/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":"&apos;"}[m]));
@@ -3548,10 +3747,10 @@
                 }
                 else if (type === 'PREVIEW_PARSER') {
                     const lines = safeSplit(payload.text);
-                    const { automaticIndices, fallbackItems } = resolveTocSelection(lines, payload);
+                    const { automaticIndices, fallbackItems, repairs, repairCandidates } = resolveTocSelection(lines, payload);
                     const resultItems = [];
                     Array.from(automaticIndices).sort((a, b) => a - b)
-                        .forEach(i => resultItems.push({ idx: i, text: lines[i] }));
+                        .forEach(i => resultItems.push({ idx: i, text: repairs.get(i)?.title ?? lines[i] }));
                     self.postMessage({
                         type: 'PREVIEW_RESULT',
                         payload: {
@@ -3560,7 +3759,8 @@
                             fileName: payload.fileName || '',
                             lineCount: lines.length,
                             resultItems,
-                            fallbackItems
+                            fallbackItems,
+                            repairCandidates
                         }
                     });
                 }
@@ -3576,18 +3776,18 @@
                     // Parse each source separately so numbering and TOC selections cannot cross file boundaries.
                     for (const source of payload.sources || [payload]) {
                         const rawLines = safeSplit(source.content);
-                        const validIndices = source.useAutoToc ? resolveTocSelection(rawLines, source).validIndices : new Set();
+                        const selection = source.useAutoToc ? resolveTocSelection(rawLines, source) : null;
                         const useTrim = source.useTrim;
                         let currentChapter = { title: payload.sources ? source.title : "시작", lines: [] };
                         let consecutiveEmptyLines = 0;
 
                         rawLines.forEach((line, i) => {
                             const trimmed = line.trim();
-                            const isTitle = validIndices.has(i);
-
-                            if (isTitle) {
+                            if (selection?.validIndices.has(i)) {
                                 if (currentChapter.lines.length > 0) chapters.push(currentChapter);
-                                currentChapter = { title: trimmed, lines: [] };
+                                const repair = selection.repairs.get(i);
+                                currentChapter = { title: repair?.title ?? trimmed, lines: [] };
+                                if (repair) currentChapter.lines.push(useTrim ? repair.body.trimEnd() : repair.body);
                                 consecutiveEmptyLines = 0;
                                 return;
                             }
@@ -3704,7 +3904,9 @@
                 payload.title || payload.fileName || window.EPUB_STUDIO_I18N.t('previewTitle'),
                 formatPreviewFileMeta(payload.fileName, payload.lineCount),
                 payload.resultItems || [],
-                payload.fallbackItems || []
+                payload.fallbackItems || [],
+                null,
+                payload.repairCandidates || []
             );
         }
         else if (type === 'VALIDATE_RESULT') {
@@ -3767,6 +3969,7 @@
                 customTitle: file.name.replace(/\.[^/.]+$/, "").replace(/(?<=[가-힣\w])\+(?=[가-힣\w])/g, ' '),
                 encoding: enc,
                 useMultiToc,
+                repairLineBreaks: false,
                 state: 'wait',
                 isValid,
                 coverBlob: null
@@ -3801,6 +4004,8 @@
                     userRegex: dom.regexInput.value,
                     preserveCustomMatches: dom.regexInput.value !== dom.regexInput.defaultValue,
                     useMultiToc: item.useMultiToc,
+                    repairLineBreaks: item.repairLineBreaks,
+                    selectedRepairIndices: item.selectedRepairIndices,
                     selectedFallbackIndices: Array.from(getSelectedFallbackLines(item.id)),
                     excludedIndices: Array.from(getExcludedPreviewLines(item.id))
                 }
@@ -3878,6 +4083,8 @@
                             ...options, title: file.customTitle, fileName: file.file.name,
                             content: await readFileText(file.file, file.encoding),
                             useMultiToc: file.useMultiToc,
+                            repairLineBreaks: file.repairLineBreaks,
+                            selectedRepairIndices: file.selectedRepairIndices,
                             selectedFallbackIndices: Array.from(getSelectedFallbackLines(file.id)),
                             excludedIndices: Array.from(getExcludedPreviewLines(file.id))
                         });

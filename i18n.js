@@ -90,6 +90,11 @@
                 previewLine: '{count}줄',
                 previewLines: '{count}줄',
                 previewToggleTitle: '이 파일의 단일 패턴·여러 패턴 설정을 바꾸며, 미리보기와 실제 변환에 함께 적용합니다.',
+                previewRepair: '회차 추가 감지',
+                previewRepairTitle: '이 파일에서 본문에 붙어 놓친 회차 제목을 다시 찾습니다.',
+                previewRepairCount: '추가 회차 후보 {count}개',
+                previewRepairAdd: '분리해 목차에 추가',
+                previewNoConfirmedTitles: '확정된 제목이 없습니다.',
                 previewCopy: '복사',
                 previewClose: '닫기',
                 previewExclude: '제외',
@@ -130,7 +135,7 @@
                     ['TXT에서 EPUB으로 변환', '파일을 개별·일괄 변환할 수 있습니다. 새 파일만 분석해 기존 결과를 유지하며, 목록 초기화도 가능합니다. 진행률은 변환 버튼 안에 표시하며, 같은 버튼으로 중단을 요청할 수 있습니다.'],
                     ['공백 정제', '불필요한 연속 빈 줄은 줄이고, 문단 사이의 여백은 너무 과하게 건드리지 않습니다.'],
                     ['목차 추출', '파일 전체에서 유효한 제목이 가장 많은 형식을 고릅니다. 회차·괄호 번호의 흐름을 확인하고, 시각·날짜 범위는 제외합니다.'],
-                    ['목차 미리보기', '파일별로 단일 패턴·여러 패턴을 전환하고 제목을 제외할 수 있습니다. 중복을 뺀 다른 형식 후보는 2개 이상일 때 제안하며, 추가 후에는 목차에서만 보여주고 취소할 수 있습니다.'],
+                    ['목차 미리보기', '파일별로 제목 패턴을 바꾸거나, 회차 추가 감지로 본문에 붙어 놓친 제목을 찾을 수 있습니다. 애매한 줄은 추가 회차 후보에서 확인하고, 필요 없는 제목은 목차에서 제외할 수 있습니다.'],
                     ['표지 적용', '제목을 검색하거나 클립보드의 이미지 URL과 이미지를 바로 붙일 수 있습니다.'],
                     ['인코딩 자동 감지', 'UTF-8, CP949 같은 흔한 인코딩을 자동으로 읽어들여 깨짐을 줄입니다.'],
                     ['선택한 파일 합치기', '선택한 TXT만 목록 순서대로 EPUB 하나에 넣습니다. 파일별 목차 설정은 그대로 적용하고, ZIP을 선택하면 묶음과 나머지 EPUB을 함께 받을 수 있습니다.']
@@ -324,6 +329,11 @@
                 previewLine: '{count} line',
                 previewLines: '{count} lines',
                 previewToggleTitle: 'Switch this file between single and multiple title patterns, in both preview and conversion.',
+                previewRepair: 'Find more chapters',
+                previewRepairTitle: 'Rescan this file for chapter headings joined to body text.',
+                previewRepairCount: 'Additional chapter candidates ({count})',
+                previewRepairAdd: 'Split and add to TOC',
+                previewNoConfirmedTitles: 'No confirmed titles.',
                 previewCopy: 'Copy',
                 previewClose: 'Close',
                 previewExclude: 'Exclude',
@@ -364,7 +374,7 @@
                     ['TXT to EPUB conversion', 'Convert files individually or together, or reset the list. Only new files are analyzed; existing results stay unchanged. Watch progress fill the conversion button, and click it to request a stop.'],
                     ['Whitespace cleanup', 'Reduce meaningless empty lines while keeping the spacing needed for paragraph breaks.'],
                     ['Table of contents extraction', 'Choose the format with the most valid titles across the file. Check chapter and part sequences while excluding clock times and date ranges.'],
-                    ['TOC preview', 'Switch patterns per file and exclude titles. Alternative candidates are deduplicated and offered when at least two entries qualify. Added candidates appear only in the TOC list, and additions can be undone.'],
+                    ['TOC preview', 'Switch title patterns per file and find more chapter headings joined to body text. Review additional candidates and exclude titles you do not want in the TOC.'],
                     ['Cover application', 'Search for a cover image or apply an image URL or clipboard image right away.'],
                     ['Automatic encoding detection', 'Automatically detects common encodings such as UTF-8 and CP949 to reduce read failures.'],
                     ['Merge selected files', 'Combine selected TXT files into one EPUB in list order without changing their TOC settings. The ZIP option packages merged and standalone EPUBs together.']
@@ -752,6 +762,9 @@
         const previewToggle = document.querySelector('.preview-toggle');
         if (previewToggle) previewToggle.title = getString('previewToggleTitle');
         setButton('previewCopyBtn', 'previewCopy');
+        setButton('previewRepairToggle', 'previewRepair');
+        const repairToggle = document.getElementById('previewRepairToggle');
+        if (repairToggle) repairToggle.title = getString('previewRepairTitle');
         setButton('previewCloseBtn', 'previewClose');
         setText('#previewList .preview-empty', 'previewEmpty');
         setOrdered('.file-table thead th', ['tableTitle', 'tableCover', 'tableEncoding', 'tableDetect', 'tableState']);
