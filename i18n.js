@@ -49,7 +49,19 @@
                 tocModeSingle: '단일 패턴',
                 tocModeMultiple: '여러 패턴',
                 fileMultiTocTitle: '이 파일에서 여러 제목 형식을 함께 목차에 반영합니다.',
-                optZip: 'ZIP 일괄 압축',
+                optZip: 'ZIP으로 받기',
+                groupSelectionHint: '파일 목록',
+                groupSelectionCount: '{count}개 선택',
+                groupCreate: '선택 합치기',
+                groupSelect: '묶기',
+                groupSelectFile: '{title}: 합칠 파일로 선택',
+                groupLabel: '묶음',
+                groupFileCount: '파일 {count}개',
+                groupExpand: '펼치기',
+                groupCollapse: '접기',
+                groupRelease: '묶음 해제',
+                groupConvert: '이 묶음만 EPUB으로 변환',
+                statusError: '변환 오류',
                 advancedToggle: '목차 감지 도구',
                 addFiles: '파일 추가',
                 dropHint: '빈 공간을 클릭하거나 파일을 끌어 놓아 추가하세요',
@@ -65,7 +77,7 @@
                 convertStopping: '중단 요청 중',
                 statusLabel: '현재 상태',
                 statusIdle: '대기 중',
-                statusIdleDetail: 'TXT 파일을 추가하면 변환을 시작할 수 있습니다.',
+                statusIdleDetail: 'TXT 파일을 추가하세요.',
                 statusProcessing: '변환 중',
                 statusDone: '완료',
                 statusStopped: '중단됨',
@@ -121,7 +133,7 @@
                     ['목차 미리보기', '파일별로 단일 패턴·여러 패턴을 전환하고 제목을 제외할 수 있습니다. 중복을 뺀 다른 형식 후보는 2개 이상일 때 제안하며, 추가 후에는 목차에서만 보여주고 취소할 수 있습니다.'],
                     ['표지 적용', '제목을 검색하거나 클립보드의 이미지 URL과 이미지를 바로 붙일 수 있습니다.'],
                     ['인코딩 자동 감지', 'UTF-8, CP949 같은 흔한 인코딩을 자동으로 읽어들여 깨짐을 줄입니다.'],
-                    ['ZIP 일괄 압축', '여러 EPUB 결과물을 한 번에 ZIP으로 묶어 받을 수 있습니다.']
+                    ['선택한 파일 합치기', '선택한 TXT만 목록 순서대로 EPUB 하나에 넣습니다. 파일별 목차 설정은 그대로 적용하고, ZIP을 선택하면 묶음과 나머지 EPUB을 함께 받을 수 있습니다.']
                 ],
                 storyKicker: '작동 방식',
                 storyTitle: '파일은 브라우저 안에서 움직입니다',
@@ -271,7 +283,19 @@
                 tocModeSingle: 'Single',
                 tocModeMultiple: 'Multiple',
                 fileMultiTocTitle: 'Include multiple title patterns in the TOC for this file.',
-                optZip: 'Batch ZIP',
+                optZip: 'Download as ZIP',
+                groupSelectionHint: 'File list',
+                groupSelectionCount: '{count} selected',
+                groupCreate: 'Merge selected',
+                groupSelect: 'Merge',
+                groupSelectFile: 'Select {title} to merge',
+                groupLabel: 'Bundle',
+                groupFileCount: '{count} files',
+                groupExpand: 'Show files',
+                groupCollapse: 'Hide files',
+                groupRelease: 'Ungroup',
+                groupConvert: 'Convert only this bundle to EPUB',
+                statusError: 'Conversion failed',
                 advancedToggle: 'TOC detection tools',
                 addFiles: 'Add files',
                 dropHint: 'Click empty list space or drop files to add more',
@@ -287,7 +311,7 @@
                 convertStopping: 'Stopping',
                 statusLabel: 'Current status',
                 statusIdle: 'Ready',
-                statusIdleDetail: 'Add TXT files to start converting.',
+                statusIdleDetail: 'Add TXT files to begin.',
                 statusProcessing: 'Processing',
                 statusDone: 'Done',
                 statusStopped: 'Stopped',
@@ -343,7 +367,7 @@
                     ['TOC preview', 'Switch patterns per file and exclude titles. Alternative candidates are deduplicated and offered when at least two entries qualify. Added candidates appear only in the TOC list, and additions can be undone.'],
                     ['Cover application', 'Search for a cover image or apply an image URL or clipboard image right away.'],
                     ['Automatic encoding detection', 'Automatically detects common encodings such as UTF-8 and CP949 to reduce read failures.'],
-                    ['Batch ZIP packaging', 'Bundle multiple EPUB outputs into a single ZIP file for download.']
+                    ['Merge selected files', 'Combine selected TXT files into one EPUB in list order without changing their TOC settings. The ZIP option packages merged and standalone EPUBs together.']
                 ],
                 storyKicker: 'How it works',
                 storyTitle: 'Your file stays in the browser workflow',
@@ -698,9 +722,10 @@
         setText('.tool-section .section-title', 'heroTitle');
         setNthText('.tool-section .section-headline > p', 1, 'heroDesc');
 
-        ['optTrim', 'optToc', 'optMultiToc', 'optZip'].forEach((id, index) => {
-            setLabel(id, ['optTrim', 'optToc', 'optMultiToc', 'optZip'][index]);
+        ['optTrim', 'optToc', 'optMultiToc', 'optZip'].forEach(id => {
+            setLabel(id, id);
         });
+        setButton('groupFilesBtn', 'groupCreate');
         const multiLabel = document.getElementById('optMultiToc')?.closest('label');
         if (multiLabel) multiLabel.title = getString('optMultiTocTitle');
 

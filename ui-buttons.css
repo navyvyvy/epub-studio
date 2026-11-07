@@ -20,7 +20,10 @@
     cursor: pointer;
     transition: color 0.18s ease, border-color 0.18s ease, background-color 0.18s ease, transform 0.14s ease;
 }
-.ui-button:where(:not(:disabled):hover) { color: var(--text); border-color: var(--accent); }
+.ui-button:where(:not(:disabled):hover) { color: var(--text); }
+.ui-button:where(:not(:disabled):hover:not(.file-table *, .preview-dialog *)) {
+    border-color: var(--button-hover-border, var(--accent));
+}
 .ui-button:where(:not(:disabled):active) { transform: translateY(1px); }
 .ui-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .ui-button:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -47,7 +50,8 @@
 .ui-button[aria-pressed="true"] { color: var(--tone--06110d); border-color: var(--primary); background: var(--primary); }
 .ui-button--primary:where(:not(:disabled):hover),
 .ui-button[aria-pressed="true"]:where(:not(:disabled):hover) { color: var(--tone--06110d); background: var(--accent); }
-.ui-button--quiet-danger:where(:not(:disabled):hover) { color: var(--danger); border-color: var(--danger); }
+.ui-button--quiet-danger { --button-hover-border: var(--danger); }
+.ui-button--quiet-danger:where(:not(:disabled):hover) { color: var(--danger); }
 
 @media (prefers-reduced-motion: reduce) {
     .ui-button { transition: none; }

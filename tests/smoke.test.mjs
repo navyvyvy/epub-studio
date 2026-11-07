@@ -355,12 +355,219 @@ test('conversion progress covers individual files and final batch ZIP compressio
             getFileStats: files => ({ done: files.filter(file => file.state === 'done').length, error: 0 }),
             getEpubFilename: title => title + '.epub', triggerDownload: (blob, name) => downloads.push(name),
             getSelectedFallbackLines: () => new Set(), getExcludedPreviewLines: () => new Set() });
-        vm.runInContext(html.match(/async function convertFiles[\s\S]*?(?=\n    dom\.convertBtn\.onclick)/)[0], context);
+        vm.runInContext(html.match(/function requestConversion[\s\S]*?(?=\n    dom\.convertBtn\.onclick)/)[0], context);
         await context.convertFiles();
         assert.deepEqual(progress, zip ? [22.5, 45, 67.5, 90, 95, 100] : [25, 50, 75, 100]);
         assert.deepEqual(downloads, zip ? ['EPUB_COLLECTION.zip'] : ['a.epub', 'b.epub']);
         assert.equal(store.state.isProcessing, false);
         assert.equal(store.state.statusKey, 'statusDone');
+    }
+});
+
+test('non-adjacent selections form ordered groups and ungrouping restores original files', () => {
+    const Store = loadStore();
+    const files = [{ id: 'a', state: 'done', customTitle: 'First' }, { id: 'b' }, { id: 'c', useMultiToc: true }, { id: 'd' }];
+    const store = new Store({ files, groups: [], selectedIds: [] });
+    const select = id => store.dispatch({ type: 'SELECT_FILE', payload: { id, checked: true } });
+    select('c');
+    store.dispatch({ type: 'GROUP_FILES' });
+    assert.equal(store.state.groups.length, 0);
+    select('a');
+    store.dispatch({ type: 'GROUP_FILES' });
+    const [group, second, fourth] = store.getQueueItems();
+    assert.equal(group.customTitle, 'First');
+    assert.deepEqual(Array.from(group.sources), [files[0], files[2]]);
+    assert.equal(second, files[1]);
+    assert.equal(fourth, files[3]);
+    assert.equal(store.state.files, files);
+    assert.equal(store.state.selectedIds.length, 0);
+    select('a');
+    select('missing');
+    assert.equal(store.state.selectedIds.length, 0);
+    select('d');
+    select('b');
+    store.dispatch({ type: 'GROUP_FILES' });
+    assert.deepEqual(Array.from(store.getQueueItems(), item => item.id), ['group-a', 'group-b']);
+    const state = store.state;
+    store.state.isProcessing = true;
+    store.dispatch({ type: 'UNGROUP_FILES', payload: group.id });
+    store.dispatch({ type: 'GROUP_FILES' });
+    select('d');
+    assert.equal(store.state, state);
+    store.state.isProcessing = false;
+    store.dispatch({ type: 'UNGROUP_FILES', payload: group.id });
+    store.dispatch({ type: 'UNGROUP_FILES', payload: 'group-b' });
+    assert.equal(store.getQueueItems(), files);
+    select('a');
+    store.dispatch({ type: 'REMOVE_FILE', payload: 'a' });
+    assert.equal(store.state.selectedIds.length, 0);
+});
+
+test('merged EPUB matches separately parsed TOCs, preserving file-local selections and repeated numbering', async () => {
+    const regular = ['제1화 시작', '제2화 계속', '제3화 마지막'];
+    const content = [...regular, '다른 제목(1)', '다른 제목(2)'].join('\n본문\n');
+    const base = { content, useAutoToc: true, useTrim: true, userRegex: defaultTitleRegex,
+        preserveCustomMatches: false, fileName: 'sample.txt' };
+    const sources = [
+        { ...base, title: 'first', useMultiToc: false, selectedFallbackIndices: [6, 8], excludedIndices: [6] },
+        { ...base, title: 'second', useMultiToc: true, selectedFallbackIndices: [], excludedIndices: [2] }
+    ];
+    const expected = [];
+    for (const source of sources) {
+        const { context, messages } = loadWorker();
+        await context.self.onmessage({ data: { type: 'CONVERT', payload: { ...source, title: 'Book', id: 'single' } } });
+        const ncx = messages.at(-1).payload.blob.files.get('OEBPS/toc.ncx');
+        expected.push(...Array.from(ncx.matchAll(/<navLabel><text>(.*?)<\/text><\/navLabel>/g), match => match[1]));
+    }
+    const { context, messages } = loadWorker();
+    await context.self.onmessage({ data: { type: 'CONVERT', payload: { id: 'merge', title: 'Combined & book', sources,
+        language: 'en', coverType: 'image/png', coverBuffer: new Uint8Array([1, 2, 3]).buffer } } });
+    const files = messages.at(-1).payload.blob.files;
+    const ncx = files.get('OEBPS/toc.ncx');
+    const titles = Array.from(ncx.matchAll(/<navLabel><text>(.*?)<\/text><\/navLabel>/g), match => match[1]);
+    assert.deepEqual(titles, expected);
+    assert.equal(titles.filter(title => title === regular[0]).length, 2);
+    assert.equal(titles.filter(title => title === regular[1]).length, 1);
+    assert.equal(titles.filter(title => title === '다른 제목(2)').length, 1);
+    assert.match(files.get('OEBPS/content.opf'), /<dc:title>Combined &amp; book<\/dc:title>/);
+    assert.match(files.get('OEBPS/content.opf'), /<dc:language>en<\/dc:language>/);
+    assert.ok(files.has('OEBPS/images/cover.png'));
+    const ids = Array.from(files.get('OEBPS/content.opf').matchAll(/<item id="([^"]+)"/g), match => match[1]);
+    assert.equal(ids.length, new Set(ids).size);
+});
+
+test('merging files without a TOC preserves source order and splits long chapters', async () => {
+    const { context, messages } = loadWorker();
+    await context.self.onmessage({ data: { type: 'CONVERT', payload: { id: 'merge', title: 'Book', sources: [
+        { title: 'First', content: Array.from({ length: 1000 }, (_, i) => 'first ' + i).join('\n'), useAutoToc: false },
+        { title: 'Second', content: 'second body', useAutoToc: false }
+    ] } } });
+    const files = messages.at(-1).payload.blob.files;
+    assert.match(files.get('OEBPS/ch_0.xhtml'), /first 0<\/p>/);
+    assert.match(files.get('OEBPS/ch_2.xhtml'), /first 999<\/p>/);
+    assert.match(files.get('OEBPS/ch_3.xhtml'), /second body/);
+    const ncx = files.get('OEBPS/toc.ncx');
+    assert.match(ncx, /First[\s\S]*Second/);
+    assert.equal((ncx.match(/<navPoint /g) || []).length, 2);
+});
+
+function loadMergeConversion({ readFailure = false, workerFailure = false, stopDuring = '', mixed = false, zip = false, zipFailure = false } = {}) {
+    const Store = loadStore();
+    const firstCover = { type: 'image/png', arrayBuffer: async () => new Uint8Array([1]).buffer };
+    const files = [
+        { id: 'a', state: 'done', file: { name: 'a.txt' }, customTitle: 'First', encoding: 'CP949', useMultiToc: false, coverBlob: firstCover },
+        { id: 'b', state: 'wait', file: { name: 'b.txt' }, customTitle: 'Second', encoding: 'UTF-16LE', useMultiToc: true,
+            coverBlob: { arrayBuffer: () => { throw new Error('Only the first cover should be read'); } } }
+    ];
+    if (mixed) files.splice(1, 0, { id: 'c', state: 'wait', file: { name: 'c.txt' }, customTitle: 'Standalone' });
+    const store = new Store({ files, groups: [], selectedIds: ['b', 'a'] });
+    store.dispatch({ type: 'GROUP_FILES' });
+    const reads = [], downloads = [], payloads = [], progress = [], resolvers = new Map();
+    const zipEntries = [];
+    store.subscribe((state, action) => { if (action.type === 'SET_PROGRESS') progress.push(state.progress); });
+    const context = vm.createContext({ store, conversionResolvers: resolvers, workerFailed: false,
+        dom: { optZip: { checked: zip }, optTrim: { checked: true }, optToc: { checked: true }, regexInput: { value: 'custom', defaultValue: '' } },
+        JSZip: class {
+            file(name) { zipEntries.push(name); }
+            async generateAsync(_, onUpdate) {
+                if (zipFailure) throw new Error('ZIP failed');
+                if (stopDuring === 'zip') store.dispatch({ type: 'STOP_PROCESSING' });
+                onUpdate({ percent: 100 });
+                return {};
+            }
+        },
+        window: { EPUB_STUDIO_I18N: { lang: 'ko' } },
+        readFileText: async (file, encoding) => {
+            reads.push([file.name, encoding]);
+            if (readFailure && file.name === 'b.txt') throw new Error('Cannot read');
+            if (stopDuring === 'read') store.dispatch({ type: 'STOP_PROCESSING' });
+            return file.name + ' body';
+        },
+        parserWorker: { postMessage: ({ payload }) => {
+            payloads.push(payload);
+            if (workerFailure) throw new Error('Worker failed');
+            const pending = resolvers.get(payload.id);
+            pending.onProgress(50);
+            if (stopDuring === 'worker') store.dispatch({ type: 'STOP_PROCESSING' });
+            pending.resolve({});
+            resolvers.delete(payload.id);
+        } },
+        getFileStats: files => ({ done: files.filter(file => file.state === 'done').length, error: files.filter(file => file.state === 'error').length }),
+        getEpubFilename: title => title + '.epub', triggerDownload: (blob, name) => downloads.push(name),
+        getSelectedFallbackLines: id => new Set(id === 'a' ? [6, 8] : []), getExcludedPreviewLines: id => new Set(id === 'a' ? [2] : [4]) });
+    vm.runInContext(html.match(/function requestConversion[\s\S]*?(?=\n    dom\.convertBtn\.onclick)/)[0], context);
+    return { context, store, reads, downloads, payloads, resolvers, progress, zipEntries };
+}
+
+test('merge includes completed files and preserves each encoding, settings, selections and first cover', async () => {
+    const run = loadMergeConversion();
+    await run.context.convertFiles();
+    assert.deepEqual(run.reads, [['a.txt', 'CP949'], ['b.txt', 'UTF-16LE']]);
+    assert.deepEqual(run.downloads, ['First.epub']);
+    const payload = run.payloads[0];
+    assert.equal(payload.coverType, 'image/png');
+    assert.equal(payload.title, 'First');
+    assert.deepEqual(Array.from(payload.sources, source => source.useMultiToc), [false, true]);
+    assert.deepEqual(Array.from(payload.sources[0].selectedFallbackIndices), [6, 8]);
+    assert.deepEqual(Array.from(payload.sources[1].excludedIndices), [4]);
+    assert.equal(payload.sources.every(source => source.useAutoToc && source.useTrim && source.preserveCustomMatches), true);
+    assert.deepEqual(Array.from(run.store.state.files, file => file.state), ['done', 'wait']);
+    assert.equal(run.store.state.groups[0].state, 'done');
+    assert.equal(run.store.state.isProcessing, false);
+    assert.equal(run.resolvers.size, 0);
+    assert.deepEqual(run.progress.map(value => Math.round(value)), [10, 20, 60, 100]);
+});
+
+test('merge never downloads partial output after read failures, worker failures or stop requests', async () => {
+    for (const options of [{ readFailure: true }, { workerFailure: true }, { stopDuring: 'read' }, { stopDuring: 'worker' }]) {
+        const run = loadMergeConversion(options);
+        await run.context.convertFiles();
+        assert.deepEqual(run.downloads, []);
+        assert.equal(run.store.state.isProcessing, false);
+        assert.equal(run.resolvers.size, 0);
+        assert.equal(run.store.state.files.some(file => file.state === 'ing'), false);
+        assert.equal(run.store.state.groups[0].state, options.stopDuring ? 'wait' : 'error');
+        assert.equal(run.store.state.statusKey, options.stopDuring ? 'statusStopped' : 'statusError');
+        if (options.readFailure) {
+            assert.equal(run.payloads.length, 0);
+            assert.deepEqual(Array.from(run.store.state.files, file => file.state), ['done', 'wait']);
+        }
+    }
+});
+
+test('mixed queues output one EPUB per group or standalone item, with optional ZIP packaging', async () => {
+    for (const zip of [false, true]) {
+        const run = loadMergeConversion({ mixed: true, zip });
+        await run.context.convertFiles();
+        assert.deepEqual(Array.from(run.payloads[0].sources, source => source.fileName), ['a.txt', 'b.txt']);
+        assert.equal(run.payloads[1].fileName, 'c.txt');
+        assert.deepEqual(run.downloads, zip ? ['EPUB_COLLECTION.zip'] : ['First.epub', 'Standalone.epub']);
+        assert.deepEqual(run.zipEntries, zip ? ['First.epub', 'Standalone.epub'] : []);
+    }
+    const single = loadMergeConversion({ mixed: true, zip: true });
+    await single.context.convertFiles(['group-a']);
+    assert.deepEqual(single.downloads, ['First.epub']);
+    assert.deepEqual(single.zipEntries, []);
+
+    const bundleOnly = loadMergeConversion({ zip: true });
+    await bundleOnly.context.convertFiles();
+    assert.deepEqual(bundleOnly.downloads, ['EPUB_COLLECTION.zip']);
+    assert.deepEqual(bundleOnly.zipEntries, ['First.epub']);
+});
+
+test('failed groups do not block standalone conversions and interrupted ZIPs never mark items done', async () => {
+    const failure = loadMergeConversion({ mixed: true, zip: true, readFailure: true });
+    await failure.context.convertFiles();
+    assert.deepEqual(failure.zipEntries, ['Standalone.epub']);
+    assert.equal(failure.store.state.groups[0].state, 'error');
+    assert.equal(failure.store.state.statusKey, 'statusError');
+    for (const options of [{ stopDuring: 'zip' }, { zipFailure: true }]) {
+        const run = loadMergeConversion({ mixed: true, zip: true, ...options });
+        await run.context.convertFiles();
+        assert.deepEqual(run.downloads, []);
+        assert.equal(run.store.state.isProcessing, false);
+        assert.equal(run.store.state.statusKey, options.zipFailure ? 'statusError' : 'statusStopped');
+        assert.deepEqual(Array.from(run.store.getQueueItems(), item => item.state), options.zipFailure ? ['error', 'error'] : ['wait', 'wait']);
     }
 });
 
@@ -1553,6 +1760,24 @@ test('legacy numbered titles stay detected after an earlier number sequence', as
     }
 });
 
+test('diamond-prefixed numbered titles start at zero without treating decimals as headings', async () => {
+    const titles = ['◈ 0. 프롤로그', '◈ 1. 귀농자는 쉬고 싶다'];
+    const content = [titles[0], '◈ 0.5 ratio', '◈ 1.5 ratio', titles[1], '본문입니다.'].join('\n');
+    for (const useMultiToc of [false, true]) {
+        const { context, messages } = loadWorker();
+        const options = { userRegex: defaultTitleRegex, preserveCustomMatches: false, useMultiToc };
+        for (const [text, expected] of [[titles.join('\n'), titles], [content, titles], [titles[1], []]]) {
+            await context.self.onmessage({ data: { type: 'PREVIEW_PARSER', payload: { ...options, text } } });
+            assert.deepEqual(Array.from(messages.at(-1).payload.resultItems, item => item.text), expected);
+        }
+        await context.self.onmessage({ data: { type: 'CONVERT', payload: {
+            ...options, id: 'book', title: 'Book', content, useAutoToc: true, useTrim: true
+        } } });
+        const ncx = messages.at(-1).payload.blob.files.get('OEBPS/toc.ncx');
+        assert.deepEqual(Array.from(ncx.matchAll(/<navLabel><text>(.*?)<\/text><\/navLabel>/g), match => match[1]), titles);
+    }
+});
+
 test('numbered title sequences survive sentence-like title endings', async () => {
     const content = '11. 시작\n\n12. 계속\n\n13. 진실이다.\n\n14. 다음이다.\n\nXXX 67화\n\nXXX 68화';
 
@@ -2286,7 +2511,7 @@ test('file status uses the shared compact button and resets only completed or fa
             const item = { id: 'a', state };
             const store = new Store({ files: [item], isProcessing });
             const isClickable = ['done', 'error'].includes(state);
-            const context = vm.createContext({ item, store, isClickable,
+            const context = vm.createContext({ item, store, isClickable, group: false,
                 window: { EPUB_STUDIO_I18N: { t: key => key } },
                 el: (tag, attributes, label) => ({ tag, ...attributes, label }) });
             vm.runInContext(`${source}\nglobalThis.button = statusBtn;`, context);

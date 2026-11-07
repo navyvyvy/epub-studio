@@ -27,9 +27,9 @@
     <!-- 외부 라이브러리 로드 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jschardet/3.0.0/jschardet.min.js"></script>
-    <script src="./i18n.js?v=20261106-1"></script>
+    <script src="./i18n.js?v=20261107-3"></script>
     <link rel="stylesheet" href="./site-shared.css?v=20261030-3">
-    <link rel="stylesheet" href="./ui-buttons.css?v=20261030-2">
+    <link rel="stylesheet" href="./ui-buttons.css?v=20261107-1">
     <style>
         /* Hallmark · redesign: full · scope: app · theme: existing dark mint · v2.0.0 */
         /* Pre-emit critique: the conversion queue is the focus; inherited detail styling remains to be consolidated. */
@@ -550,10 +550,6 @@
             word-break: keep-all;
             overflow-wrap: normal;
             cursor: pointer;
-        }
-
-        .preview-item:hover {
-            border-color: var(--accent);
         }
 
         .preview-item.copied {
@@ -1639,7 +1635,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="./hallmark-workspace.css?v=20261030-12">
+    <link rel="stylesheet" href="./hallmark-workspace.css?v=20261107-3">
 </head>
 <body class="home-page">
 
@@ -1683,7 +1679,7 @@
                     <label class="option-item" title="새로 추가할 파일의 기본값입니다. 이미 추가한 파일은 목록이나 미리보기에서 따로 바꿀 수 있습니다.">
                     <input type="checkbox" id="optMultiToc"> 여러 형식 감지
                 </label>
-                <label class="option-item"><input type="checkbox" id="optZip"> ZIP 일괄 압축</label>
+                <label class="option-item"><input type="checkbox" id="optZip"> ZIP으로 받기</label>
             </div>
             <button type="button" class="ui-button ui-button--action btn-advanced-toggle" id="btnToggleAdvanced" aria-haspopup="dialog" aria-controls="advancedDialog">
                 <span data-button-label>목차 감지 도구</span>
@@ -1718,7 +1714,7 @@
         <div class="process-label">현재 상태</div>
         <div class="status-stack">
             <div id="status">대기 중</div>
-            <div class="status-detail" id="statusDetail">TXT 파일을 넣으면 변환을 시작할 수 있습니다.</div>
+            <div class="status-detail" id="statusDetail">TXT 파일을 추가하세요.</div>
         </div>
     </div>
     </div>
@@ -1745,6 +1741,10 @@
     </dialog>
 
     <div class="file-list-area" id="dropZone" tabindex="0" role="group" aria-label="파일 추가" aria-describedby="fileAddHint">
+        <div class="merge-toolbar" id="mergeToolbar" hidden>
+            <span id="mergeSelection" aria-live="polite"></span>
+            <button type="button" class="ui-button" id="groupFilesBtn" disabled>선택 합치기</button>
+        </div>
         <div class="table-wrapper" id="tableWrapper">
             <div class="table-scroll-box">
                 <table class="file-table">
@@ -1753,7 +1753,7 @@
                         <col style="width: 145px;">
                         <col style="width: 85px;">
                         <col style="width: 155px;">
-                        <col style="width: 150px;">
+                        <col style="width: 205px;">
                         <col style="width: 45px;">
                     </colgroup>
                     <thead>
@@ -1821,8 +1821,8 @@
                     <p>UTF-8, CP949 같은 흔한 인코딩을 자동으로 읽어들여 깨짐을 줄입니다.</p>
                 </article>
                 <article class="feature-card" data-reveal>
-                    <h3>ZIP 일괄 압축</h3>
-                    <p>여러 EPUB 결과물을 한 번에 ZIP으로 묶어 받을 수 있습니다.</p>
+                    <h3>선택한 파일 합치기</h3>
+                    <p>선택한 TXT만 목록 순서대로 EPUB 하나에 넣습니다. 파일별 목차 설정은 그대로 적용하고, ZIP을 선택하면 묶음과 나머지 EPUB을 함께 받을 수 있습니다.</p>
                 </article>
             </div>
         </section>
@@ -1929,12 +1929,56 @@
             this.state = this.reducer(this.state, action);
             this.listeners.forEach(l => l(this.state, action));
         }
+        getQueueItems() {
+            if (!this.state.groups?.length) return this.state.files;
+            const files = new Map(this.state.files.map(file => [file.id, file]));
+            const memberships = new Map();
+            for (const group of this.state.groups || []) {
+                group.fileIds.forEach(id => memberships.set(id, group));
+            }
+            return this.state.files.flatMap(file => {
+                const group = memberships.get(file.id);
+                if (!group) return [file];
+                if (group.fileIds[0] !== file.id) return [];
+                return [{ ...group, coverBlob: file.coverBlob, sources: group.fileIds.map(id => files.get(id)) }];
+            });
+        }
         reducer(state, action) {
             switch (action.type) {
                 case 'TOGGLE_ADVANCED': return { ...state, isAdvancedOpen: !state.isAdvancedOpen };
+                case 'SELECT_FILE': {
+                    if (state.isProcessing) return state;
+                    const { id, checked } = action.payload;
+                    if (!state.files.some(file => file.id === id) || state.groups?.some(group => group.fileIds.includes(id))) return state;
+                    const selected = new Set(state.selectedIds);
+                    if (checked) selected.add(id);
+                    else selected.delete(id);
+                    return { ...state, selectedIds: [...selected] };
+                }
+                case 'GROUP_FILES': {
+                    if (state.isProcessing) return state;
+                    const selected = new Set(state.selectedIds);
+                    const files = state.files.filter(file => selected.has(file.id));
+                    if (files.length < 2) return state;
+                    const group = { id: 'group-' + files[0].id, fileIds: files.map(file => file.id), customTitle: files[0].customTitle, state: 'wait', expanded: false };
+                    return { ...state, groups: [...(state.groups || []), group], selectedIds: [], statusKey: 'statusReady', progress: 0 };
+                }
+                case 'UNGROUP_FILES':
+                    return state.isProcessing ? state : { ...state, groups: state.groups.filter(group => group.id !== action.payload), statusKey: 'statusReady', progress: 0 };
+                case 'TOGGLE_GROUP':
+                    return { ...state, groups: state.groups.map(group => group.id === action.payload ? { ...group, expanded: !group.expanded } : group) };
+                case 'RESET_GROUP_FOR_FILE':
+                    return { ...state, groups: (state.groups || []).map(group => group.fileIds.includes(action.payload) ? { ...group, state: 'wait' } : group) };
+                case 'UPDATE_GROUP_TITLE':
+                    return { ...state, groups: state.groups.map(group => group.id === action.payload.id ? { ...group, customTitle: action.payload.title } : group) };
+                case 'UPDATE_GROUP_STATUS':
+                    return { ...state, groups: state.groups.map(group => group.id === action.payload.id ? { ...group, state: action.payload.status } : group) };
+                case 'REMOVE_FILE': {
+                    if (state.isProcessing || state.groups?.some(group => group.fileIds.includes(action.payload))) return state;
+                    return { ...state, files: state.files.filter(f => f.id !== action.payload), selectedIds: (state.selectedIds || []).filter(id => id !== action.payload) };
+                }
                 case 'ADD_FILES': return { ...state, files: [...state.files, ...action.payload], ...(action.payload.length && !state.isProcessing ? { progress: 0, statusKey: 'statusReady' } : {}) };
-                case 'REMOVE_FILE': return state.isProcessing ? state : { ...state, files: state.files.filter(f => f.id !== action.payload) };
-                case 'CLEAR_FILES': return { ...state, files: [], progress: 0, statusKey: 'statusIdle', statusDetailKey: 'statusIdleDetail', statusDetailVars: {} };
+                case 'CLEAR_FILES': return { ...state, files: [], groups: [], selectedIds: [], progress: 0, statusKey: 'statusIdle', statusDetailKey: 'statusIdleDetail', statusDetailVars: {} };
                 case 'UPDATE_FILE_TITLE': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, customTitle: action.payload.title } : f) };
                 case 'UPDATE_FILE_COVER': return { ...state, files: state.files.map(f => f.id === action.payload.id ? { ...f, coverBlob: action.payload.blob } : f) };
                 case 'UPDATE_FILE_MULTI_TOC': return { ...state, statusKey: 'statusReady', files: state.files.map(f => f.id === action.payload.id ? { ...f, useMultiToc: action.payload.useMultiToc, isValid: 'none', state: 'wait' } : f) };
@@ -1945,14 +1989,14 @@
                 case 'SET_STATUS': return { ...state, statusKey: action.payload };
                 case 'SET_STATUS_DETAIL': return { ...state, statusDetailKey: action.payload.key, statusDetailVars: action.payload.vars || {} };
                 case 'STOP_PROCESSING': return { ...state, shouldStop: true };
-                case 'FINISH_PROCESSING': return { ...state, isProcessing: false, shouldStop: false, statusKey: state.shouldStop ? 'statusStopped' : 'statusDone' };
+                case 'FINISH_PROCESSING': return { ...state, isProcessing: false, shouldStop: false, statusKey: state.shouldStop ? 'statusStopped' : action.payload?.failed ? 'statusError' : 'statusDone' };
                 case 'REFRESH_LANGUAGE': return { ...state };
                 default: return state;
             }
         }
     }
 
-    const store = new Store({ files: [], isProcessing: false, shouldStop: false, progress: 0, statusKey: 'statusIdle', statusDetailKey: 'statusIdleDetail', statusDetailVars: {}, isAdvancedOpen: false });
+    const store = new Store({ files: [], groups: [], selectedIds: [], isProcessing: false, shouldStop: false, progress: 0, statusKey: 'statusIdle', statusDetailKey: 'statusIdleDetail', statusDetailVars: {}, isAdvancedOpen: false });
 
     function el(tag, attributes = {}, ...children) {
         const element = document.createElement(tag);
@@ -2006,6 +2050,9 @@
         optToc: document.getElementById('optToc'),
         optTrim: document.getElementById('optTrim'),
         optZip: document.getElementById('optZip'),
+        mergeToolbar: document.getElementById('mergeToolbar'),
+        mergeSelection: document.getElementById('mergeSelection'),
+        groupFilesBtn: document.getElementById('groupFilesBtn'),
         optMultiToc: document.getElementById('optMultiToc'),
         statusText: document.getElementById('status'),
         statusDetail: document.getElementById('statusDetail'),
@@ -2076,6 +2123,7 @@
     function changePreviewFallbackSelection(items, shouldSelect) {
         if (!currentPreviewFileId) return;
         setFallbackSelection(currentPreviewFileId, items, shouldSelect);
+        store.dispatch({ type: 'RESET_GROUP_FOR_FILE', payload: currentPreviewFileId });
         renderPreviewDialog();
         validateFileById(currentPreviewFileId);
     }
@@ -2276,6 +2324,7 @@
                 e.preventDefault();
                 e.stopPropagation();
                 setExcludedPreviewLine(currentPreviewFileId, item.idx, !isExcluded);
+                store.dispatch({ type: 'RESET_GROUP_FOR_FILE', payload: currentPreviewFileId });
                 renderPreviewDialog();
                 if (currentPreviewFileId) {
                     validateFileById(currentPreviewFileId);
@@ -2326,12 +2375,13 @@
         const item = store.state.files.find(file => file.id === id);
         if (!item || item.useMultiToc === useMultiToc) return;
         store.dispatch({ type: 'UPDATE_FILE_MULTI_TOC', payload: { id, useMultiToc } });
+        store.dispatch({ type: 'RESET_GROUP_FOR_FILE', payload: id });
         validateFileById(id);
         if (dom.previewDialog.open && currentPreviewFileId === id) previewFileById(id);
     }
 
     function handlePreviewOptionChange() {
-        renderList(store.state.files);
+        renderList();
         if (!dom.optToc.checked) {
             closePreviewDialog();
         } else if (dom.previewDialog.open && currentPreviewFileId) {
@@ -2480,7 +2530,7 @@
     };
 
     store.subscribe((state, action) => {
-        if (action.type === 'REMOVE_FILE' && !state.isProcessing) {
+        if (action.type === 'REMOVE_FILE' && !state.files.some(file => file.id === action.payload)) {
             validationRequestIds.delete(action.payload);
             excludedPreviewLinesByFile.delete(action.payload);
             selectedFallbackLinesByFile.delete(action.payload);
@@ -2501,7 +2551,7 @@
             ? `${convertLabel}. ${window.EPUB_STUDIO_I18N.t('convertStop')}` : convertLabel);
         dom.progFill.style.transform = `scaleX(${state.isProcessing ? state.progress / 100 : 0})`;
         dom.statusText.innerText = window.EPUB_STUDIO_I18N.t(state.statusKey);
-        const stats = getFileStats(state.files);
+        const stats = getFileStats(store.getQueueItems());
         let detail = state.statusDetailKey ? window.EPUB_STUDIO_I18N.t(state.statusDetailKey, state.statusDetailVars) : '';
         if (!state.isProcessing) {
             if (stats.total === 0) {
@@ -2512,8 +2562,13 @@
                 detail = window.EPUB_STUDIO_I18N.t('statusSummaryWait', { done: stats.done, error: stats.error, wait: stats.wait });
             }
         }
-        dom.statusDetail.innerText = detail;
+        dom.statusDetail.replaceChildren(...detail.split(' · ').map(part => el('span', {}, part)));
         dom.clearAllBtn.disabled = state.isProcessing || !state.files.length;
+        const selected = state.selectedIds.length;
+        dom.mergeToolbar.hidden = !state.files.length;
+        dom.mergeSelection.textContent = window.EPUB_STUDIO_I18N.t(selected ? 'groupSelectionCount' : 'groupSelectionHint', { count: selected });
+        dom.groupFilesBtn.disabled = state.isProcessing || selected < 2;
+        [dom.optTrim, dom.optToc, dom.optMultiToc, dom.optZip, dom.regexInput].forEach(input => { input.disabled = state.isProcessing; });
         dom.tableWrapper.classList.toggle('active', state.files.length > 0);
 
         if (state.isAdvancedOpen) {
@@ -2526,10 +2581,19 @@
             if (dom.advancedDialog.open) dom.advancedDialog.close();
         }
 
-        if (['ADD_FILES', 'REMOVE_FILE', 'CLEAR_FILES', 'UPDATE_FILE_MULTI_TOC', 'UPDATE_FILE_VALIDITY', 'UPDATE_FILE_STATUS', 'UPDATE_FILE_COVER', 'START_PROCESSING', 'FINISH_PROCESSING', 'STOP_PROCESSING', 'REFRESH_LANGUAGE'].includes(action.type)) {
-            renderList(state.files);
+        if (['GROUP_FILES', 'UNGROUP_FILES', 'TOGGLE_GROUP', 'RESET_GROUP_FOR_FILE', 'UPDATE_GROUP_STATUS', 'ADD_FILES', 'REMOVE_FILE', 'CLEAR_FILES', 'UPDATE_FILE_MULTI_TOC', 'UPDATE_FILE_VALIDITY', 'UPDATE_FILE_STATUS', 'UPDATE_FILE_COVER', 'START_PROCESSING', 'FINISH_PROCESSING', 'STOP_PROCESSING', 'REFRESH_LANGUAGE'].includes(action.type)) {
+            renderList();
         }
     });
+
+    dom.groupFilesBtn.onclick = () => {
+        const count = store.state.groups.length;
+        store.dispatch({ type: 'GROUP_FILES' });
+        if (store.state.groups.length > count) {
+            const toggles = [...dom.fileTbody.querySelectorAll('.group-toggle')];
+            toggles.find(button => button.dataset.fileId === store.state.groups.at(-1).id)?.focus({ preventScroll: true });
+        }
+    };
 
     window.addEventListener('epub-langchange', () => {
         store.dispatch({ type: 'REFRESH_LANGUAGE' });
@@ -2542,10 +2606,15 @@
         }
     });
 
-    function renderList(files) {
+    function renderList() {
+        const t = window.EPUB_STUDIO_I18N.t;
         const focusedMultiId = document.activeElement?.closest('.file-multi-toggle')?.dataset.fileId;
+        const focusedSelectId = document.activeElement?.closest('.file-select')?.dataset.fileId;
+        const focusedGroupId = document.activeElement?.closest('.group-toggle')?.dataset.fileId;
         dom.fileTbody.innerHTML = '';
-        files.forEach((item) => {
+        function appendRow(item, member = false) {
+            const group = !!item.sources;
+            const coverId = group ? item.fileIds[0] : item.id;
             const hasCover = !!item.coverBlob;
             const isClickable = ['done', 'error'].includes(item.state);
             const canPreview = dom.optToc.checked && !store.state.isProcessing;
@@ -2564,7 +2633,7 @@
                 : window.EPUB_STUDIO_I18N.t('previewScanning');
             const singleConvertBtn = el('button', {
                 className: 'ui-button ui-button--compact btn-file-convert',
-                title: window.EPUB_STUDIO_I18N.t('tableConvertOneTitle'),
+                title: t(group ? 'groupConvert' : 'tableConvertOneTitle'),
                 onClick: () => convertFiles([item.id])
             }, window.EPUB_STUDIO_I18N.t('tableConvertOne'));
             singleConvertBtn.disabled = store.state.isProcessing;
@@ -2586,38 +2655,69 @@
                 title: isClickable ? window.EPUB_STUDIO_I18N.t('statusReady') : '',
                 onClick: () => {
                     if (!store.state.isProcessing && isClickable) {
-                        store.dispatch({ type: 'UPDATE_FILE_STATUS', payload: { id: item.id, status: 'wait' } });
+                        store.dispatch({ type: group ? 'UPDATE_GROUP_STATUS' : 'UPDATE_FILE_STATUS', payload: { id: item.id, status: 'wait' } });
                     }
                 }
             }, window.EPUB_STUDIO_I18N.t('fileState.' + item.state));
             statusBtn.disabled = store.state.isProcessing || !isClickable;
 
-            const row = el('tr', {},
-                el('td', { className: 'col-title' }, el('input', { type: 'text', className: 'title-input', value: item.customTitle, onInput: (e) => store.dispatch({ type: 'UPDATE_FILE_TITLE', payload: { id: item.id, title: e.target.value } }) })),
+            const titleInput = el('input', { type: 'text', className: 'title-input', value: item.customTitle,
+                'aria-label': t('tableTitle'),
+                onInput: (e) => store.dispatch({ type: group ? 'UPDATE_GROUP_TITLE' : 'UPDATE_FILE_TITLE', payload: { id: item.id, title: e.target.value } }) });
+            titleInput.disabled = store.state.isProcessing;
+            const selectButton = !group && !member ? el('button', {
+                type: 'button', className: 'ui-button ui-button--compact file-select', 'data-file-id': item.id,
+                'aria-pressed': String(store.state.selectedIds.includes(item.id)),
+                'aria-label': t('groupSelectFile', { title: item.customTitle }),
+                title: t('groupSelectFile', { title: item.customTitle }),
+                onClick: e => {
+                    const checked = !store.state.selectedIds.includes(item.id);
+                    store.dispatch({ type: 'SELECT_FILE', payload: { id: item.id, checked } });
+                    e.currentTarget.setAttribute('aria-pressed', String(store.state.selectedIds.includes(item.id)));
+                }
+            }, t('groupSelect')) : null;
+            if (selectButton) selectButton.disabled = store.state.isProcessing;
+            const toggle = group ? el('button', {
+                type: 'button', className: 'ui-button ui-button--compact group-toggle',
+                'data-file-id': item.id, 'aria-expanded': String(item.expanded),
+                onClick: () => store.dispatch({ type: 'TOGGLE_GROUP', payload: item.id })
+            }, t(item.expanded ? 'groupCollapse' : 'groupExpand')) : null;
+            const ungroup = group ? el('button', {
+                type: 'button', className: 'ui-button ui-button--compact',
+                onClick: () => {
+                    store.dispatch({ type: 'UNGROUP_FILES', payload: item.id });
+                    [...dom.fileTbody.querySelectorAll('.file-select')].find(button => button.dataset.fileId === coverId)?.focus({ preventScroll: true });
+                }
+            }, t('groupRelease')) : null;
+            if (ungroup) ungroup.disabled = store.state.isProcessing;
+            const row = el('tr', { className: group ? 'file-group' : member ? 'group-member' : '' },
+                el('td', { className: 'col-title' }, el('div', { className: 'file-title-cell' },
+                    group ? el('span', { className: 'group-label' }, t('groupLabel')) : null, titleInput)),
                 el('td', {},
                     el('div', { className: 'cover-btn-group' },
                         el('button', { className: 'ui-button ui-button--compact btn-cover', onClick: () => window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(item.customTitle)}`, '_blank', 'noopener,noreferrer') }, window.EPUB_STUDIO_I18N.t('tableSearch')),
-                        el('button', { className: 'ui-button ui-button--compact btn-cover' + (hasCover ? ' active' : ''), onClick: () => readClipboardImage(item.id) }, window.EPUB_STUDIO_I18N.t('tableClipboard'))
+                        el('button', { className: 'ui-button ui-button--compact btn-cover' + (hasCover ? ' active' : ''), onClick: () => readClipboardImage(coverId) }, window.EPUB_STUDIO_I18N.t('tableClipboard'))
                     )
                 ),
-                el('td', {}, item.encoding),
+                el('td', { className: 'file-encoding' }, group ? t('groupFileCount', { count: item.sources.length }) : item.encoding),
                 el('td', {},
                     el('div', { className: 'detect-cell' },
-                        multiToggle,
-                        detectBtn
+                        ...(group ? [toggle, ungroup] : [multiToggle, detectBtn])
                     )
                 ),
-                el('td', {},
-                    el('div', { className: 'file-actions' },
-                        statusBtn,
-                        singleConvertBtn
-                    )
-                ),
-                el('td', {}, removeBtn)
+                el('td', {}, member ? null : el('div', { className: 'file-actions' }, statusBtn, selectButton, singleConvertBtn)),
+                el('td', {}, selectButton ? removeBtn : null)
             );
+            row.querySelectorAll('.btn-cover').forEach(button => { button.disabled = store.state.isProcessing; });
             dom.fileTbody.appendChild(row);
             if (focusedMultiId === item.id && !multiToggle.disabled) multiToggle.focus({ preventScroll: true });
-        });
+            if (focusedSelectId === item.id && selectButton && !selectButton.disabled) selectButton.focus({ preventScroll: true });
+            if (focusedGroupId === item.id) toggle?.focus({ preventScroll: true });
+        }
+        for (const item of store.getQueueItems()) {
+            appendRow(item);
+            if (item.expanded) item.sources.forEach(file => appendRow(file, true));
+        }
     }
 
     async function readClipboardImage(id) {
@@ -2677,6 +2777,7 @@
             'image/svg+xml': { file: 'cover.svg', media: 'image/svg+xml' }
         };
 
+        const NUMBERED_TITLE_START = /^(?:\u25C8\\s*\\d{1,5}\\.(?!\\d)\\s*\\S|\\d+[.)](?!\\d))/;
         const TITLE_RULES = {
             maxLineLength: 90,
             strongStartPatterns: [
@@ -2685,7 +2786,7 @@
                 /^[<【〔\\[(=\\-~]?\\s*[#＃]\\s*\\d+/,
                 /^0\\d{1,3}(?:\\s|$)/,
                 /^\\d+[-_]\\d+(?:\\s|$)/,
-                /^\\d+[.)](?!\\d)/,
+                NUMBERED_TITLE_START,
                 /^\\[\\d+\\]/,
                 BRACKET_TITLE_PATTERN,
                 BRACKET_SUFFIX_TITLE_PATTERN,
@@ -2713,7 +2814,7 @@
                 { group: 'BRACKET_SUFFIX', test: (t) => BRACKET_SUFFIX_TITLE_PATTERN.test(t) || WRAPPED_NUMBER_TITLE_PATTERN.test(t) },
                 { group: 'BRACKET', test: (t) => BRACKET_TITLE_PATTERN.test(t) },
                 { group: 'SHARP', test: (t) => /^[#＃]\\s*\\d+/.test(t) },
-                { group: 'NUMBER', test: (t) => /^\\d+[-_.]\\d+(?:\\s|$)/.test(t) || /^\\d+[.)](?!\\d)/.test(t) || /^0\\d{1,3}(?:[.)]?\\s*$)/.test(t) || /^\\[\\d+\\]/.test(t) || /^\\d{1,5}$/.test(t) },
+                { group: 'NUMBER', test: (t) => /^\\d+[-_.]\\d+(?:\\s|$)/.test(t) || NUMBERED_TITLE_START.test(t) || /^0\\d{1,3}(?:[.)]?\\s*$)/.test(t) || /^\\[\\d+\\]/.test(t) || /^\\d{1,5}$/.test(t) },
             ],
             bannedRegex: /((?:\\d+\\.\\d+)|(?:\\d+[\\/\\\\]\\d+))\\s*(?:캐럿|만|억|천|밀리언|빌리언|트릴리언|달러|원|퍼센트|%|미터|km|m|cm|mm|kg|g|초|분|시간|배|위|군|점|승|무|패|등급)|(?:총|약|단|무려|겨우|고작|단지)\\s*\\d+\\s*[장회화편부]|\\d+\\s*(?:년|월|일|시|분|초|주년|세기|년대|광복절|삼일절|기념일|명절|행사|당일|살|세|차|퍼센트|%|배|개|명|마리|번|회분|곱하기|층)/i
         };
@@ -3469,36 +3570,39 @@
                     self.postMessage({ type: 'VALIDATE_RESULT', payload: { id: payload.id, requestId: payload.requestId, isValid: validIndices.size > 0 ? 'ok' : 'no' } });
                 }
                 else if (type === 'CONVERT') {
-                    const { id, title, content, useTrim, useAutoToc, coverBuffer, coverType, language } = payload;
-                    const rawLines = safeSplit(content);
+                    const { id, title, coverBuffer, coverType, language } = payload;
                     const bookLanguage = language === 'en' ? 'en' : 'ko';
-
-                    const validIndices = useAutoToc ? resolveTocSelection(rawLines, payload).validIndices : new Set();
                     const chapters = [];
-                    let currentChapter = { title: "시작", lines: [] };
-                    let consecutiveEmptyLines = 0;
+                    // Parse each source separately so numbering and TOC selections cannot cross file boundaries.
+                    for (const source of payload.sources || [payload]) {
+                        const rawLines = safeSplit(source.content);
+                        const validIndices = source.useAutoToc ? resolveTocSelection(rawLines, source).validIndices : new Set();
+                        const useTrim = source.useTrim;
+                        let currentChapter = { title: payload.sources ? source.title : "시작", lines: [] };
+                        let consecutiveEmptyLines = 0;
 
-                    rawLines.forEach((line, i) => {
-                        const trimmed = line.trim();
-                        const isTitle = validIndices.has(i);
+                        rawLines.forEach((line, i) => {
+                            const trimmed = line.trim();
+                            const isTitle = validIndices.has(i);
 
-                        if (isTitle) {
-                            if (currentChapter.lines.length > 0) chapters.push(currentChapter);
-                            currentChapter = { title: trimmed, lines: [] };
-                            consecutiveEmptyLines = 0;
-                            return;
-                        }
+                            if (isTitle) {
+                                if (currentChapter.lines.length > 0) chapters.push(currentChapter);
+                                currentChapter = { title: trimmed, lines: [] };
+                                consecutiveEmptyLines = 0;
+                                return;
+                            }
 
-                        if (trimmed === "") {
-                            consecutiveEmptyLines++;
-                            if (useTrim && consecutiveEmptyLines > 1) return;
-                            currentChapter.lines.push("");
-                        } else {
-                            consecutiveEmptyLines = 0;
-                            currentChapter.lines.push(useTrim ? line.trimEnd() : line);
-                        }
-                    });
-                    chapters.push(currentChapter);
+                            if (trimmed === "") {
+                                consecutiveEmptyLines++;
+                                if (useTrim && consecutiveEmptyLines > 1) return;
+                                currentChapter.lines.push("");
+                            } else {
+                                consecutiveEmptyLines = 0;
+                                currentChapter.lines.push(useTrim ? line.trimEnd() : line);
+                            }
+                        });
+                        chapters.push(currentChapter);
+                    }
 
                     const zip = new JSZip();
                     zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
@@ -3631,7 +3735,7 @@
         }
     };
 
-    dom.dropZone.onclick = (e) => { if (!e.composedPath().some(node => ['TR', 'BUTTON', 'INPUT', 'A', 'TEXTAREA'].includes(node.tagName))) dom.fileInput.click(); };
+    dom.dropZone.onclick = (e) => { if (!e.composedPath().some(node => node === dom.mergeToolbar || ['TR', 'BUTTON', 'INPUT', 'A', 'TEXTAREA'].includes(node.tagName))) dom.fileInput.click(); };
     dom.dropZone.onkeydown = (e) => {
         if (e.target === dom.dropZone && (e.key === 'Enter' || e.key === ' ')) {
             e.preventDefault();
@@ -3714,92 +3818,115 @@
         }
     }
 
+    function requestConversion(payload, onProgress, transfer = []) {
+        return new Promise((resolve, reject) => {
+            if (workerFailed) {
+                reject(new Error('Worker unavailable'));
+                return;
+            }
+            conversionResolvers.set(payload.id, { resolve, reject, onProgress });
+            try {
+                parserWorker.postMessage({ type: 'CONVERT', payload }, transfer);
+            } catch (error) {
+                conversionResolvers.delete(payload.id);
+                reject(error);
+            }
+        });
+    }
+
     async function convertFiles(fileIds = null) {
         if (store.state.isProcessing) return;
-        const isSingle = Array.isArray(fileIds);
-        const filesToProcess = isSingle
-            ? store.state.files.filter((file) => fileIds.includes(file.id))
-            : store.state.files;
-        if (!filesToProcess.length) return;
-        const totalCount = filesToProcess.length;
+        const queue = store.getQueueItems();
+        const items = fileIds ? queue.filter(item => fileIds.includes(item.id)) : queue;
+        if (!items.length) return;
 
-        const needsReset = filesToProcess.every(f => f.state === 'done' || f.state === 'error');
-        if (needsReset) {
-            filesToProcess.forEach(f => store.dispatch({ type: 'UPDATE_FILE_STATUS', payload: { id: f.id, status: 'wait' } }));
-        }
-
-        store.dispatch({ type: 'START_PROCESSING', payload: { totalCount } });
-
-        const finalZip = !isSingle && dom.optZip.checked ? new JSZip() : null;
-        const usedZipNames = new Set();
-
-        for (let i = 0; i < filesToProcess.length; i++) {
-            if (store.state.shouldStop) break;
-
-            const item = store.state.files.find(f => f.id === filesToProcess[i].id) || filesToProcess[i];
-
-            if (!needsReset && item.state === 'done') {
-                store.dispatch({ type: 'SET_PROGRESS', payload: ((i + 1) / totalCount) * (finalZip ? 90 : 100) });
-                continue;
-            }
-
-            store.dispatch({ type: 'UPDATE_FILE_STATUS', payload: { id: item.id, status: 'ing' } });
-
-            try {
-                if (workerFailed) throw new Error('Worker unavailable');
-                const text = await readFileText(item.file, item.encoding);
-
-                const coverBuf = item.coverBlob ? await item.coverBlob.arrayBuffer() : null;
-                const coverType = item.coverBlob ? item.coverBlob.type : '';
-
-                const blob = await new Promise((resolve, reject) => {
-                    conversionResolvers.set(item.id, { resolve, reject, onProgress: (percent) => {
-                        store.dispatch({ type: 'SET_PROGRESS', payload: ((i + Math.max(0, Math.min(100, percent)) / 100) / totalCount) * (finalZip ? 90 : 100) });
-                    } });
-                    parserWorker.postMessage({
-                        type: 'CONVERT',
-                        payload: {
-                            id: item.id,
-                            title: item.customTitle,
-                            fileName: item.file.name,
-                            content: text,
-                            useTrim: dom.optTrim.checked,
-                            useAutoToc: dom.optToc.checked,
-                            useMultiToc: item.useMultiToc,
-                            userRegex: dom.regexInput.value,
-                            preserveCustomMatches: dom.regexInput.value !== dom.regexInput.defaultValue,
-                            coverBuffer: coverBuf,
-                            coverType,
-                            language: window.EPUB_STUDIO_I18N.lang,
-                            selectedFallbackIndices: Array.from(getSelectedFallbackLines(item.id)),
-                            excludedIndices: Array.from(getExcludedPreviewLines(item.id))
-                        }
-                    }, coverBuf ? [coverBuf] : []);
+        const setStatus = (item, status) => store.dispatch({
+            type: item.sources ? 'UPDATE_GROUP_STATUS' : 'UPDATE_FILE_STATUS',
+            payload: { id: item.id, status }
+        });
+        const options = {
+            useTrim: dom.optTrim.checked, useAutoToc: dom.optToc.checked,
+            userRegex: dom.regexInput.value,
+            preserveCustomMatches: dom.regexInput.value !== dom.regexInput.defaultValue
+        };
+        const language = window.EPUB_STUDIO_I18N.lang;
+        const zipOutput = !fileIds && dom.optZip.checked;
+        const needsReset = items.every(item => item.state === 'done' || item.state === 'error');
+        const packed = [];
+        let failed = false;
+        let done = 0;
+        store.dispatch({ type: 'START_PROCESSING', payload: { totalCount: items.length } });
+        try {
+            const zip = zipOutput ? new JSZip() : null;
+            const usedZipNames = new Set();
+            for (const [index, item] of items.entries()) {
+                if (store.state.shouldStop) break;
+                const updateProgress = fraction => store.dispatch({
+                    type: 'SET_PROGRESS', payload: (index + fraction) / items.length * (zip ? 90 : 100)
                 });
-
-                if (finalZip) {
-                    finalZip.file(getEpubFilename(item.customTitle, usedZipNames), blob);
-                } else {
-                    triggerDownload(blob, getEpubFilename(item.customTitle));
+                if (!needsReset && item.state === 'done') {
+                    updateProgress(1);
+                    continue;
                 }
-                store.dispatch({ type: 'UPDATE_FILE_STATUS', payload: { id: item.id, status: 'done' } });
-            } catch (e) {
-                store.dispatch({ type: 'UPDATE_FILE_STATUS', payload: { id: item.id, status: 'error' } });
-            }
-            store.dispatch({ type: 'SET_PROGRESS', payload: ((i + 1) / totalCount) * (finalZip ? 90 : 100) });
-            const stats = getFileStats(store.state.files);
-            store.dispatch({ type: 'SET_STATUS_DETAIL', payload: { key: 'statusSummary', vars: { done: stats.done, error: stats.error } } });
-        }
+                setStatus(item, 'ing');
+                try {
+                    if (workerFailed) throw new Error('Worker unavailable');
+                    const files = item.sources || [item];
+                    const sources = [];
+                    for (const file of files) {
+                        sources.push({
+                            ...options, title: file.customTitle, fileName: file.file.name,
+                            content: await readFileText(file.file, file.encoding),
+                            useMultiToc: file.useMultiToc,
+                            selectedFallbackIndices: Array.from(getSelectedFallbackLines(file.id)),
+                            excludedIndices: Array.from(getExcludedPreviewLines(file.id))
+                        });
+                        if (store.state.shouldStop) break;
+                        if (item.sources) updateProgress(sources.length / files.length * 0.2);
+                    }
+                    if (store.state.shouldStop) break;
+                    const coverBuffer = item.coverBlob ? await item.coverBlob.arrayBuffer() : null;
+                    if (store.state.shouldStop) break;
+                    const readShare = item.sources ? 0.2 : 0;
+                    const blob = await requestConversion({
+                        ...(item.sources ? { sources } : sources[0]),
+                        id: item.id, title: item.customTitle, language,
+                        coverBuffer, coverType: item.coverBlob?.type || ''
+                    }, percent => updateProgress(readShare + (1 - readShare) * Math.max(0, Math.min(100, percent)) / 100),
+                    coverBuffer ? [coverBuffer] : []);
+                    if (store.state.shouldStop) break;
 
-        if (finalZip && !store.state.shouldStop) {
-            const b = await finalZip.generateAsync({ type: "blob" }, (metadata) => {
-                store.dispatch({ type: 'SET_PROGRESS', payload: 90 + metadata.percent / 10 });
-            });
-            triggerDownload(b, `EPUB_COLLECTION.zip`);
+                    if (zip) {
+                        zip.file(getEpubFilename(item.customTitle, usedZipNames), blob);
+                        packed.push(item);
+                    } else {
+                        triggerDownload(blob, getEpubFilename(item.customTitle));
+                        setStatus(item, 'done');
+                    }
+                    done++;
+                } catch (_) {
+                    setStatus(item, 'error');
+                    failed = true;
+                }
+                updateProgress(1);
+                store.dispatch({ type: 'SET_STATUS_DETAIL', payload: { key: 'statusProgress', vars: { done, total: items.length } } });
+            }
+            if (zip && packed.length && !store.state.shouldStop) {
+                const blob = await zip.generateAsync({ type: 'blob' }, metadata => {
+                    store.dispatch({ type: 'SET_PROGRESS', payload: 90 + metadata.percent / 10 });
+                });
+                if (!store.state.shouldStop) {
+                    triggerDownload(blob, 'EPUB_COLLECTION.zip');
+                    packed.forEach(item => setStatus(item, 'done'));
+                }
+            }
+        } catch (_) {
+            failed = true;
+            packed.forEach(item => setStatus(item, 'error'));
+        } finally {
+            store.getQueueItems().filter(item => item.state === 'ing').forEach(item => setStatus(item, 'wait'));
+            store.dispatch({ type: 'FINISH_PROCESSING', payload: { failed } });
         }
-        const finalStats = getFileStats(store.state.files);
-        store.dispatch({ type: 'SET_STATUS_DETAIL', payload: { key: 'statusSummary', vars: { done: finalStats.done, error: finalStats.error } } });
-        store.dispatch({ type: 'FINISH_PROCESSING' });
     }
 
     dom.convertBtn.onclick = async () => {
