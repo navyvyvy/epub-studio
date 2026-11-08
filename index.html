@@ -3778,13 +3778,14 @@
                         const rawLines = safeSplit(source.content);
                         const selection = source.useAutoToc ? resolveTocSelection(rawLines, source) : null;
                         const useTrim = source.useTrim;
-                        let currentChapter = { title: payload.sources ? source.title : "시작", lines: [] };
+                        const introChapter = { title: payload.sources ? source.title : "시작", lines: [] };
+                        let currentChapter = introChapter;
                         let consecutiveEmptyLines = 0;
 
                         rawLines.forEach((line, i) => {
                             const trimmed = line.trim();
                             if (selection?.validIndices.has(i)) {
-                                if (currentChapter.lines.length > 0) chapters.push(currentChapter);
+                                if (currentChapter !== introChapter || currentChapter.lines.length > 0) chapters.push(currentChapter);
                                 const repair = selection.repairs.get(i);
                                 currentChapter = { title: repair?.title ?? trimmed, lines: [] };
                                 if (repair) currentChapter.lines.push(useTrim ? repair.body.trimEnd() : repair.body);

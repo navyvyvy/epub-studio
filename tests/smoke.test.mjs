@@ -2789,6 +2789,25 @@ test('file status uses the shared compact button and resets only completed or fa
     }
 });
 
+test('EPUB keeps adjacent detected headings without adding an empty intro', async () => {
+    for (const [titles, tail] of [
+        [['Chapter 1 First', 'Chapter 2 Next'], ''],
+        [['산책의 기록 129화', '산책의 기록 130화'], '우리는 다시 조용한 숲길을 따라서 천천히 걷기 시작했다.']
+    ]) {
+        const { context, messages } = loadWorker();
+        const content = [titles[0], titles[1] + tail, '본문입니다.'].join('\n');
+        const options = { id: 'book', title: 'Book', content, userRegex: defaultTitleRegex, useAutoToc: true, repairLineBreaks: !!tail };
+        await context.self.onmessage({ data: { type: 'PREVIEW_PARSER', payload: { ...options, text: content } } });
+        assert.deepEqual(Array.from(messages.at(-1).payload.resultItems, item => item.text), titles);
+        await context.self.onmessage({ data: { type: 'CONVERT', payload: options } });
+        const files = messages.at(-1).payload.blob.files;
+        const ncx = files.get('OEBPS/toc.ncx');
+        assert.deepEqual(Array.from(ncx.matchAll(/<navLabel><text>(.*?)<\/text><\/navLabel>/g), match => match[1]), titles);
+        assert.match(files.get('OEBPS/ch_0.xhtml'), /<h2>[^<]+<\/h2>/);
+        if (tail) assert.ok(files.get('OEBPS/ch_1.xhtml').includes('<p>' + tail + '</p>'));
+    }
+});
+
 test('EPUB metadata stays consistent and long chapters are split', async () => {
     const { context, messages } = loadWorker();
     await context.self.onmessage({ data: {
