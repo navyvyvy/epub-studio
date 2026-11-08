@@ -27,7 +27,7 @@
     <!-- 외부 라이브러리 로드 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jschardet/3.0.0/jschardet.min.js"></script>
-    <script src="./i18n.js?v=20261108-2"></script>
+    <script src="./i18n.js?v=20261108-3"></script>
     <link rel="stylesheet" href="./site-shared.css?v=20261030-3">
     <link rel="stylesheet" href="./ui-buttons.css?v=20261107-1">
     <style>
@@ -2171,7 +2171,7 @@
         setFallbackSelection(currentPreviewFileId, items, shouldSelect);
         store.dispatch({ type: 'RESET_GROUP_FOR_FILE', payload: currentPreviewFileId });
         renderPreviewDialog();
-        validateFileById(currentPreviewFileId);
+        syncPreviewValidity();
     }
 
     function createPreviewActionIcon(kind) {
@@ -2276,6 +2276,12 @@
         };
     }
 
+    function syncPreviewValidity() {
+        const id = currentPreviewFileId;
+        if (!id || currentPreviewLineCount === null) return;
+        applyFileValidity(id, validationRequestIds.get(id), getPreviewSelection().activeItems.length ? 'ok' : 'no');
+    }
+
     function renderPreviewRepairCandidates() {
         const t = window.EPUB_STUDIO_I18N.t;
         dom.previewRepairCandidates.hidden = !currentPreviewRepairItems.length;
@@ -2289,7 +2295,6 @@
                     if (!id || store.state.isProcessing) return;
                     store.dispatch({ type: 'SELECT_FILE_REPAIR_TITLE', payload: { id, index: item.idx } });
                     store.dispatch({ type: 'RESET_GROUP_FOR_FILE', payload: id });
-                    validateFileById(id);
                     previewFileById(id);
                     dom.previewRepairToggle.focus({ preventScroll: true });
                 }
@@ -2399,9 +2404,7 @@
                 setExcludedPreviewLine(currentPreviewFileId, item.idx, !isExcluded);
                 store.dispatch({ type: 'RESET_GROUP_FOR_FILE', payload: currentPreviewFileId });
                 renderPreviewDialog();
-                if (currentPreviewFileId) {
-                    validateFileById(currentPreviewFileId);
-                }
+                syncPreviewValidity();
             });
 
             row.appendChild(lineButton);
@@ -2447,7 +2450,6 @@
         if (!item || store.state.isProcessing || !dom.optToc.checked) return;
         store.dispatch({ type: 'UPDATE_FILE_TOC_REPAIR', payload: { id: item.id, enabled: !item.repairLineBreaks } });
         store.dispatch({ type: 'RESET_GROUP_FOR_FILE', payload: item.id });
-        validateFileById(item.id);
         previewFileById(item.id);
     });
 
@@ -2457,19 +2459,20 @@
         if (!item || item.useMultiToc === useMultiToc) return;
         store.dispatch({ type: 'UPDATE_FILE_MULTI_TOC', payload: { id, useMultiToc } });
         store.dispatch({ type: 'RESET_GROUP_FOR_FILE', payload: id });
-        validateFileById(id);
         if (dom.previewDialog.open && currentPreviewFileId === id) previewFileById(id);
+        else validateFileById(id);
     }
 
     function handlePreviewOptionChange() {
         renderList();
+        const previewId = dom.optToc.checked && dom.previewDialog.open ? currentPreviewFileId : null;
         if (!dom.optToc.checked) {
             closePreviewDialog();
-        } else if (dom.previewDialog.open && currentPreviewFileId) {
-            previewFileById(currentPreviewFileId);
+        } else if (previewId) {
+            previewFileById(previewId);
         }
         if (store.state.files.length > 0 && !store.state.isProcessing) {
-            validateFiles();
+            validateFiles(previewId);
         }
     }
 
@@ -2569,33 +2572,17 @@
         const requestId = ++currentPreviewRequestId;
         dom.previewRepairToggle.setAttribute('aria-pressed', String(!!item.repairLineBreaks));
 
-        try {
-            openPreviewDialog(item.customTitle || item.file.name, `${item.file.name} · ${item.encoding}`, [], [], 'loading');
+        openPreviewDialog(item.customTitle || item.file.name, `${item.file.name} · ${item.encoding}`, [], [], 'loading');
+        return requestFileAnalysis(item, requestId);
+    }
 
-            const text = await readFileText(item.file, item.encoding);
-            if (requestId !== currentPreviewRequestId) return;
-
-            parserWorker.postMessage({
-                type: 'PREVIEW_PARSER',
-                payload: {
-                    requestId,
-                    fileName: item.file.name,
-                    customTitle: item.customTitle,
-                    text,
-                    userRegex: dom.regexInput.value,
-                    preserveCustomMatches: dom.regexInput.value !== dom.regexInput.defaultValue,
-                    useMultiToc: item.useMultiToc,
-                    repairLineBreaks: item.repairLineBreaks,
-                    selectedRepairIndices: item.selectedRepairIndices
-                }
-            });
-        } catch (error) {
-            if (requestId !== currentPreviewRequestId) return;
-            openPreviewDialog(item.customTitle || item.file.name, `${item.file.name} · ${item.encoding}`, [], [], 'miss');
-            dom.previewSummary.innerText = window.EPUB_STUDIO_I18N.t('previewNoResult');
-            dom.previewList.innerHTML = '<div class="preview-empty">' + window.EPUB_STUDIO_I18N.t('previewError') + '</div>';
-            dom.previewCopyBtn.disabled = true;
-        }
+    function showPreviewAnalysisError(requestId) {
+        if (requestId !== currentPreviewRequestId || !dom.previewDialog.open) return;
+        const t = window.EPUB_STUDIO_I18N.t;
+        dom.previewDialog.dataset.previewState = 'miss';
+        dom.previewSummary.textContent = t('previewAnalysisFailed');
+        dom.previewList.replaceChildren(el('div', { className: 'preview-empty' }, t('previewError')));
+        dom.previewCopyBtn.disabled = true;
     }
 
     dom.btnTestParser.onclick = () => {
@@ -2693,6 +2680,7 @@
                 ? `${item.file.name} · ${item.encoding}`
                 : formatPreviewFileMeta(item.file.name, currentPreviewLineCount);
             if (currentPreviewLineCount !== null) renderPreviewDialog();
+            else if (dom.previewDialog.dataset.previewState === 'miss') showPreviewAnalysisError(currentPreviewRequestId);
         }
     });
 
@@ -3747,14 +3735,17 @@
                 }
                 else if (type === 'PREVIEW_PARSER') {
                     const lines = safeSplit(payload.text);
-                    const { automaticIndices, fallbackItems, repairs, repairCandidates } = resolveTocSelection(lines, payload);
+                    const { automaticIndices, fallbackItems, repairs, repairCandidates, validIndices } = resolveTocSelection(lines, payload);
                     const resultItems = [];
                     Array.from(automaticIndices).sort((a, b) => a - b)
                         .forEach(i => resultItems.push({ idx: i, text: repairs.get(i)?.title ?? lines[i] }));
                     self.postMessage({
                         type: 'PREVIEW_RESULT',
                         payload: {
+                            id: payload.id,
+                            validationRequestId: payload.validationRequestId,
                             requestId: payload.requestId,
+                            isValid: validIndices.size ? 'ok' : 'no',
                             title: payload.customTitle || payload.fileName || '목차 미리보기',
                             fileName: payload.fileName || '',
                             lineCount: lines.length,
@@ -3864,7 +3855,8 @@
                     self.postMessage({ type: 'CONVERT_RESULT', payload: { id, blob } });
                 }
             } catch (err) {
-                self.postMessage({ type: 'ERROR', payload: { id: e.data?.payload?.id, requestId: e.data?.payload?.requestId, operation: e.data?.type, error: err.toString() } });
+                self.postMessage({ type: 'ERROR', payload: { id: e.data?.payload?.id, requestId: e.data?.payload?.requestId,
+                    validationRequestId: e.data?.payload?.validationRequestId, operation: e.data?.type, error: err.toString() } });
             }
         };
     `;
@@ -3876,6 +3868,10 @@
     const conversionResolvers = new Map();
     let workerFailed = false;
 
+    function showParserToolError(key, error) {
+        dom.testOutput.replaceChildren(el('span', { style: { color: 'var(--danger)' } }, window.EPUB_STUDIO_I18N.t(key, { error })));
+    }
+
     parserWorker.onerror = (err) => {
         workerFailed = true;
         console.error("Worker Global Error:", err);
@@ -3886,7 +3882,11 @@
                 store.dispatch({ type: 'UPDATE_FILE_VALIDITY', payload: { id: file.id, isValid: 'error' } });
             }
         }
-        dom.testOutput.innerHTML = '<span style="color:var(--danger)">' + window.EPUB_STUDIO_I18N.t('test.engineError', { error: err.message }) + '</span>';
+        if (dom.previewDialog.open && dom.previewDialog.dataset.previewState === 'loading') {
+            applyFileValidity(currentPreviewFileId, validationRequestIds.get(currentPreviewFileId), 'error');
+            showPreviewAnalysisError(currentPreviewRequestId);
+        }
+        showParserToolError('test.engineError', err.message);
     };
 
     parserWorker.onmessage = (e) => {
@@ -3899,7 +3899,8 @@
             }
         }
         else if (type === 'PREVIEW_RESULT') {
-            if (payload.requestId !== currentPreviewRequestId) return;
+            applyFileValidity(payload.id, payload.validationRequestId, payload.isValid);
+            if (payload.requestId !== currentPreviewRequestId || !dom.previewDialog.open) return;
             currentPreviewLineCount = payload.lineCount;
             openPreviewDialog(
                 payload.title || payload.fileName || window.EPUB_STUDIO_I18N.t('previewTitle'),
@@ -3911,8 +3912,7 @@
             );
         }
         else if (type === 'VALIDATE_RESULT') {
-            if (payload.requestId !== validationRequestIds.get(payload.id)) return;
-            store.dispatch({ type: 'UPDATE_FILE_VALIDITY', payload });
+            applyFileValidity(payload.id, payload.requestId, payload.isValid);
         }
         else if (type === 'CONVERT_PROGRESS') {
             conversionResolvers.get(payload.id)?.onProgress?.(payload.percent);
@@ -3926,14 +3926,15 @@
         else if (type === 'ERROR') {
             console.error("Worker Error:", payload.error);
             if (payload.operation === 'VALIDATE') {
-                if (payload.requestId === validationRequestIds.get(payload.id)) {
-                    store.dispatch({ type: 'UPDATE_FILE_VALIDITY', payload: { id: payload.id, isValid: 'error' } });
-                }
+                applyFileValidity(payload.id, payload.requestId, 'error');
+            } else if (payload.operation === 'PREVIEW_PARSER') {
+                applyFileValidity(payload.id, payload.validationRequestId, 'error');
+                showPreviewAnalysisError(payload.requestId);
             } else if (payload.id && conversionResolvers.has(payload.id)) {
                 conversionResolvers.get(payload.id).reject(new Error(payload.error));
                 conversionResolvers.delete(payload.id);
             } else if (!payload.id) {
-                dom.testOutput.innerHTML = '<span style="color:var(--danger)">' + window.EPUB_STUDIO_I18N.t('test.parserError', { error: payload.error }) + '</span>';
+                showParserToolError('test.parserError', payload.error);
             }
         }
     };
@@ -3985,41 +3986,49 @@
 
     async function validateFileById(id) {
         const item = store.state.files.find((file) => file.id === id);
-        if (!item) return;
-        const requestId = (validationRequestIds.get(id) || 0) + 1;
-        validationRequestIds.set(id, requestId);
-        store.dispatch({ type: 'UPDATE_FILE_VALIDITY', payload: { id, isValid: 'none' } });
-        let text;
+        if (item) return requestFileAnalysis(item);
+    }
+
+    function applyFileValidity(id, requestId, isValid) {
+        if (requestId === undefined || requestId !== validationRequestIds.get(id)) return;
+        const file = store.state.files.find(item => item.id === id);
+        if (file && file.isValid !== isValid) store.dispatch({ type: 'UPDATE_FILE_VALIDITY', payload: { id, isValid } });
+    }
+
+    async function requestFileAnalysis(item, previewRequestId) {
+        const id = item.id;
+        const isPreview = previewRequestId !== undefined;
+        const validationRequestId = (validationRequestIds.get(id) || 0) + 1;
+        validationRequestIds.set(id, validationRequestId);
+        if (!isPreview) applyFileValidity(id, validationRequestId, 'none');
+        const userRegex = dom.regexInput.value;
+        const payload = {
+            id, requestId: previewRequestId ?? validationRequestId, validationRequestId,
+            fileName: item.file.name, customTitle: item.customTitle,
+            userRegex, preserveCustomMatches: userRegex !== dom.regexInput.defaultValue,
+            useMultiToc: item.useMultiToc, repairLineBreaks: item.repairLineBreaks,
+            selectedRepairIndices: item.selectedRepairIndices,
+            selectedFallbackIndices: Array.from(getSelectedFallbackLines(id)),
+            excludedIndices: Array.from(getExcludedPreviewLines(id))
+        };
         try {
             if (workerFailed) throw new Error('Worker unavailable');
-            text = await readFileText(item.file, item.encoding);
-            if (validationRequestIds.get(id) !== requestId) return;
+            const text = await readFileText(item.file, item.encoding);
+            if (validationRequestIds.get(id) !== validationRequestId) return;
             if (workerFailed) throw new Error('Worker unavailable');
             parserWorker.postMessage({
-                type: 'VALIDATE',
-                payload: {
-                    id: item.id,
-                    requestId,
-                    fileName: item.file.name,
-                    text,
-                    userRegex: dom.regexInput.value,
-                    preserveCustomMatches: dom.regexInput.value !== dom.regexInput.defaultValue,
-                    useMultiToc: item.useMultiToc,
-                    repairLineBreaks: item.repairLineBreaks,
-                    selectedRepairIndices: item.selectedRepairIndices,
-                    selectedFallbackIndices: Array.from(getSelectedFallbackLines(item.id)),
-                    excludedIndices: Array.from(getExcludedPreviewLines(item.id))
-                }
+                type: isPreview ? 'PREVIEW_PARSER' : 'VALIDATE',
+                payload: { ...payload, text }
             });
         } catch (_) {
-            if (validationRequestIds.get(id) === requestId) {
-                store.dispatch({ type: 'UPDATE_FILE_VALIDITY', payload: { id, isValid: 'error' } });
-            }
+            applyFileValidity(id, validationRequestId, 'error');
+            if (isPreview) showPreviewAnalysisError(previewRequestId);
         }
     }
 
-    async function validateFiles() {
-        for (let item of store.state.files) {
+    async function validateFiles(skipId) {
+        for (const item of store.state.files) {
+            if (item.id === skipId || (dom.previewDialog?.open && item.id === currentPreviewFileId)) continue;
             await validateFileById(item.id);
         }
     }

@@ -81,14 +81,14 @@ test('file multi-pattern controls refresh only that file without changing the de
         validateFileById: id => validated.push(id), previewFileById: id => previewed.push(id) });
     vm.runInContext(source, context);
     context.setFileMultiToc('a', true);
-    assert.deepEqual(validated, ['a']);
+    assert.deepEqual(validated, []);
     assert.deepEqual(previewed, ['a']);
     assert.equal(dom.optMultiToc.checked, false);
     context.setFileMultiToc('a', true);
     context.setFileMultiToc('missing', false);
-    assert.deepEqual(validated, ['a']);
+    assert.deepEqual(validated, []);
     context.setFileMultiToc('b', false);
-    assert.deepEqual(validated, ['a', 'b']);
+    assert.deepEqual(validated, ['b']);
     assert.deepEqual(previewed, ['a']);
     store.state.isProcessing = true;
     context.setFileMultiToc('a', false);
@@ -96,7 +96,7 @@ test('file multi-pattern controls refresh only that file without changing the de
     dom.optToc.checked = false;
     context.setFileMultiToc('a', false);
     assert.equal(store.state.files[0].useMultiToc, true);
-    assert.deepEqual(validated, ['a', 'b']);
+    assert.deepEqual(validated, ['b']);
 });
 
 test('validation uses each file setting and discards outdated reads and worker responses', async () => {
@@ -125,14 +125,75 @@ test('validation uses each file setting and discards outdated reads and worker r
     assert.equal(messages[2].payload.useMultiToc, true);
     assert.equal(messages[2].payload.requestId, 3);
     const responseBody = html.match(/else if \(type === 'VALIDATE_RESULT'\) \{([\s\S]*?)\n        }/)[1];
-    const respond = Function('payload', 'validationRequestIds', 'store', responseBody);
-    respond({ id: 'a', requestId: 1, isValid: 'no' }, requestIds, store);
+    vm.runInContext('function respond(payload) {' + responseBody + '}', context);
+    context.respond({ id: 'a', requestId: 1, isValid: 'no' });
     assert.equal(store.state.files[0].isValid, 'none');
-    respond({ id: 'a', requestId: 3, isValid: 'ok' }, requestIds, store);
+    context.respond({ id: 'a', requestId: 3, isValid: 'ok' });
     assert.equal(store.state.files[0].isValid, 'ok');
     requestIds.delete('a');
-    respond({ id: 'a', requestId: 3, isValid: 'no' }, requestIds, store);
+    context.respond({ id: 'a', requestId: 3, isValid: 'no' });
     assert.equal(store.state.files[0].isValid, 'ok');
+});
+
+test('one preview scan updates list validity and keeps failures in the current dialog', async () => {
+    const Store = loadStore();
+    const store = new Store({ files: [{ id: 'a', isValid: 'ok', file: { name: 'sample.txt' }, encoding: 'UTF-8' }] });
+    const sent = [], opened = [], parserErrors = [];
+    let reads = 0;
+    const dom = {
+        optToc: { checked: true }, regexInput: { value: defaultTitleRegex, defaultValue: defaultTitleRegex },
+        previewDialog: { open: false, dataset: {} }, previewRepairToggle: { setAttribute() {} },
+        previewSummary: {}, previewList: { replaceChildren(item) { this.content = item; } }, previewCopyBtn: {}
+    };
+    const context = vm.createContext({
+        store, dom, validationRequestIds: new Map(), workerFailed: false, currentPreviewRequestId: 0,
+        currentPreviewFileId: null, currentPreviewLineCount: null,
+        window: { EPUB_STUDIO_I18N: { t: key => key } }, console: { error() {} },
+        el: (tag, attrs, text) => ({ tag, attrs, text }), formatPreviewFileMeta: () => '',
+        openPreviewDialog: (...args) => {
+            opened.push(args);
+            dom.previewDialog.open = true;
+            dom.previewDialog.dataset.previewState = args[4] || 'hit';
+        },
+        showParserToolError: (...args) => parserErrors.push(args),
+        readFileText: async () => { reads++; return 'Chapter 1 First\nBody.\nChapter 2 Next\nEnd.'; },
+        parserWorker: { postMessage: request => sent.push(request) },
+        getSelectedFallbackLines: () => new Set(), getExcludedPreviewLines: () => new Set([0, 2])
+    });
+    vm.runInContext(html.match(/async function validateFileById[\s\S]*?(?=\n    async function validateFiles)/)[0], context);
+    vm.runInContext(html.match(/async function previewFileById[\s\S]*?(?=\n    dom\.btnTestParser\.onclick)/)[0], context);
+    vm.runInContext(html.match(/parserWorker\.onmessage = [\s\S]*?(?=\n    dom\.dropZone\.onclick)/)[0], context);
+    const worker = loadWorker();
+    await context.previewFileById('a');
+    assert.equal(reads, 1);
+    assert.deepEqual(sent.map(request => request.type), ['PREVIEW_PARSER']);
+    await worker.context.self.onmessage({ data: sent[0] });
+    const success = worker.messages.at(-1);
+    assert.equal(success.payload.isValid, 'no');
+    assert.equal(success.payload.resultItems.length, 2);
+
+    dom.previewDialog.open = false;
+    context.currentPreviewRequestId++;
+    context.parserWorker.onmessage({ data: success });
+    assert.equal(store.state.files[0].isValid, 'no');
+    assert.equal(opened.length, 1);
+    assert.equal(dom.previewDialog.open, false);
+
+    dom.regexInput.value = '[';
+    await context.previewFileById('a');
+    await worker.context.self.onmessage({ data: sent[1] });
+    const failure = worker.messages.at(-1);
+    assert.equal(failure.type, 'ERROR');
+    assert.equal(failure.payload.validationRequestId, sent[1].payload.validationRequestId);
+    context.parserWorker.onmessage({ data: failure });
+    assert.equal(store.state.files[0].isValid, 'error');
+    assert.equal(dom.previewDialog.dataset.previewState, 'miss');
+    assert.equal(dom.previewList.content.text, 'previewError');
+    assert.equal(dom.previewCopyBtn.disabled, true);
+    assert.deepEqual(parserErrors, []);
+    context.parserWorker.onmessage({ data: success });
+    assert.equal(store.state.files[0].isValid, 'error');
+    assert.equal(dom.previewDialog.dataset.previewState, 'miss');
 });
 
 test('adding files analyzes only new TXT files and preserves existing analysis and settings', async () => {
@@ -1987,7 +2048,7 @@ test('line-break repair resets only the selected file and its containing bundle'
     assert.equal(store.state.groups[0].state, 'wait');
     toggle();
     assert.equal(store.state.files[0].repairLineBreaks, false);
-    assert.deepEqual(scanned, ['a', 'a']);
+    assert.deepEqual(scanned, []);
     assert.deepEqual(previewed, ['a', 'a']);
 });
 
@@ -2762,7 +2823,7 @@ test('file rows show pending title detection as analyzing', () => {
 
     assert.match(renderList, /isDetecting \? 'previewLoading' : analysisFailed \? 'previewAnalysisFailed' : 'tablePreview'/);
     assert.match(renderList, /detectBtn\.disabled = !canPreview \|\| isDetecting/);
-    assert.match(validateFile, /UPDATE_FILE_VALIDITY[\s\S]*isValid: 'none'/);
+    assert.match(validateFile, /applyFileValidity\(id, validationRequestId, 'none'\)/);
 });
 
 test('file status uses the shared compact button and resets only completed or failed files when idle', () => {
