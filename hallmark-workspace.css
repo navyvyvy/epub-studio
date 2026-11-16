@@ -30,7 +30,7 @@ body:has(.advanced-dialog[open]) {
 .home-page .detect-cell { gap: 6px; flex-wrap: wrap; }
 @media (min-width: 641px) and (max-width: 1100px) {
     .home-page .table-scroll-box { overflow-x: auto; }
-    .home-page .file-table { min-width: 745px; }
+    .home-page .file-table { min-width: 840px; }
 }
 
 .home-page .file-list-area:has(.table-wrapper.active) { border-style: dashed; }
@@ -355,7 +355,6 @@ body:has(.advanced-dialog[open]) {
 .home-page .footer-return { color: var(--workbench-accent); }
 
 @media (max-width: 360px) {
-    .home-page .file-table td:nth-child(5) { grid-area: 4 / 1 / 5 / -1; }
     .home-page .file-actions { justify-content: flex-start; }
 }
 
@@ -567,13 +566,11 @@ body:has(.advanced-dialog[open]) {
 .home-page .group-member .file-title-cell { padding-inline-start: 8px; border-inline-start: 2px solid var(--border); }
 .home-page .file-encoding { white-space: nowrap; }
 @media (max-width: 640px) {
-    .home-page .file-table td:nth-child(6) { justify-self: end; }
-    .home-page .file-group td:last-child,
-    .home-page .group-member td:nth-child(n + 5) { display: none; }
+    .home-page .file-group .col-remove,
+    .home-page .group-member :is(.col-state, .col-remove) { display: none; }
     .home-page .file-group .col-title,
     .home-page .group-member .col-title { grid-column: 1 / -1; }
 }
 @media (max-width: 460px) {
-    .home-page .file-table tr:has(.file-select) td:nth-child(5) { grid-area: 4 / 1 / 5 / -1; }
     .home-page .file-actions:has(.file-select) { justify-content: flex-start; }
 }

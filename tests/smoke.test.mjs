@@ -5,6 +5,32 @@ import vm from 'node:vm';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const defaultTitleRegex = html.match(/id="regexInput" value="([^"]+)"/)[1];
+const cleanBookTitle = vm.runInNewContext('(' + html.match(/function cleanBookTitle[\s\S]*?\n    }/)[0] + ')');
+
+test('work and cover searches can omit episode suffixes without dropping title numbers', () => {
+    const source = html.match(/function stripEpisodeSuffix[\s\S]*?\n    }/)[0];
+    const stripEpisodeSuffix = vm.runInNewContext('(' + source + ')');
+    const normalize = value => stripEpisodeSuffix(cleanBookTitle(value.trim()));
+    for (const suffix of [
+        ' 130화', ' 제 130화', ' 1-241', ' 1~241화 완결.txt', ' 1화~241화', '[1~241화 완결]', ' (130화)', ' EP.130',
+        '130화', '_130화', ' 130화.', ' １３０화', '1-130화', ' 1-303 외1-23完'
+    ]) {
+        assert.equal(normalize('테스트 작품' + suffix), '테스트 작품');
+    }
+    const filename = '로마+재벌가의+망나니+1-303+외1-23完.txt';
+    const listedTitle = cleanBookTitle(filename);
+    assert.equal(listedTitle, '로마 재벌가의 망나니 1-303 외1-23完');
+    assert.equal(stripEpisodeSuffix(listedTitle), '로마 재벌가의 망나니');
+    assert.equal(normalize(filename), '로마 재벌가의 망나니');
+    const filenameWithCredit = '천재 광대,+톱스타되다ⓒ23월 1-175+完.txt';
+    assert.equal(cleanBookTitle(filenameWithCredit), '천재 광대, 톱스타되다ⓒ23월 1-175 完');
+    assert.equal(normalize(filenameWithCredit), '천재 광대, 톱스타되다');
+    assert.equal(normalize('C++ 입문+1-175+完.txt'), 'C++ 입문');
+    for (const title of ['1984', '나 혼자 999레벨', '소설 1984', '제130화의 기억', '시즌 2', 'C++ 입문', '소설 １９８４']) {
+        assert.equal(normalize(title + '.TXT'), title);
+    }
+    assert.equal(normalize('   '), '');
+});
 
 function loadWorker(reportProgress = false) {
     const template = html.match(/const workerCode = `([\s\S]*?)`;\s*\n\s*const workerBlob/)[1];
@@ -205,7 +231,7 @@ test('adding files analyzes only new TXT files and preserves existing analysis a
     store.subscribe(() => additions++);
     const dom = { optMultiToc: { checked: true } };
     const source = html.match(/async function handleFiles[\s\S]*?(?=\n    async function validateFileById)/)[0];
-    const context = vm.createContext({ store, dom, detectFileEncoding: () => 'UTF-8',
+    const context = vm.createContext({ store, dom, cleanBookTitle, detectFileEncoding: () => 'UTF-8',
         validateFileById: async id => validated.push(id) });
     vm.runInContext(source, context);
     const file = name => ({ name, slice() { return { arrayBuffer: async () => {
@@ -359,7 +385,7 @@ test('failure to read an encoding sample preserves the row and allows later file
     const Store = loadStore();
     const store = new Store({ files: [] });
     const validated = [];
-    const context = vm.createContext({ store, dom: { optMultiToc: { checked: false } },
+    const context = vm.createContext({ store, cleanBookTitle, dom: { optMultiToc: { checked: false } },
         detectFileEncoding: () => 'CP949', validateFileById: async id => validated.push(id) });
     vm.runInContext(html.match(/async function handleFiles[\s\S]*?(?=\n    async function validateFileById)/)[0], context);
     const file = (name, fails) => ({ name, slice: () => ({ arrayBuffer: async () => {

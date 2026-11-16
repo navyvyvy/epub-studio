@@ -128,6 +128,32 @@
                 tableRemoveOne: '이 파일 삭제',
                 tableSearch: '검색',
                 tableClipboard: '클립보드',
+                workInfo: '작품 정보',
+                workLookup: '작품 조회',
+                workTitle: '작품명',
+                workNote: '제목 끝의 회차를 뺀 검색어만 외부 서비스에 전달됩니다.',
+                workSearchAction: '검색',
+                workOpen: '작품 보기',
+                workOpenSource: '{source}에서 작품 보기',
+                workSearchSource: '{source}에서 작품 검색',
+                workAverage: '출처 평균 {score}/10 · {count}곳 기준',
+                workRating: '{score}/{max} · {count}명 평가',
+                workFavorites: '선호작 {count}',
+                workLikes: '추천 {count}',
+                workCheckSource: '원문에서 확인',
+                workEnterTitle: '작품명을 입력해 주세요.',
+                workLoading: '작품 정보를 찾는 중…',
+                workFound: '공개 검색 결과 기준입니다.',
+                workNoMatches: '확인된 결과가 없습니다. 사이트에서 직접 검색해 보세요.',
+                workUnavailable: '자동 조회를 사용할 수 없습니다. 아래 링크에서 검색할 수 있습니다.',
+                workAmbiguous: '작가가 서로 다릅니다. 각 사이트에서 작품을 확인해 주세요.',
+                workSeries: '네이버 시리즈',
+                workKakao: '카카오페이지',
+                workMunpia: '문피아',
+                workJoara: '조아라',
+                workNovelpia: '노벨피아',
+                workSosul: '소설넷',
+                workRidi: '리디',
                 featureKicker: '기능 소개',
                 featureTitle: '지금 들어 있는 기능만 추려 적었습니다',
                 featureDesc: '지금 구현된 기능만 짧게 적었습니다.',
@@ -136,7 +162,7 @@
                     ['공백 정제', '불필요한 연속 빈 줄은 줄이고, 문단 사이의 여백은 너무 과하게 건드리지 않습니다.'],
                     ['목차 추출', '파일 전체에서 유효한 제목이 가장 많은 형식을 고릅니다. 회차·괄호 번호의 흐름을 확인하고, 시각·날짜 범위는 제외합니다.'],
                     ['목차 미리보기', '파일별로 제목 패턴을 바꾸거나, 회차 추가 감지로 본문에 붙어 놓친 제목을 찾을 수 있습니다. 애매한 줄은 추가 회차 후보에서 확인하고, 필요 없는 제목은 목차에서 제외할 수 있습니다.'],
-                    ['표지 적용', '제목을 검색하거나 클립보드의 이미지 URL과 이미지를 바로 붙일 수 있습니다.'],
+                    ['표지 적용과 작품 정보', '이미지를 검색하거나 클립보드에서 표지를 붙일 수 있습니다. 파일 목록의 작품 정보에서 연재처와 공개된 평점·추천 수를 확인할 수 있습니다. 두 검색 모두 제목 끝의 회차는 뺍니다.'],
                     ['인코딩 자동 감지', 'UTF-8, CP949 같은 흔한 인코딩을 자동으로 읽어들여 깨짐을 줄입니다.'],
                     ['선택한 파일 합치기', '선택한 TXT만 목록 순서대로 EPUB 하나에 넣습니다. 파일별 목차 설정은 그대로 적용하고, ZIP을 선택하면 묶음과 나머지 EPUB을 함께 받을 수 있습니다.']
                 ],
@@ -217,9 +243,9 @@
                 title: '개인정보처리방침',
                 intro: 'EPUB STUDIO는 브라우저에서 TXT 파일을 EPUB으로 바꾸는 도구입니다. 기본 변환 과정은 사용자의 기기에서 돌아가고, 파일 본문을 서버로 보내지 않는 것을 원칙으로 합니다.',
                 sections: [
-                    '이 사이트는 회원가입 없이 사용할 수 있고, 운영자가 따로 계정을 만들거나 프로필 정보를 모으는 구조도 아닙니다. 사용자가 넣는 파일명, 제목, 정규식, 클립보드 이미지, 이미지 URL은 변환에 필요한 범위에서만 브라우저 안에서 씁니다.',
+                    '회원가입이나 사용자 계정을 만들지 않습니다. 파일명, 제목, 정규식, 클립보드 이미지와 이미지 URL은 기본 변환에 필요한 범위에서 브라우저 안에서 사용합니다.',
                     'TXT 파일 내용은 브라우저가 직접 읽고, Web Worker에서 변환합니다. 기본 동작은 로컬에서 처리하며, 서버 업로드는 하지 않습니다. 다만 브라우저가 외부 서비스에 요청을 보내는 기능은 있을 수 있습니다.',
-                    'JSZip과 jschardet는 cdnjs CDN에서 불러오고, 표지 검색과 클립보드 기능, 그리고 AdSense 광고 스크립트를 불러올 때 브라우저가 외부 요청을 보낼 수 있습니다. 이런 요청은 각 서비스와 브라우저 권한 설정에 따라 달라질 수 있습니다.',
+                    'CDN, 표지 검색, 클립보드, 광고 기능은 외부 요청을 보낼 수 있습니다. 작품 정보 조회 시에는 검색어만 조회 서버와 검색 대상 사이트에 전달하며, TXT 본문은 보내지 않습니다.',
                     '지금 구조에서는 원문 파일을 서버에 저장하지 않고, 브라우저 밖으로 오래 보관하는 방식도 쓰지 않습니다. 브라우저를 닫거나 새로고침하면 로컬 상태는 초기화될 수 있습니다.',
                     '개인정보 처리와 관련해 궁금한 점이 있으면 아래 문의처로 연락해 주세요.'
                 ],
@@ -367,6 +393,32 @@
                 tableRemoveOne: 'Remove this file',
                 tableSearch: 'Search',
                 tableClipboard: 'Clipboard',
+                workInfo: 'Work info',
+                workLookup: 'Look up',
+                workTitle: 'Title',
+                workNote: 'Only the title is sent to external services, without trailing episode numbers.',
+                workSearchAction: 'Search',
+                workOpen: 'Open work',
+                workOpenSource: 'Open the work on {source}',
+                workSearchSource: 'Search on {source}',
+                workAverage: 'Source average: {score}/10 ({count} sources)',
+                workRating: '{score}/{max} · {count} ratings',
+                workFavorites: '{count} favorites',
+                workLikes: '{count} recommendations',
+                workCheckSource: 'Check on source site',
+                workEnterTitle: 'Enter a work title.',
+                workLoading: 'Looking up the work…',
+                workFound: 'Based on public search results.',
+                workNoMatches: 'No confirmed matches. Try searching the sites below.',
+                workUnavailable: 'Automatic lookup is unavailable. Use the links below to search.',
+                workAmbiguous: 'The authors differ. Check the work on each site.',
+                workSeries: 'Naver Series',
+                workKakao: 'KakaoPage',
+                workMunpia: 'Munpia',
+                workJoara: 'Joara',
+                workNovelpia: 'Novelpia',
+                workSosul: 'Sosulnet',
+                workRidi: 'Ridi',
                 featureKicker: 'Features',
                 featureTitle: 'A quick summary of what is included',
                 featureDesc: 'Only the features currently implemented are listed here.',
@@ -375,7 +427,7 @@
                     ['Whitespace cleanup', 'Reduce meaningless empty lines while keeping the spacing needed for paragraph breaks.'],
                     ['Table of contents extraction', 'Choose the format with the most valid titles across the file. Check chapter and part sequences while excluding clock times and date ranges.'],
                     ['TOC preview', 'Switch title patterns per file and find more chapter headings joined to body text. Review additional candidates and exclude titles you do not want in the TOC.'],
-                    ['Cover application', 'Search for a cover image or apply an image URL or clipboard image right away.'],
+                    ['Covers and work info', 'Search for a cover or paste one from the clipboard. Use the Work info column to find publishing platforms and see published ratings and recommendation counts. Both searches omit trailing episode numbers.'],
                     ['Automatic encoding detection', 'Automatically detects common encodings such as UTF-8 and CP949 to reduce read failures.'],
                     ['Merge selected files', 'Combine selected TXT files into one EPUB in list order without changing their TOC settings. The ZIP option packages merged and standalone EPUBs together.']
                 ],
@@ -456,9 +508,9 @@
                 title: 'Privacy Policy',
                 intro: 'EPUB STUDIO is a browser-based tool for converting TXT files to EPUB. The default conversion flow runs on your device, and the original file contents are not sent to a server.',
                 sections: [
-                    'The site does not require sign-up and does not create user accounts or collect profile information. File names, titles, custom regex values, clipboard images, or image URLs are only used inside the browser for conversion features.',
+                    'The site does not require sign-up or create user accounts. Default conversion uses file names, titles, custom regex values, clipboard images, and image URLs in the browser.',
                     'TXT contents are read directly by the browser and converted through a Web Worker. In other words, the default behavior is local processing and does not assume server uploads. Some external requests may still occur when the browser uses third-party services.',
-                    'JSZip and jschardet are loaded from the cdnjs CDN. Cover search and clipboard-related features, as well as AdSense scripts, may cause the browser to send external requests. Those requests are subject to the service and browser permission settings.',
+                    'The CDN, cover search, clipboard tools, and advertising may make external requests. Work lookup sends only the search term to the lookup server and the search sites, never the TXT contents.',
                     'The current structure does not store the original file on a server and does not keep long-term storage outside the browser by default. Closing the browser or refreshing the page can reset local state.',
                     'For privacy-related questions, please contact the address below.'
                 ],
@@ -728,6 +780,11 @@
     }
 
     function applyIndexText() {
+        setText('#workDialogTitle', 'workInfo');
+        setText('#workSearchLabel', 'workTitle');
+        setText('#workNote', 'workNote');
+        setButton('workSearchBtn', 'workSearchAction');
+        setButton('workCloseBtn', 'previewClose');
         setText('.tool-section .hero-kicker', 'heroKicker');
         setText('.tool-section .section-title', 'heroTitle');
         setNthText('.tool-section .section-headline > p', 1, 'heroDesc');
@@ -767,7 +824,7 @@
         if (repairToggle) repairToggle.title = getString('previewRepairTitle');
         setButton('previewCloseBtn', 'previewClose');
         setText('#previewList .preview-empty', 'previewEmpty');
-        setOrdered('.file-table thead th', ['tableTitle', 'tableCover', 'tableEncoding', 'tableDetect', 'tableState']);
+        setOrdered('.file-table thead th', ['tableTitle', 'tableCover', 'workInfo', 'tableEncoding', 'tableDetect', 'tableState']);
         const clearAllButton = document.getElementById('clearAllBtn');
         if (clearAllButton) {
             setButton('clearAllBtn', 'resetList');

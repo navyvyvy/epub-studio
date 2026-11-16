@@ -27,7 +27,7 @@
     <!-- 외부 라이브러리 로드 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jschardet/3.0.0/jschardet.min.js"></script>
-    <script src="./i18n.js?v=20261108-3"></script>
+    <script src="./i18n.js?v=20261116-3"></script>
     <link rel="stylesheet" href="./site-shared.css?v=20261030-3">
     <link rel="stylesheet" href="./ui-buttons.css?v=20261107-1">
     <style>
@@ -50,8 +50,8 @@
             scroll-padding-top: var(--snap-offset);
         }
 
-        html:has(.preview-dialog[open]),
-        body:has(.preview-dialog[open]) {
+        html:has(.preview-dialog[open], .work-dialog[open]),
+        body:has(.preview-dialog[open], .work-dialog[open]) {
             overflow: hidden;
         }
 
@@ -286,6 +286,42 @@
 
         .title-input { background: none; border: none; color: var(--text); width: 100%; outline: none; font-size: 0.75rem; }
         .cover-btn-group { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+        .file-table .col-work { white-space: nowrap; }
+        .work-panel {
+            padding: clamp(16px, 4vw, 32px);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--card);
+            color: var(--text);
+        }
+        .work-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .work-header h2 { margin: 0; font-size: 1.2rem; }
+        .work-search > div, .work-sources li { display: flex; align-items: center; gap: 8px; }
+        .work-sources li { justify-content: space-between; }
+        .work-search { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin-top: 16px; }
+        .work-search input {
+            flex: 1;
+            min-width: 0;
+            height: 32px;
+            padding: 0 8px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg);
+            color: var(--text);
+            font: inherit;
+        }
+        .work-note, .work-status, .work-sources { font-size: 0.875rem; }
+        .work-status:empty { margin: 0; }
+        .work-note { overflow-wrap: anywhere; }
+        .work-note, .work-status, .work-platform-meta { color: var(--text-dim); }
+        .work-status, .work-average { margin: 12px 0; }
+        .work-average { color: var(--accent); font-weight: 700; }
+        .work-sources { padding: 0; margin: 0; list-style: none; }
+        .work-sources li { flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--border); }
+        .work-platform-name { min-width: 0; overflow-wrap: anywhere; }
+        .work-platform-meta { display: block; }
+        .work-sources a { text-decoration: none; }
+        .work-sources a:hover { border-color: var(--accent); }
         .btn-cover.active { background: var(--tone-rgba-34-197-94-0-15); border-color: var(--success); color: var(--success); }
         .home-page .status-badge:disabled { opacity: 1; cursor: default; }
         .badge-done { background: var(--tone-rgba-34-197-94-0-15); color: var(--success); border: 1px solid var(--success); }
@@ -420,6 +456,7 @@
             background: var(--tone-rgba-2-6-23-0-7);
             backdrop-filter: blur(8px);
         }
+        .work-dialog { width: min(480px, calc(100% - 24px)); max-height: calc(100dvh - 24px); }
 
         .preview-dialog[data-preview-state="hit"] .preview-panel {
             border-color: var(--tone-rgba-34-197-94-0-7);
@@ -1650,12 +1687,13 @@
                 text-align: left;
             }
 
-            .home-page .file-table td:nth-child(1) { grid-area: 1 / 1; }
-            .home-page .file-table td:nth-child(2) { grid-area: 2 / 1; }
-            .home-page .file-table td:nth-child(3) { grid-area: 2 / 2; }
-            .home-page .file-table td:nth-child(4) { grid-area: 3 / 1; }
-            .home-page .file-table td:nth-child(5) { grid-area: 3 / 2; }
-            .home-page .file-table td:nth-child(6) { grid-area: 1 / 2; }
+            .home-page .file-table td.col-title { grid-area: 1 / 1; }
+            .home-page .file-table td.col-cover { grid-area: 2 / 1; }
+            .home-page .file-table td.col-work { grid-area: 2 / 2; justify-self: end; }
+            .home-page .file-table td.file-encoding { grid-area: 3 / 2; align-self: center; justify-self: end; }
+            .home-page .file-table td.col-detect { grid-area: 3 / 1; }
+            .home-page .file-table td.col-state { grid-area: 4 / 1 / 5 / -1; }
+            .home-page .file-table td.col-remove { grid-area: 1 / 2; justify-self: end; }
 
             .home-page .cover-btn-group,
             .home-page .detect-cell {
@@ -1663,7 +1701,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="./hallmark-workspace.css?v=20261107-3">
+    <link rel="stylesheet" href="./hallmark-workspace.css?v=20261116-1">
 </head>
 <body class="home-page">
 
@@ -1777,6 +1815,28 @@
         </div>
     </dialog>
 
+    <dialog class="preview-dialog work-dialog" id="workDialog" aria-labelledby="workDialogTitle">
+        <div class="work-panel">
+            <div class="work-header">
+                <h2 id="workDialogTitle">작품 정보</h2>
+                <form method="dialog">
+                    <button type="submit" id="workCloseBtn" class="ui-button ui-button--compact">닫기</button>
+                </form>
+            </div>
+            <form class="work-search" id="workSearch">
+                <label for="workTitle" id="workSearchLabel">작품명</label>
+                <div>
+                    <input type="search" id="workTitle" maxlength="120" aria-describedby="workNote" required autofocus>
+                    <button type="submit" id="workSearchBtn" class="ui-button">검색</button>
+                </div>
+                <small class="work-note" id="workNote">제목 끝의 회차를 뺀 검색어만 외부 서비스에 전달됩니다.</small>
+            </form>
+            <p class="work-status" id="workStatus" role="status"></p>
+            <p class="work-average" id="workAverage" hidden></p>
+            <ul class="work-sources" id="workSources"></ul>
+        </div>
+    </dialog>
+
     <div class="file-list-area" id="dropZone" tabindex="0" role="group" aria-label="파일 추가" aria-describedby="fileAddHint">
         <div class="merge-toolbar" id="mergeToolbar" hidden>
             <span id="mergeSelection" aria-live="polite"></span>
@@ -1788,6 +1848,7 @@
                     <colgroup>
                         <col style="width: auto;">
                         <col style="width: 145px;">
+                        <col style="width: 95px;">
                         <col style="width: 85px;">
                         <col style="width: 155px;">
                         <col style="width: 205px;">
@@ -1797,6 +1858,7 @@
                         <tr>
                             <th class="col-title">도서 제목</th>
                             <th>표지 설정</th>
+                            <th class="col-work">작품 정보</th>
                             <th>인코딩</th>
                             <th>감지</th>
                             <th>상태</th>
@@ -1850,8 +1912,8 @@
                     <p>파일별로 제목 패턴을 바꾸거나, 회차 추가 감지로 본문에 붙어 놓친 제목을 찾을 수 있습니다. 애매한 줄은 추가 회차 후보에서 확인하고, 필요 없는 제목은 목차에서 제외할 수 있습니다.</p>
                 </article>
                 <article class="feature-card" data-reveal>
-                    <h3>표지 설정</h3>
-                    <p>제목을 검색하거나 클립보드에 있는 이미지와 이미지 URL을 표지로 붙일 수 있습니다.</p>
+                    <h3>표지 적용과 작품 정보</h3>
+                    <p>이미지를 검색하거나 클립보드에서 표지를 붙일 수 있습니다. 파일 목록의 작품 정보에서 연재처와 공개된 평점·추천 수를 확인할 수 있습니다. 두 검색 모두 제목 끝의 회차는 뺍니다.</p>
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>인코딩 자동 감지</h3>
@@ -1907,7 +1969,7 @@
                 <div class="privacy-accordion" data-reveal>
                     <article class="privacy-item">
                         <h3>1. 수집하는 정보</h3>
-                        <p>회원가입이나 사용자 계정을 만들지 않습니다. 파일명, 제목, 정규식, 클립보드 이미지와 이미지 URL은 변환 기능에 필요한 범위에서만 브라우저 안에서 사용합니다.</p>
+                        <p>회원가입이나 사용자 계정을 만들지 않습니다. 파일명, 제목, 정규식, 클립보드 이미지와 이미지 URL은 기본 변환에 필요한 범위에서 브라우저 안에서 사용합니다.</p>
                     </article>
                     <article class="privacy-item">
                         <h3>2. 파일 처리 방식</h3>
@@ -1915,7 +1977,7 @@
                     </article>
                     <article class="privacy-item">
                         <h3>3. 외부 서비스</h3>
-                        <p>JSZip과 jschardet CDN, 표지 검색, 클립보드 기능, AdSense 광고를 사용할 때 브라우저에서 외부 요청이 발생할 수 있습니다.</p>
+                        <p>CDN, 표지 검색, 클립보드, 광고 기능은 외부 요청을 보낼 수 있습니다. 작품 정보 조회 시에는 검색어만 조회 서버와 검색 대상 사이트에 전달하며, TXT 본문은 보내지 않습니다.</p>
                     </article>
                     <article class="privacy-item">
                         <h3>4. 보관 및 삭제</h3>
@@ -2058,6 +2120,128 @@
         });
         return element;
     }
+
+    const workPlatforms = [
+        ['series', 'workSeries', title => 'https://series.naver.com/search/search.series?t=all&fs=novel&q=' + title],
+        ['kakao', 'workKakao', title => 'https://page.kakao.com/search/result?categoryUid=0&keyword=' + title],
+        ['munpia', 'workMunpia', title => 'https://mm.munpia.com/?action=search&menu=detailSearchV2&searchKey=all&keyword=' + title],
+        ['joara', 'workJoara', title => 'https://www.google.com/search?q=site%3Ajoara.com%20' + title],
+        ['novelpia', 'workNovelpia', title => 'https://www.google.com/search?q=site%3Anovelpia.com%20' + title],
+        ['sosul', 'workSosul', title => 'https://ssn.so/series/?keyword=' + title],
+        ['ridi', 'workRidi', title => 'https://ridibooks.com/search?q=' + title]
+    ];
+    const workDialog = document.getElementById('workDialog');
+    const workTitle = document.getElementById('workTitle');
+    let workRequest;
+    let workResult;
+
+    function renderWorkInfo() {
+        const t = window.EPUB_STUDIO_I18N.t;
+        const { title, status, matches } = workResult;
+        const encoded = encodeURIComponent(title);
+        const locale = window.EPUB_STUDIO_I18N.lang;
+        const format = number => new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(number);
+        const authors = new Set(matches.map(item => item.author.normalize('NFKC').replace(/\s+/g, '').toLowerCase()));
+        const conflict = authors.size > 1;
+        const scores = conflict ? [] : matches.filter(item => item.score && item.max);
+        const average = document.getElementById('workAverage');
+        average.hidden = !scores.length;
+        average.textContent = scores.length ? t('workAverage', {
+            score: (scores.reduce((sum, item) => sum + item.score / item.max * 10, 0) / scores.length).toFixed(1),
+            count: scores.length
+        }) : '';
+        document.getElementById('workStatus').textContent = t(conflict ? 'workAmbiguous' : status);
+        document.getElementById('workSources').replaceChildren(...(title ? workPlatforms : []).map(([id, label, search]) => {
+            const item = !conflict && matches.find(match => match.id === id);
+            const stats = [];
+            if (item?.score) stats.push(t('workRating', { score: format(item.score), max: item.max, count: format(item.votes) }));
+            if (item && item.favorites !== undefined) stats.push(t('workFavorites', { count: format(item.favorites) }));
+            if (item && item.likes !== undefined) stats.push(t('workLikes', { count: format(item.likes) }));
+            if (item?.author) stats.unshift(item.author);
+            const link = el('a', { className: 'ui-button ui-button--compact', href: item?.url || search(encoded),
+                target: '_blank', rel: 'noopener noreferrer', 'aria-label': t(item ? 'workOpenSource' : 'workSearchSource', { source: t(label) }) },
+                t(item ? 'workOpen' : 'workSearchAction'));
+            return el('li', {}, el('div', { className: 'work-platform-name' },
+                el('strong', {}, t(label)), el('span', { className: 'work-platform-meta' }, stats.join(' · ') || t('workCheckSource'))), link);
+        }));
+    }
+
+    function cleanBookTitle(value) {
+        return value.replace(/\.txt$/i, '').replace(/(?<=[^\s+])\+(?=[^\s+])/g, ' ');
+    }
+
+    function stripEpisodeSuffix(value) {
+        const title = value.trim();
+        const digits = '[0-9０-９]+';
+        const number = String.raw`(?:제\s*)?${digits}`;
+        const unit = String.raw`\s*[화편장]`;
+        const rangeStart = String.raw`${number}(?:${unit})?\s*[-~～–—]\s*`;
+        const range = String.raw`${rangeStart}${number}(?:${unit})?`;
+        const marked = String.raw`(?:${rangeStart})?${number}${unit}`;
+        const extra = String.raw`(?:[\s_+]+(?:외전?|번외)\s*(?:${range}|${number}(?:${unit})?))*`;
+        const ending = String.raw`\s*(?:완결|完)?\s*[)\]]?(?:\s*(?:완결|完|\[(?:완결|完)\]))?\s*[.!?。！？]?$`;
+        const suffix = new RegExp(String.raw`(?:(?:[\s_+]*[(\[]\s*|[\s_+]+)(?:${range}|${marked}|ep(?:isode)?\.?\s*${digits})|${marked})${extra}${ending}`, 'iu');
+        const withoutEpisodes = title.replace(suffix, '');
+        if (withoutEpisodes === title) return title;
+        return withoutEpisodes.replace(/\s*ⓒ\s*[\p{L}\p{N}_.-]+$/u, '').trimEnd() || title;
+    }
+
+    async function lookupWorkInfo(value) {
+        const title = stripEpisodeSuffix(value).slice(0, 120);
+        workTitle.value = title;
+        workRequest?.abort();
+        if (!title) {
+            workRequest = null;
+            workResult = { title, status: 'workEnterTitle', matches: [] };
+            renderWorkInfo();
+            return;
+        }
+        const request = new AbortController();
+        workRequest = request;
+        workResult = { title, status: 'workLoading', matches: [] };
+        renderWorkInfo();
+        let timeout;
+        try {
+            if (location.protocol === 'file:') throw new Error('Lookup server unavailable');
+            timeout = setTimeout(() => request.abort(), 7000);
+            const response = await fetch('/api/work-info', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }), signal: request.signal
+            });
+            if (!response.ok) throw new Error('Lookup unavailable');
+            const { matches } = await response.json();
+            if (!Array.isArray(matches)) throw new Error('Invalid lookup response');
+            if (workRequest !== request || !workDialog.open) return;
+            workResult = { title, status: matches.length ? 'workFound' : 'workNoMatches', matches };
+            renderWorkInfo();
+        } catch {
+            if (workRequest !== request || !workDialog.open) return;
+            workResult = { title, status: 'workUnavailable', matches: [] };
+            renderWorkInfo();
+        } finally {
+            clearTimeout(timeout);
+        }
+    }
+
+    document.getElementById('workSearch').onsubmit = event => {
+        event.preventDefault();
+        lookupWorkInfo(cleanBookTitle(workTitle.value.trim()));
+    };
+    workDialog.addEventListener('click', event => {
+        if (event.target === workDialog) workDialog.close();
+    });
+    workDialog.addEventListener('keydown', event => {
+        if (event.key !== 'Escape' || event.isComposing) return;
+        event.preventDefault();
+        workDialog.close();
+    });
+    workDialog.addEventListener('close', () => {
+        if (workDialog.open) return;
+        workRequest?.abort();
+        workRequest = null;
+    });
+    window.addEventListener('epub-langchange', () => {
+        if (workDialog.open && workResult) renderWorkInfo();
+    });
 
     function triggerDownload(blob, filename) {
         const url = URL.createObjectURL(blob);
@@ -2768,23 +2952,35 @@
                 }
             }, t('groupRelease')) : null;
             if (ungroup) ungroup.disabled = store.state.isProcessing;
+            const workButton = el('button', { type: 'button', className: 'ui-button ui-button--compact btn-work-lookup',
+                'aria-haspopup': 'dialog', 'aria-controls': 'workDialog', title: t('workInfo'),
+                onClick: () => {
+                    lookupWorkInfo(titleInput.value);
+                    workDialog.showModal();
+                }
+            }, t('workLookup'));
+            workButton.disabled = store.state.isProcessing;
             const row = el('tr', { className: group ? 'file-group' : member ? 'group-member' : '' },
                 el('td', { className: 'col-title' }, el('div', { className: 'file-title-cell' },
                     group ? el('span', { className: 'group-label' }, t('groupLabel')) : null, titleInput)),
-                el('td', {},
+                el('td', { className: 'col-cover' },
                     el('div', { className: 'cover-btn-group' },
-                        el('button', { className: 'ui-button ui-button--compact btn-cover', onClick: () => window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(item.customTitle)}`, '_blank', 'noopener,noreferrer') }, window.EPUB_STUDIO_I18N.t('tableSearch')),
-                        el('button', { className: 'ui-button ui-button--compact btn-cover' + (hasCover ? ' active' : ''), onClick: () => readClipboardImage(coverId) }, window.EPUB_STUDIO_I18N.t('tableClipboard'))
+                        el('button', { className: 'ui-button ui-button--compact btn-cover', onClick: () => {
+                            const title = stripEpisodeSuffix(titleInput.value);
+                            if (title) window.open('https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(title), '_blank', 'noopener,noreferrer');
+                        } }, t('tableSearch')),
+                        el('button', { className: 'ui-button ui-button--compact btn-cover' + (hasCover ? ' active' : ''), onClick: () => readClipboardImage(coverId) }, t('tableClipboard'))
                     )
                 ),
+                el('td', { className: 'col-work' }, workButton),
                 el('td', { className: 'file-encoding' }, group ? t('groupFileCount', { count: item.sources.length }) : item.encoding),
-                el('td', {},
+                el('td', { className: 'col-detect' },
                     el('div', { className: 'detect-cell' },
                         ...(group ? [toggle, ungroup] : [multiToggle, detectBtn])
                     )
                 ),
-                el('td', {}, member ? null : el('div', { className: 'file-actions' }, statusBtn, selectButton, singleConvertBtn)),
-                el('td', {}, selectButton ? removeBtn : null)
+                el('td', { className: 'col-state' }, member ? null : el('div', { className: 'file-actions' }, statusBtn, selectButton, singleConvertBtn)),
+                el('td', { className: 'col-remove' }, selectButton ? removeBtn : null)
             );
             row.querySelectorAll('.btn-cover').forEach(button => { button.disabled = store.state.isProcessing; });
             dom.fileTbody.appendChild(row);
@@ -3968,7 +4164,7 @@
             newFiles.push({
                 id: Date.now()+'-'+Math.random(),
                 file,
-                customTitle: file.name.replace(/\.[^/.]+$/, "").replace(/(?<=[가-힣\w])\+(?=[가-힣\w])/g, ' '),
+                customTitle: cleanBookTitle(file.name),
                 encoding: enc,
                 useMultiToc,
                 repairLineBreaks: false,
