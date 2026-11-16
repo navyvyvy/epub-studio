@@ -131,7 +131,6 @@
                 workInfo: '작품 정보',
                 workLookup: '작품 조회',
                 workTitle: '작품명',
-                workNote: '제목 끝의 회차를 뺀 검색어만 외부 서비스에 전달됩니다.',
                 workSearchAction: '검색',
                 workOpen: '작품 보기',
                 workOpenSource: '{source}에서 작품 보기',
@@ -396,7 +395,6 @@
                 workInfo: 'Work info',
                 workLookup: 'Look up',
                 workTitle: 'Title',
-                workNote: 'Only the title is sent to external services, without trailing episode numbers.',
                 workSearchAction: 'Search',
                 workOpen: 'Open work',
                 workOpenSource: 'Open the work on {source}',
@@ -782,7 +780,6 @@
     function applyIndexText() {
         setText('#workDialogTitle', 'workInfo');
         setText('#workSearchLabel', 'workTitle');
-        setText('#workNote', 'workNote');
         setButton('workSearchBtn', 'workSearchAction');
         setButton('workCloseBtn', 'previewClose');
         setText('.tool-section .hero-kicker', 'heroKicker');

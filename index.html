@@ -27,7 +27,7 @@
     <!-- 외부 라이브러리 로드 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jschardet/3.0.0/jschardet.min.js"></script>
-    <script src="./i18n.js?v=20261116-3"></script>
+    <script src="./i18n.js?v=20261116-4"></script>
     <link rel="stylesheet" href="./site-shared.css?v=20261030-3">
     <link rel="stylesheet" href="./ui-buttons.css?v=20261107-1">
     <style>
@@ -310,10 +310,9 @@
             color: var(--text);
             font: inherit;
         }
-        .work-note, .work-status, .work-sources { font-size: 0.875rem; }
+        .work-status, .work-sources { font-size: 0.875rem; }
         .work-status:empty { margin: 0; }
-        .work-note { overflow-wrap: anywhere; }
-        .work-note, .work-status, .work-platform-meta { color: var(--text-dim); }
+        .work-status, .work-platform-meta { color: var(--text-dim); }
         .work-status, .work-average { margin: 12px 0; }
         .work-average { color: var(--accent); font-weight: 700; }
         .work-sources { padding: 0; margin: 0; list-style: none; }
@@ -1826,10 +1825,9 @@
             <form class="work-search" id="workSearch">
                 <label for="workTitle" id="workSearchLabel">작품명</label>
                 <div>
-                    <input type="search" id="workTitle" maxlength="120" aria-describedby="workNote" required autofocus>
+                    <input type="search" id="workTitle" maxlength="120" required autofocus>
                     <button type="submit" id="workSearchBtn" class="ui-button">검색</button>
                 </div>
-                <small class="work-note" id="workNote">제목 끝의 회차를 뺀 검색어만 외부 서비스에 전달됩니다.</small>
             </form>
             <p class="work-status" id="workStatus" role="status"></p>
             <p class="work-average" id="workAverage" hidden></p>
@@ -2126,9 +2124,9 @@
         ['kakao', 'workKakao', title => 'https://page.kakao.com/search/result?categoryUid=0&keyword=' + title],
         ['munpia', 'workMunpia', title => 'https://mm.munpia.com/?action=search&menu=detailSearchV2&searchKey=all&keyword=' + title],
         ['joara', 'workJoara', title => 'https://www.google.com/search?q=site%3Ajoara.com%20' + title],
+        ['ridi', 'workRidi', title => 'https://ridibooks.com/search?q=' + title],
         ['novelpia', 'workNovelpia', title => 'https://www.google.com/search?q=site%3Anovelpia.com%20' + title],
-        ['sosul', 'workSosul', title => 'https://ssn.so/series/?keyword=' + title],
-        ['ridi', 'workRidi', title => 'https://ridibooks.com/search?q=' + title]
+        ['sosul', 'workSosul', title => 'https://ssn.so/series/?keyword=' + title]
     ];
     const workDialog = document.getElementById('workDialog');
     const workTitle = document.getElementById('workTitle');
@@ -2179,7 +2177,8 @@
         const range = String.raw`${rangeStart}${number}(?:${unit})?`;
         const marked = String.raw`(?:${rangeStart})?${number}${unit}`;
         const extra = String.raw`(?:[\s_+]+(?:외전?|번외)\s*(?:${range}|${number}(?:${unit})?))*`;
-        const ending = String.raw`\s*(?:완결|完)?\s*[)\]]?(?:\s*(?:완결|完|\[(?:완결|完)\]))?\s*[.!?。！？]?$`;
+        const complete = '(?:완(?:결)?|完)';
+        const ending = String.raw`\s*${complete}?\s*[)\]]?(?:\s*(?:${complete}|\[${complete}\]))?\s*[.!?。！？]?$`;
         const suffix = new RegExp(String.raw`(?:(?:[\s_+]*[(\[]\s*|[\s_+]+)(?:${range}|${marked}|ep(?:isode)?\.?\s*${digits})|${marked})${extra}${ending}`, 'iu');
         const withoutEpisodes = title.replace(suffix, '');
         if (withoutEpisodes === title) return title;
@@ -2190,9 +2189,9 @@
         const title = stripEpisodeSuffix(value).slice(0, 120);
         workTitle.value = title;
         workRequest?.abort();
-        if (!title) {
+        if (!title || location.protocol === 'file:') {
             workRequest = null;
-            workResult = { title, status: 'workEnterTitle', matches: [] };
+            workResult = { title, status: title ? 'workUnavailable' : 'workEnterTitle', matches: [] };
             renderWorkInfo();
             return;
         }
@@ -2202,7 +2201,6 @@
         renderWorkInfo();
         let timeout;
         try {
-            if (location.protocol === 'file:') throw new Error('Lookup server unavailable');
             timeout = setTimeout(() => request.abort(), 7000);
             const response = await fetch('/api/work-info', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }), signal: request.signal

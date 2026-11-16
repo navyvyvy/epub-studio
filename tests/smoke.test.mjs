@@ -26,7 +26,10 @@ test('work and cover searches can omit episode suffixes without dropping title n
     assert.equal(cleanBookTitle(filenameWithCredit), '천재 광대, 톱스타되다ⓒ23월 1-175 完');
     assert.equal(normalize(filenameWithCredit), '천재 광대, 톱스타되다');
     assert.equal(normalize('C++ 입문+1-175+完.txt'), 'C++ 입문');
-    for (const title of ['1984', '나 혼자 999레벨', '소설 1984', '제130화의 기억', '시즌 2', 'C++ 입문', '소설 １９８４']) {
+    for (const suffix of [' 1-149완', ' 1-149[완]', ' [1-149 완]']) {
+        assert.equal(normalize('탑매니저 김강호' + suffix + '.txt'), '탑매니저 김강호');
+    }
+    for (const title of ['1984', '나 혼자 999레벨', '소설 1984', '제130화의 기억', '시즌 2', 'C++ 입문', '소설 １９８４', '김강완']) {
         assert.equal(normalize(title + '.TXT'), title);
     }
     assert.equal(normalize('   '), '');
