@@ -2176,13 +2176,10 @@
         const rangeStart = String.raw`${number}(?:${unit})?\s*[-~～–—]\s*`;
         const range = String.raw`${rangeStart}${number}(?:${unit})?`;
         const marked = String.raw`(?:${rangeStart})?${number}${unit}`;
-        const extra = String.raw`(?:[\s_+]+(?:외전?|번외)\s*(?:${range}|${number}(?:${unit})?))*`;
-        const complete = '(?:완(?:결)?|完)';
-        const ending = String.raw`\s*${complete}?\s*[)\]]?(?:\s*(?:${complete}|\[${complete}\]))?\s*[.!?。！？]?$`;
-        const suffix = new RegExp(String.raw`(?:(?:[\s_+]*[(\[]\s*|[\s_+]+)(?:${range}|${marked}|ep(?:isode)?\.?\s*${digits})|${marked})${extra}${ending}`, 'iu');
-        const withoutEpisodes = title.replace(suffix, '');
-        if (withoutEpisodes === title) return title;
-        return withoutEpisodes.replace(/\s*ⓒ\s*[\p{L}\p{N}_.-]+$/u, '').trimEnd() || title;
+        const episode = new RegExp(String.raw`(?:(?:[\s_+]*[(\[]\s*|[\s_+]+)(?:${range}|${marked}|ep(?:isode)?\.?\s*${digits})|${marked})`, 'iu');
+        const start = title.search(episode);
+        if (start < 0) return title;
+        return title.slice(0, start).replace(/\s*ⓒ\s*[\p{L}\p{N}_.-]+$/u, '').trimEnd() || title;
     }
 
     async function lookupWorkInfo(value) {

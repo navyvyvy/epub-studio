@@ -29,6 +29,19 @@ test('work and cover searches can omit episode suffixes without dropping title n
     for (const suffix of [' 1-149완', ' 1-149[완]', ' [1-149 완]']) {
         assert.equal(normalize('탑매니저 김강호' + suffix + '.txt'), '탑매니저 김강호');
     }
+    assert.equal(normalize('미국 남부의 악덕 대지주가 되었다 1-591본편 및 외전 完, 위키 포함@폭식마왕'),
+        '미국 남부의 악덕 대지주가 되었다');
+    for (const suffix of [
+        ' 1-591본편 및 외전 完, 위키 포함@작가',
+        ' 130화 뒤에 어떤 설명이 붙어도',
+        ' １３０화 본편 및 외전',
+        ' 1화~591화 추가 자료 포함',
+        ' [1-591 본편 및 외전] 부록',
+        ' (130화) 별도 안내',
+        ' EP.130 complete and extras'
+    ]) {
+        assert.equal(normalize('테스트 작품' + suffix), '테스트 작품');
+    }
     for (const title of ['1984', '나 혼자 999레벨', '소설 1984', '제130화의 기억', '시즌 2', 'C++ 입문', '소설 １９８４', '김강완']) {
         assert.equal(normalize(title + '.TXT'), title);
     }
