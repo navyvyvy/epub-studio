@@ -2122,10 +2122,10 @@
     const workPlatforms = [
         ['series', 'workSeries', title => 'https://series.naver.com/search/search.series?t=all&fs=novel&q=' + title],
         ['kakao', 'workKakao', title => 'https://page.kakao.com/search/result?categoryUid=0&keyword=' + title],
-        ['munpia', 'workMunpia', title => 'https://mm.munpia.com/?action=search&menu=detailSearchV2&searchKey=all&keyword=' + title],
-        ['joara', 'workJoara', title => 'https://www.google.com/search?q=site%3Ajoara.com%20' + title],
+        ['munpia', 'workMunpia', title => 'https://www.munpia.com/search?query=' + title],
+        ['joara', 'workJoara', title => 'https://www.joara.com/search?target=subject&word=' + title],
         ['ridi', 'workRidi', title => 'https://ridibooks.com/search?q=' + title],
-        ['novelpia', 'workNovelpia', title => 'https://www.google.com/search?q=site%3Anovelpia.com%20' + title],
+        ['novelpia', 'workNovelpia', title => 'https://novelpia.com/search/all//1/' + title + '?page=1&rows=30'],
         ['sosul', 'workSosul', title => 'https://ssn.so/series/?keyword=' + title]
     ];
     const workDialog = document.getElementById('workDialog');

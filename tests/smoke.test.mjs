@@ -48,6 +48,36 @@ test('work and cover searches can omit episode suffixes without dropping title n
     assert.equal(normalize('   '), '');
 });
 
+test('work search links open each platform and preserve the search title', () => {
+    const source = html.match(/const workPlatforms = (\[[\s\S]*?\n    \]);/)[1];
+    const platforms = vm.runInNewContext(source);
+    const title = '로마 재벌가의 망나니 & C++ / #1?';
+    const expected = {
+        series: ['series.naver.com', '/search/search.series', 'q'],
+        kakao: ['page.kakao.com', '/search/result', 'keyword'],
+        munpia: ['www.munpia.com', '/search', 'query'],
+        joara: ['www.joara.com', '/search', 'word'],
+        ridi: ['ridibooks.com', '/search', 'q'],
+        novelpia: ['novelpia.com', '/search/all//1/'],
+        sosul: ['ssn.so', '/series/', 'keyword']
+    };
+    assert.deepEqual(Array.from(platforms, ([id]) => id), Object.keys(expected));
+    for (const [id, , search] of platforms) {
+        const url = new URL(search(encodeURIComponent(title)));
+        const [host, path, key] = expected[id];
+        assert.equal(url.hostname, host, id);
+        assert.equal(url.hash, '', id);
+        if (key) {
+            assert.equal(url.pathname, path, id);
+            assert.equal(url.searchParams.get(key), title, id);
+        } else {
+            assert.equal(decodeURIComponent(url.pathname.slice(path.length)), title, id);
+            assert.equal(url.searchParams.get('page'), '1');
+            assert.equal(url.searchParams.get('rows'), '30');
+        }
+    }
+});
+
 function loadWorker(reportProgress = false) {
     const template = html.match(/const workerCode = `([\s\S]*?)`;\s*\n\s*const workerBlob/)[1];
     const source = Function(`return \`${template}\`;`)();
