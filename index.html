@@ -27,7 +27,7 @@
     <!-- 외부 라이브러리 로드 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jschardet/3.0.0/jschardet.min.js"></script>
-    <script src="./i18n.js?v=20261116-4"></script>
+    <script src="./i18n.js?v=20261126-1"></script>
     <link rel="stylesheet" href="./site-shared.css?v=20261030-3">
     <link rel="stylesheet" href="./ui-buttons.css?v=20261107-1">
     <style>
@@ -1895,7 +1895,7 @@
             <div class="feature-grid">
                 <article class="feature-card" data-reveal>
                     <h3>TXT에서 EPUB으로 변환</h3>
-                    <p>파일을 개별·일괄 변환할 수 있습니다. 새 파일만 분석해 기존 결과를 유지하며, 목록 초기화도 가능합니다. 진행률은 변환 버튼 안에 표시하며, 같은 버튼으로 중단을 요청할 수 있습니다.</p>
+                    <p>파일을 개별·일괄 변환할 수 있습니다. 새 파일만 분석해 기존 결과를 유지합니다. 목록·미리보기·검색·EPUB은 회차를 뺀 제목을 함께 사용하며, 원본 TXT는 유지합니다. 진행률은 변환 버튼 안에 표시하며, 같은 버튼으로 중단을 요청할 수 있습니다.</p>
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>공백 정제</h3>
@@ -1911,7 +1911,7 @@
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>표지 적용과 작품 정보</h3>
-                    <p>이미지를 검색하거나 클립보드에서 표지를 붙일 수 있습니다. 파일 목록의 작품 정보에서 연재처와 공개된 평점·추천 수를 확인할 수 있습니다. 두 검색 모두 제목 끝의 회차는 뺍니다.</p>
+                    <p>이미지를 검색하거나 클립보드에서 표지를 붙일 수 있습니다. 작품 정보에서는 문피아·리디·소설넷을 자동 조회하고, 사이트별 결과 없음·조회 실패·재조회 대기를 구분합니다. 나머지 사이트는 직접 검색할 수 있습니다. 두 검색 모두 회차부터 뒤쪽 내용은 뺍니다.</p>
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>인코딩 자동 감지</h3>
@@ -2122,11 +2122,11 @@
     const workPlatforms = [
         ['series', 'workSeries', title => 'https://series.naver.com/search/search.series?t=all&fs=novel&q=' + title],
         ['kakao', 'workKakao', title => 'https://page.kakao.com/search/result?categoryUid=0&keyword=' + title],
-        ['munpia', 'workMunpia', title => 'https://www.munpia.com/search?query=' + title],
+        ['munpia', 'workMunpia', title => 'https://www.munpia.com/search?query=' + title, true],
         ['joara', 'workJoara', title => 'https://www.joara.com/search?target=subject&word=' + title],
-        ['ridi', 'workRidi', title => 'https://ridibooks.com/search?q=' + title],
+        ['ridi', 'workRidi', title => 'https://ridibooks.com/search?q=' + title, true],
         ['novelpia', 'workNovelpia', title => 'https://novelpia.com/search/all//1/' + title + '?page=1&rows=30'],
-        ['sosul', 'workSosul', title => 'https://ssn.so/series/?keyword=' + title]
+        ['sosul', 'workSosul', title => 'https://ssn.so/series/?keyword=' + title, true]
     ];
     const workDialog = document.getElementById('workDialog');
     const workTitle = document.getElementById('workTitle');
@@ -2135,7 +2135,7 @@
 
     function renderWorkInfo() {
         const t = window.EPUB_STUDIO_I18N.t;
-        const { title, status, matches } = workResult;
+        const { title, status, matches, statuses = {} } = workResult;
         const encoded = encodeURIComponent(title);
         const locale = window.EPUB_STUDIO_I18N.lang;
         const format = number => new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(number);
@@ -2149,8 +2149,17 @@
             count: scores.length
         }) : '';
         document.getElementById('workStatus').textContent = t(conflict ? 'workAmbiguous' : status);
-        document.getElementById('workSources').replaceChildren(...(title ? workPlatforms : []).map(([id, label, search]) => {
+        const sourceLabels = {
+            loading: 'workSourceLoading', empty: 'workSourceEmpty', error: 'workSourceError',
+            ambiguous: 'workSourceAmbiguous', deferred: 'workSourceDeferred', manual: 'workSourceManual'
+        };
+        document.getElementById('workSources').replaceChildren(...(title ? workPlatforms : []).map(([id, label, search, automatic]) => {
             const item = !conflict && matches.find(match => match.id === id);
+            let sourceState = statuses[id];
+            if (!automatic || location.protocol === 'file:') sourceState = 'manual';
+            else if (status === 'workLoading') sourceState = 'loading';
+            else if (conflict && matches.some(match => match.id === id)) sourceState = 'ambiguous';
+            const sourceNote = t(sourceLabels[sourceState] || 'workSourceError');
             const stats = [];
             if (item?.score) stats.push(t('workRating', { score: format(item.score), max: item.max, count: format(item.votes) }));
             if (item && item.favorites !== undefined) stats.push(t('workFavorites', { count: format(item.favorites) }));
@@ -2160,16 +2169,12 @@
                 target: '_blank', rel: 'noopener noreferrer', 'aria-label': t(item ? 'workOpenSource' : 'workSearchSource', { source: t(label) }) },
                 t(item ? 'workOpen' : 'workSearchAction'));
             return el('li', {}, el('div', { className: 'work-platform-name' },
-                el('strong', {}, t(label)), el('span', { className: 'work-platform-meta' }, stats.join(' · ') || t('workCheckSource'))), link);
+                el('strong', {}, t(label)), el('span', { className: 'work-platform-meta' }, stats.join(' · ') || sourceNote)), link);
         }));
     }
 
     function cleanBookTitle(value) {
-        return value.replace(/\.txt$/i, '').replace(/(?<=[^\s+])\+(?=[^\s+])/g, ' ');
-    }
-
-    function stripEpisodeSuffix(value) {
-        const title = value.trim();
+        const title = value.trim().replace(/\.txt$/i, '').replace(/(?<=[^\s+])\+(?=[^\s+])/g, ' ').trim();
         const digits = '[0-9０-９]+';
         const number = String.raw`(?:제\s*)?${digits}`;
         const unit = String.raw`\s*[화편장]`;
@@ -2183,7 +2188,7 @@
     }
 
     async function lookupWorkInfo(value) {
-        const title = stripEpisodeSuffix(value).slice(0, 120);
+        const title = cleanBookTitle(value).slice(0, 120);
         workTitle.value = title;
         workRequest?.abort();
         if (!title || location.protocol === 'file:') {
@@ -2203,10 +2208,15 @@
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }), signal: request.signal
             });
             if (!response.ok) throw new Error('Lookup unavailable');
-            const { matches } = await response.json();
-            if (!Array.isArray(matches)) throw new Error('Invalid lookup response');
+            const { matches, statuses } = await response.json();
+            if (!Array.isArray(matches) || !statuses || typeof statuses !== 'object' || Array.isArray(statuses)) {
+                throw new Error('Invalid lookup response');
+            }
             if (workRequest !== request || !workDialog.open) return;
-            workResult = { title, status: matches.length ? 'workFound' : 'workNoMatches', matches };
+            const allEmpty = workPlatforms.filter(([, , , automatic]) => automatic)
+                .every(([id]) => statuses[id] === 'empty');
+            workResult = { title, status: matches.length ? 'workFound' : allEmpty ? 'workNoMatches' : 'workPartialUnavailable',
+                matches, statuses };
             renderWorkInfo();
         } catch {
             if (workRequest !== request || !workDialog.open) return;
@@ -2219,7 +2229,7 @@
 
     document.getElementById('workSearch').onsubmit = event => {
         event.preventDefault();
-        lookupWorkInfo(cleanBookTitle(workTitle.value.trim()));
+        lookupWorkInfo(workTitle.value);
     };
     workDialog.addEventListener('click', event => {
         if (event.target === workDialog) workDialog.close();
@@ -2920,7 +2930,17 @@
 
             const titleInput = el('input', { type: 'text', className: 'title-input', value: item.customTitle,
                 'aria-label': t('tableTitle'),
-                onInput: (e) => store.dispatch({ type: group ? 'UPDATE_GROUP_TITLE' : 'UPDATE_FILE_TITLE', payload: { id: item.id, title: e.target.value } }) });
+                onInput: (e) => store.dispatch({ type: group ? 'UPDATE_GROUP_TITLE' : 'UPDATE_FILE_TITLE', payload: { id: item.id, title: e.target.value } }),
+                onBlur: (e) => {
+                    const title = cleanBookTitle(e.target.value);
+                    if (title === e.target.value) return;
+                    e.target.value = title;
+                    store.dispatch({ type: group ? 'UPDATE_GROUP_TITLE' : 'UPDATE_FILE_TITLE', payload: { id: item.id, title } });
+                },
+                onKeyDown: (e) => {
+                    if (e.key === 'Enter' && !e.isComposing) e.target.blur();
+                }
+            });
             titleInput.disabled = store.state.isProcessing;
             const selectButton = !group && !member ? el('button', {
                 type: 'button', className: 'ui-button ui-button--compact file-select', 'data-file-id': item.id,
@@ -2961,7 +2981,7 @@
                 el('td', { className: 'col-cover' },
                     el('div', { className: 'cover-btn-group' },
                         el('button', { className: 'ui-button ui-button--compact btn-cover', onClick: () => {
-                            const title = stripEpisodeSuffix(titleInput.value);
+                            const title = cleanBookTitle(titleInput.value);
                             if (title) window.open('https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(title), '_blank', 'noopener,noreferrer');
                         } }, t('tableSearch')),
                         el('button', { className: 'ui-button ui-button--compact btn-cover' + (hasCover ? ' active' : ''), onClick: () => readClipboardImage(coverId) }, t('tableClipboard'))

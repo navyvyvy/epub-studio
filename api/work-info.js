@@ -2,6 +2,7 @@ const sources = {
     sosul: {
         url: 'https://ssn.so/series/',
         param: 'keyword',
+        empty: /<h4[^>]*>\s*검색결과가 없습니다\.\s*<\/h4>/,
         parse(html) {
             return html.split(/<div class="product">/i).slice(1).flatMap(card => {
                 const title = card.match(/<h3[^>]*>\s*<a href="(\/series\/\d+\/)"[^>]*>([\s\S]*?)<\/a>/i);
@@ -16,6 +17,7 @@ const sources = {
     ridi: {
         url: 'https://ridibooks.com/search',
         param: 'q',
+        empty: /검색결과가 없습니다\.\s*<\/span>/,
         parse(html) {
             return html.split(/(?=<li\b[^>]*>\s*<div\b[^>]*>\s*<section\b[^>]*>\s*<a href="\/books\/\d+)/i)
                 .filter(card => /^<li\b/i.test(card)).flatMap(card => {
@@ -30,27 +32,26 @@ const sources = {
         }
     },
     munpia: {
-        url: 'https://mm.munpia.com/?action=search&menu=detailSearchV2&searchKey=all',
-        param: 'keyword',
-        parse(html) {
-            return html.split(/(?=<li\b[^>]*view_novel\(\d+)/i).filter(card => /^<li\b/i.test(card)).flatMap(card => {
-                const id = card.match(/view_novel\((\d+)/i)?.[1];
-                const title = field(card, 'title');
-                if (!id || !title) return [];
-                const author = plain(field(card, 'author').split(/<span\b/i)[0]);
-                const stats = plain(field(card, 'n_info'));
-                return [{ title: plain(title.replace(/<span\b[\s\S]*?<\/span>/gi, '')), author,
-                    url: 'https://www.munpia.com/novel/detail/' + id,
-                    favorites: count(stats.match(/\uc120\ud638\uc791\uc218?\s*([\d,]+)/)?.[1]),
-                    likes: count(stats.match(/\ucd94\ucc9c\uc218?\s*([\d,]+)/)?.[1]) }];
+        url: 'https://www.munpia.com/api/v1/main/search?tab=NOVEL&sort=SIMILARITY&novelType=ALL&finishedOnly=false&adultMode=false&page=0&size=10',
+        param: 'query',
+        contentType: 'application/json',
+        parse(body) {
+            const { code, result } = JSON.parse(body);
+            if (code !== 'M000_00000' || !Array.isArray(result?.searchNovelTabDtos)
+                || (!result.searchNovelTabDtos.length && result.total !== 0)) {
+                throw new Error('Invalid Munpia search response');
+            }
+            return result.searchNovelTabDtos.map(({ title, author, novelId }) => {
+                if (typeof title !== 'string' || typeof author !== 'string'
+                    || !Number.isSafeInteger(novelId) || novelId <= 0) {
+                    throw new Error('Invalid Munpia search entry');
+                }
+                return { title: plain(title), author: plain(author),
+                    url: 'https://www.munpia.com/novel/detail/' + novelId };
             });
         }
     }
 };
-
-function field(html, name) {
-    return html.match(new RegExp('<p class="' + name + '"[^>]*>([\\s\\S]*?)<\\/p>', 'i'))?.[1] || '';
-}
 
 function plain(html = '') {
     const entities = { amp: '&', quot: '"', apos: "'", lt: '<', gt: '>', nbsp: ' ' };
@@ -76,29 +77,41 @@ function titleKey(title) {
     return title.normalize('NFKC').toLowerCase().replace(/[\p{P}\p{Z}\s]+/gu, '');
 }
 
-function selectWork(results, title) {
+function matchingWorks(results, title) {
     const key = titleKey(title);
-    if (!key) return null;
-    const matches = [...new Map(results.filter(result => result.author && titleKey(result.title) === key)
-        .map(result => [result.url, result])).values()];
-    return matches.length === 1 ? matches[0] : null;
+    if (!key) return [];
+    const exact = results.filter(result => titleKey(result.title) === key);
+    const matches = exact.length ? exact : results.filter(result =>
+        titleKey(result.title.normalize('NFKC').replace(/^\s*\[e북\]\s*/iu, '')) === key);
+    return [...new Map(matches.map(result => [result.url, result])).values()];
 }
 
-async function loadSearch(url) {
+function selectWork(results, title) {
+    const matches = matchingWorks(results, title);
+    return matches.length === 1 && matches[0].author ? matches[0] : null;
+}
+
+async function loadSearch(url, contentType = 'text/html') {
     const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(4500),
         headers: { 'User-Agent': 'EPUBStudio-WorkLookup/1.0 (+https://epub-studio-mocha.vercel.app/)' } });
-    if (!response.ok || !response.headers.get('content-type')?.includes('text/html')) return '';
+    if (!response.ok || !response.headers.get('content-type')?.includes(contentType)) {
+        throw new Error('Search unavailable');
+    }
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let bytes = 0;
     let html = '';
     for (;;) {
         const { done, value } = await reader.read();
-        if (done) return html + decoder.decode();
+        if (done) {
+            const body = html + decoder.decode();
+            if (!body.trim()) throw new Error('Empty search response');
+            return body;
+        }
         bytes += value.byteLength;
         if (bytes > 4_000_000) {
             await reader.cancel();
-            return '';
+            throw new Error('Search response too large');
         }
         html += decoder.decode(value, { stream: true });
     }
@@ -126,19 +139,28 @@ module.exports = async function handler(req, res) {
         const results = await Promise.all(Object.entries(sources).map(async ([id, source]) => {
             // shortcut: honor the Sosulnet crawl delay per instance; coordinate centrally if scaled out.
             if (id === 'sosul') {
-                if (Date.now() < nextSosulLookup) return null;
+                if (Date.now() < nextSosulLookup) return { id, status: 'deferred' };
                 nextSosulLookup = Date.now() + 10000;
             }
             try {
                 const url = new URL(source.url);
                 url.searchParams.set(source.param, title);
-                const work = selectWork(source.parse(await loadSearch(url)), title);
-                return work && { id, ...work };
+                const body = await loadSearch(url, source.contentType);
+                const rows = source.parse(body);
+                if (!rows.length && source.empty && !source.empty.test(body)) {
+                    throw new Error('Unrecognized search page');
+                }
+                const work = selectWork(rows, title);
+                if (work) return { id, status: 'found', ...work };
+                return { id, status: matchingWorks(rows, title).length ? 'ambiguous' : 'empty' };
             } catch {
-                return null;
+                return { id, status: 'error' };
             }
         }));
-        return res.json({ matches: results.filter(Boolean) });
+        return res.json({
+            matches: results.filter(result => result.status === 'found').map(({ status, ...work }) => work),
+            statuses: Object.fromEntries(results.map(({ id, status }) => [id, status]))
+        });
     } finally {
         lookupInProgress = false;
     }

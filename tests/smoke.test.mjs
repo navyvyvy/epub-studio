@@ -7,10 +7,8 @@ const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const defaultTitleRegex = html.match(/id="regexInput" value="([^"]+)"/)[1];
 const cleanBookTitle = vm.runInNewContext('(' + html.match(/function cleanBookTitle[\s\S]*?\n    }/)[0] + ')');
 
-test('work and cover searches can omit episode suffixes without dropping title numbers', () => {
-    const source = html.match(/function stripEpisodeSuffix[\s\S]*?\n    }/)[0];
-    const stripEpisodeSuffix = vm.runInNewContext('(' + source + ')');
-    const normalize = value => stripEpisodeSuffix(cleanBookTitle(value.trim()));
+test('shared book titles omit episode suffixes without dropping title numbers', () => {
+    const normalize = cleanBookTitle;
     for (const suffix of [
         ' 130화', ' 제 130화', ' 1-241', ' 1~241화 완결.txt', ' 1화~241화', '[1~241화 완결]', ' (130화)', ' EP.130',
         '130화', '_130화', ' 130화.', ' １３０화', '1-130화', ' 1-303 외1-23完'
@@ -19,11 +17,11 @@ test('work and cover searches can omit episode suffixes without dropping title n
     }
     const filename = '로마+재벌가의+망나니+1-303+외1-23完.txt';
     const listedTitle = cleanBookTitle(filename);
-    assert.equal(listedTitle, '로마 재벌가의 망나니 1-303 외1-23完');
-    assert.equal(stripEpisodeSuffix(listedTitle), '로마 재벌가의 망나니');
+    assert.equal(listedTitle, '로마 재벌가의 망나니');
+    assert.equal(normalize(listedTitle), listedTitle);
     assert.equal(normalize(filename), '로마 재벌가의 망나니');
     const filenameWithCredit = '천재 광대,+톱스타되다ⓒ23월 1-175+完.txt';
-    assert.equal(cleanBookTitle(filenameWithCredit), '천재 광대, 톱스타되다ⓒ23월 1-175 完');
+    assert.equal(cleanBookTitle(filenameWithCredit), '천재 광대, 톱스타되다');
     assert.equal(normalize(filenameWithCredit), '천재 광대, 톱스타되다');
     assert.equal(normalize('C++ 입문+1-175+完.txt'), 'C++ 입문');
     for (const suffix of [' 1-149완', ' 1-149[완]', ' [1-149 완]']) {
@@ -46,6 +44,8 @@ test('work and cover searches can omit episode suffixes without dropping title n
         assert.equal(normalize(title + '.TXT'), title);
     }
     assert.equal(normalize('   '), '');
+    assert.equal(normalize('  C++ 입문  '), 'C++ 입문');
+    assert.equal(html.includes('function stripEpisodeSuffix'), false);
 });
 
 test('work search links open each platform and preserve the search title', () => {
@@ -76,6 +76,71 @@ test('work search links open each platform and preserve the search title', () =>
             assert.equal(url.searchParams.get('rows'), '30');
         }
     }
+});
+
+function loadWorkInfoView() {
+    const elements = Object.fromEntries(['workAverage', 'workStatus', 'workSources'].map(id => [id, {
+        textContent: '', hidden: false, children: [], replaceChildren(...children) { this.children = children; }
+    }]));
+    const context = vm.createContext({
+        window: { EPUB_STUDIO_I18N: { lang: 'ko', t: key => key } },
+        location: { protocol: 'https:' }, document: { getElementById: id => elements[id] },
+        el: (tag, props, ...children) => ({ tag, props, children }),
+        workTitle: { value: '' }, workDialog: { open: true }, workRequest: null, workResult: null,
+        cleanBookTitle, AbortController, setTimeout, clearTimeout
+    });
+    const platforms = html.match(/const workPlatforms = \[[\s\S]*?\n    \];/)[0];
+    const render = html.match(/function renderWorkInfo[\s\S]*?(?=\n    function cleanBookTitle)/)[0];
+    const lookup = html.match(/async function lookupWorkInfo[\s\S]*?(?=\n    document.getElementById\('workSearch'\))/)[0];
+    vm.runInContext([platforms, render, lookup].join('\n'), context);
+    return { context, elements };
+}
+
+test('work info shows source-specific loading, empty, failed, deferred, ambiguous, and manual states', () => {
+    const { context, elements } = loadWorkInfoView();
+    const notes = () => Array.from(elements.workSources.children, row => row.children[0].children[1].children[0]);
+    context.workResult = { title: 'Sample', status: 'workLoading', matches: [] };
+    context.renderWorkInfo();
+    assert.deepEqual(notes(), ['workSourceManual', 'workSourceManual', 'workSourceLoading',
+        'workSourceManual', 'workSourceLoading', 'workSourceManual', 'workSourceLoading']);
+    context.workResult = { title: 'Sample', status: 'workPartialUnavailable', matches: [],
+        statuses: { munpia: 'error', ridi: 'empty', sosul: 'deferred' } };
+    context.renderWorkInfo();
+    assert.deepEqual(notes(), ['workSourceManual', 'workSourceManual', 'workSourceError',
+        'workSourceManual', 'workSourceEmpty', 'workSourceManual', 'workSourceDeferred']);
+    context.workResult.statuses.sosul = 'ambiguous';
+    context.renderWorkInfo();
+    assert.equal(notes()[6], 'workSourceAmbiguous');
+    assert.equal(elements.workAverage.hidden, true);
+    context.location.protocol = 'file:';
+    context.workResult.status = 'workUnavailable';
+    context.renderWorkInfo();
+    assert.ok(notes().every(note => note === 'workSourceManual'));
+});
+
+test('work info claims no results only after all automatic sources confirm empty results', async () => {
+    for (const [statuses, expected] of [
+        [{ munpia: 'empty', ridi: 'empty', sosul: 'empty' }, 'workNoMatches'],
+        [{ munpia: 'error', ridi: 'empty', sosul: 'empty' }, 'workPartialUnavailable'],
+        [{ munpia: 'empty', ridi: 'empty', sosul: 'deferred' }, 'workPartialUnavailable'],
+        [{ munpia: 'ambiguous', ridi: 'empty', sosul: 'empty' }, 'workPartialUnavailable']
+    ]) {
+        const { context, elements } = loadWorkInfoView();
+        context.fetch = async (url, options) => {
+            assert.equal(url, '/api/work-info');
+            assert.deepEqual(JSON.parse(options.body), { title: 'Sample' });
+            return { ok: true, json: async () => ({ matches: [], statuses }) };
+        };
+        await context.lookupWorkInfo('Sample 1-591 extra material');
+        assert.equal(context.workTitle.value, 'Sample');
+        assert.equal(elements.workStatus.textContent, expected);
+    }
+    const { context, elements } = loadWorkInfoView();
+    context.fetch = async () => { throw new Error('Lookup unavailable'); };
+    await context.lookupWorkInfo('Sample');
+    assert.equal(elements.workStatus.textContent, 'workUnavailable');
+    assert.ok(elements.workSources.children.filter((row, i) => [2, 4, 6].includes(i))
+        .every(row => row.children[0].children[1].children[0] === 'workSourceError'));
 });
 
 function loadWorker(reportProgress = false) {
@@ -284,9 +349,12 @@ test('adding files analyzes only new TXT files and preserves existing analysis a
         dom.optMultiToc.checked = false;
         return new ArrayBuffer(0);
     } }; } });
-    await context.handleFiles([file('first.txt'), file('second.TXT'), file('ignored.pdf')]);
+    const firstName = '테스트+작품+1-591본편 및 외전 完.txt';
+    await context.handleFiles([file(firstName), file('second.TXT'), file('ignored.pdf')]);
     assert.equal(store.state.files.length, 3);
     assert.equal(store.state.files[0], existing);
+    assert.equal(store.state.files[1].customTitle, '테스트 작품');
+    assert.equal(store.state.files[1].file.name, firstName);
     assert.deepEqual(validated, Array.from(store.state.files.slice(1), item => item.id));
     assert.equal(validated.includes('old'), false);
     assert.equal(store.state.files[1].useMultiToc, true);
