@@ -176,8 +176,18 @@ async function lookupSource(id, title) {
 
 module.exports = async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Vary', 'Origin');
+    const githubOrigin = req.headers?.origin === 'https://navyvyvy.github.io';
+    if (githubOrigin) res.setHeader('Access-Control-Allow-Origin', 'https://navyvyvy.github.io');
+    if (req.method === 'OPTIONS') {
+        if (!githubOrigin) return res.status(403).json({ error: 'origin' });
+        res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        res.setHeader('Access-Control-Max-Age', '600');
+        return res.status(204).end();
+    }
     if (req.method !== 'POST') {
-        res.setHeader('Allow', 'POST');
+        res.setHeader('Allow', 'POST, OPTIONS');
         return res.status(405).json({ error: 'method' });
     }
     if (!/^application\/json(?:\s*;|$)/i.test(req.headers?.['content-type'] || '')) {

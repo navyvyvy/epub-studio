@@ -11,12 +11,36 @@ const fixtures = {
 };
 
 const headers = { 'content-type': 'application/json' };
-const response = () => ({ statusCode: 200, setHeader() {}, status(code) { this.statusCode = code; return this; },
+const response = () => ({ statusCode: 200, headers: {}, setHeader(name, value) { this.headers[name] = value; },
+    status(code) { this.statusCode = code; return this; }, end() { this.ended = true; return this; },
     json(body) { this.body = body; } });
 const reply = (id, body = fixtures[id]) => new Response(body, {
     headers: { 'Content-Type': sources[id].contentType || 'text/html' }
 });
 const sourceId = url => Object.keys(sources).find(id => new URL(sources[id].url).hostname === url.hostname);
+
+test('GitHub Pages preflights are allowed without searching or allowing other origins', async t => {
+    let fetched = false;
+    t.mock.method(globalThis, 'fetch', async () => { fetched = true; throw new Error('unexpected lookup'); });
+    const allowed = response();
+    await handler({ method: 'OPTIONS', headers: { origin: 'https://navyvyvy.github.io' } }, allowed);
+    assert.equal(allowed.statusCode, 204);
+    assert.equal(allowed.headers['Access-Control-Allow-Origin'], 'https://navyvyvy.github.io');
+    assert.equal(allowed.headers['Access-Control-Allow-Methods'], 'POST, OPTIONS');
+    assert.equal(allowed.headers['Access-Control-Allow-Headers'], 'Content-Type');
+    assert.equal(allowed.ended, true);
+    for (const origin of ['https://other.github.io', 'https://navyvyvy.github.io.evil.example', 'null', undefined]) {
+        const denied = response();
+        await handler({ method: 'OPTIONS', headers: { origin } }, denied);
+        assert.equal(denied.statusCode, 403);
+        assert.equal(denied.headers['Access-Control-Allow-Origin'], undefined);
+    }
+    const invalid = response();
+    await handler({ method: 'POST', headers: { ...headers, origin: 'https://navyvyvy.github.io' }, body: {} }, invalid);
+    assert.equal(invalid.statusCode, 400);
+    assert.equal(invalid.headers['Access-Control-Allow-Origin'], 'https://navyvyvy.github.io');
+    assert.equal(fetched, false);
+});
 
 test('public search rows yield original scores and counts, not popularity as a score', () => {
     assert.deepEqual(sources.sosul.parse(fixtures.sosul), [

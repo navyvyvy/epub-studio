@@ -79,8 +79,11 @@ test('work search links open each platform and preserve the search title', () =>
 });
 
 function loadWorkInfoView() {
-    const elements = Object.fromEntries(['workAverage', 'workStatus', 'workSources'].map(id => [id, {
-        textContent: '', hidden: false, children: [], replaceChildren(...children) { this.children = children; }
+    const elements = Object.fromEntries(['workAverage', 'workStatus', 'workSources', 'workSearchBtn',
+        'workSearch', 'workSearchButtonLabel'].map(id => [id, {
+        textContent: '', hidden: false, children: [], attributes: {},
+        setAttribute(name, value) { this.attributes[name] = value; },
+        replaceChildren(...children) { this.children = children; }
     }]));
     const context = vm.createContext({
         window: { EPUB_STUDIO_I18N: { lang: 'ko', t: key => key } },
@@ -98,7 +101,7 @@ function loadWorkInfoView() {
 
 test('work info shows source-specific loading, empty, failed, deferred, ambiguous, and manual states', () => {
     const { context, elements } = loadWorkInfoView();
-    const notes = () => Array.from(elements.workSources.children, row => row.children[0].children[1].children[0]);
+    const notes = () => Array.from(elements.workSources.children, row => row.children[0].children[1].props.title);
     context.workResult = { title: 'Sample', status: 'workLoading', matches: [] };
     context.renderWorkInfo();
     assert.deepEqual(notes(), ['workSourceManual', 'workSourceManual', 'workSourceLoading',
@@ -140,7 +143,7 @@ test('work info claims no results only after all automatic sources confirm empty
     await context.lookupWorkInfo('Sample');
     assert.equal(elements.workStatus.textContent, 'workUnavailable');
     assert.ok(elements.workSources.children.filter((row, i) => [2, 4, 6].includes(i))
-        .every(row => row.children[0].children[1].children[0] === 'workSourceError'));
+        .every(row => row.children[0].children[1].props.title === 'workSourceError'));
 });
 
 test('author conflicts preserve each source result and link without combining their ratings', () => {
@@ -158,10 +161,11 @@ test('author conflicts preserve each source result and link without combining th
     for (const [index, id] of [[2, 'munpia'], [4, 'ridi'], [6, 'sosul']]) {
         const row = elements.workSources.children[index];
         const match = matches.find(item => item.id === id);
-        assert.ok(row.children[0].children[1].children[0].includes(match.author));
-        const link = row.children[1].children.find(child => child?.tag === 'a');
+        assert.equal(JSON.stringify(row).includes(match.author), false);
+        assert.equal(row.children[0].children[1].props.title, 'workSourceAmbiguous');
+        const link = row.children[2].children.find(child => child?.tag === 'a');
         assert.equal(link.props.href, match.url);
-        assert.equal(link.children[0], 'workOpen');
+        assert.equal(link.children[0], 'workOpenShort');
     }
 });
 
@@ -199,7 +203,7 @@ test('only failed or deferred automatic sites offer a retry action', async () =>
         statuses: { munpia: 'error', ridi: 'empty', sosul: 'deferred' } };
     context.renderWorkInfo();
     const buttons = () => Array.from(elements.workSources.children,
-        row => row.children[1].children.filter(child => child?.tag === 'button'));
+        row => row.children[2].children.filter(child => child?.tag === 'button'));
     assert.deepEqual(buttons().map(items => items.length), [0, 0, 1, 0, 0, 0, 1]);
     context.workRequest = new AbortController();
     context.renderWorkInfo();
@@ -221,6 +225,12 @@ test('an older lookup response cannot overwrite a newer title or clear its reque
         replies.set(JSON.parse(options.body).title, resolve);
     });
     const first = context.lookupWorkInfo('First');
+    await context.lookupWorkInfo('Ignored');
+    assert.equal(replies.size, 1);
+    assert.equal(context.workTitle.disabled, true);
+    assert.equal(context.workTitle.value, 'First');
+    context.workRequest.abort();
+    context.workRequest = null;
     const second = context.lookupWorkInfo('Second');
     replies.get('First')({ ok: true, json: async () => ({
         matches: [], statuses: { munpia: 'error', ridi: 'error', sosul: 'error' }
@@ -236,6 +246,40 @@ test('an older lookup response cannot overwrite a newer title or clear its reque
     assert.equal(context.workResult.title, 'Second');
     assert.equal(context.workResult.status, 'workNoMatches');
     assert.equal(context.workRequest, null);
+});
+
+test('GitHub Pages uses the hosted lookup API and loading blocks duplicate searches', async () => {
+    const { context, elements } = loadWorkInfoView();
+    context.location.hostname = 'navyvyvy.github.io';
+    let resolve;
+    let requests = 0;
+    context.fetch = (url, options) => {
+        requests++;
+        assert.equal(url, 'https://epub-live.vercel.app/api/work-info');
+        assert.equal(options.credentials, 'omit');
+        return new Promise(done => { resolve = done; });
+    };
+    const pending = context.lookupWorkInfo('Sample');
+    assert.equal(elements.workSearchBtn.disabled, true);
+    assert.equal(context.workTitle.disabled, true);
+    assert.equal(elements.workSearchBtn.attributes['aria-busy'], 'true');
+    assert.equal(elements.workSearchButtonLabel.textContent, 'workSearching');
+    assert.ok(elements.workSources.children.every(row =>
+        row.children[2].children.find(child => child?.tag === 'a').props['aria-disabled'] === 'true'));
+    await context.lookupWorkInfo('Other');
+    assert.equal(requests, 1);
+    resolve({ ok: true, json: async () => ({
+        matches: [], statuses: { munpia: 'empty', ridi: 'empty', sosul: 'empty' }
+    }) });
+    await pending;
+    assert.equal(elements.workSearchBtn.disabled, false);
+    assert.equal(context.workTitle.disabled, false);
+    assert.equal(elements.workSearchButtonLabel.textContent, 'workSearchAction');
+    assert.equal(elements.workSearchBtn.attributes['aria-busy'], 'false');
+    context.fetch = async () => { throw new Error('network failure'); };
+    await context.lookupWorkInfo('Other');
+    assert.equal(elements.workSearchBtn.disabled, false);
+    assert.equal(elements.workSearchButtonLabel.textContent, 'workSearchAction');
 });
 
 function loadWorker(reportProgress = false) {

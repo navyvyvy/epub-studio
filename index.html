@@ -27,7 +27,7 @@
     <!-- 외부 라이브러리 로드 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jschardet/3.0.0/jschardet.min.js"></script>
-    <script src="./i18n.js?v=20261127-2"></script>
+    <script src="./i18n.js?v=20261127-3"></script>
     <link rel="stylesheet" href="./site-shared.css?v=20261030-3">
     <link rel="stylesheet" href="./ui-buttons.css?v=20261107-1">
     <style>
@@ -288,18 +288,18 @@
         .cover-btn-group { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
         .file-table .col-work { white-space: nowrap; }
         .work-panel {
-            padding: clamp(16px, 4vw, 32px);
+            display: grid;
+            gap: 10px;
+            padding: 16px;
             border: 1px solid var(--border);
             border-radius: 12px;
             background: var(--card);
             color: var(--text);
         }
         .work-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-        .work-header h2 { margin: 0; font-size: 1.2rem; }
-        .work-search > div, .work-sources li, .work-source-actions { display: flex; align-items: center; gap: 8px; }
-        .work-source-actions { flex-wrap: wrap; max-width: 100%; }
-        .work-sources li { justify-content: space-between; }
-        .work-search { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin-top: 16px; }
+        .work-header h2 { margin: 0; font-size: 1rem; }
+        .work-search { display: grid; gap: 4px; margin: 0; font-size: 0.75rem; }
+        .work-search > div { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 8px; }
         .work-search input {
             flex: 1;
             min-width: 0;
@@ -311,16 +311,55 @@
             color: var(--text);
             font: inherit;
         }
-        .work-status, .work-sources { font-size: 0.875rem; }
-        .work-status:empty { margin: 0; }
+        #workSearchBtn { position: relative; }
+        #workSearchBtn::before {
+            content: "";
+            position: absolute;
+            left: 9px;
+            width: 12px;
+            height: 12px;
+            border: 2px solid currentColor;
+            border-right-color: transparent;
+            border-radius: 50%;
+            opacity: 0;
+        }
+        #workSearchBtn[aria-busy="true"] { opacity: 1; }
+        #workSearchBtn[aria-busy="true"]::before { opacity: 1; animation: work-spin 0.8s linear infinite; }
+        @keyframes work-spin { to { transform: rotate(360deg); } }
+        @media (prefers-reduced-motion: reduce) {
+            #workSearchBtn[aria-busy="true"]::before { animation: none; }
+        }
+        .work-summary { display: grid; grid-template-rows: 20px 20px; gap: 4px; height: 44px; }
+        .work-status { margin: 0; font-size: 0.75rem; line-height: 20px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .work-sources { font-size: 0.75rem; }
         .work-status, .work-platform-meta { color: var(--text-dim); }
-        .work-status, .work-average { margin: 12px 0; }
-        .work-average { color: var(--accent); font-weight: 700; }
-        .work-sources { padding: 0; margin: 0; list-style: none; }
-        .work-sources li { flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--border); }
-        .work-platform-name { min-width: 0; overflow-wrap: anywhere; }
-        .work-platform-meta { display: block; }
+        .work-average { margin: 0; color: var(--accent); font-size: 0.75rem; line-height: 20px; font-weight: 700; white-space: nowrap; }
+        .work-sources { padding: 0; margin: 0; list-style: none; min-height: 280px; }
+        .work-sources li { display: grid; grid-template-columns: 88px 60px minmax(0, 1fr) 96px; align-items: center; gap: 8px; height: 40px; border-top: 1px solid var(--border); }
+        .work-platform-name { display: contents; }
+        .work-platform-name strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .work-platform-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.6875rem; font-variant-numeric: tabular-nums; }
+        .work-source-badge { padding: 2px 3px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.625rem; line-height: 14px; text-align: center; white-space: nowrap; color: var(--text-dim); }
+        .work-source-badge[data-state="found"] { color: var(--success); border-color: var(--success); background: rgba(82, 214, 173, 0.08); }
+        .work-source-badge[data-state="loading"] { color: var(--accent); border-color: var(--accent); }
+        .work-source-badge[data-state="error"] { color: var(--danger); border-color: var(--danger); }
+        .work-source-badge:is([data-state="ambiguous"], [data-state="deferred"]) { color: var(--warning); border-color: var(--warning); }
+        .work-source-actions { display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: 4px; }
+        .work-source-link { grid-column: 2; }
+        .work-source-retry { width: 28px; padding: 0; font-size: 17px; }
+        @media (max-width: 480px) {
+            .work-panel { padding: 12px; }
+            .work-sources li { grid-template-columns: 72px 52px minmax(0, 1fr) 60px; gap: 6px; }
+            .work-source-actions { grid-template-columns: 28px 28px; }
+            .work-source-link { padding: 0; font-size: 0; }
+            .work-source-link::after { content: "↗"; font-size: 16px; line-height: 1; }
+        }
+        @media (max-width: 320px) {
+            .work-sources li { grid-template-columns: 52px 40px minmax(0, 1fr) 60px; gap: 4px; }
+            .work-platform-meta { font-size: 0.625rem; }
+        }
         .work-sources a { text-decoration: none; }
+        .work-source-link[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
         .work-sources a:hover { border-color: var(--accent); }
         .btn-cover.active { background: var(--tone-rgba-34-197-94-0-15); border-color: var(--success); color: var(--success); }
         .home-page .status-badge:disabled { opacity: 1; cursor: default; }
@@ -456,7 +495,7 @@
             background: var(--tone-rgba-2-6-23-0-7);
             backdrop-filter: blur(8px);
         }
-        .work-dialog { width: min(480px, calc(100% - 24px)); max-height: calc(100dvh - 24px); }
+        .work-dialog { width: min(620px, calc(100% - 16px)); max-height: calc(100dvh - 16px); }
 
         .preview-dialog[data-preview-state="hit"] .preview-panel {
             border-color: var(--tone-rgba-34-197-94-0-7);
@@ -1827,11 +1866,13 @@
                 <label for="workTitle" id="workSearchLabel">작품명</label>
                 <div>
                     <input type="search" id="workTitle" maxlength="120" required autofocus>
-                    <button type="submit" id="workSearchBtn" class="ui-button">검색</button>
+                    <button type="submit" id="workSearchBtn" class="ui-button" aria-busy="false"><span id="workSearchButtonLabel" data-button-label>검색</span></button>
                 </div>
             </form>
-            <p class="work-status" id="workStatus" role="status"></p>
-            <p class="work-average" id="workAverage" hidden></p>
+            <div class="work-summary">
+                <p class="work-status" id="workStatus" role="status"></p>
+                <p class="work-average" id="workAverage" hidden></p>
+            </div>
             <ul class="work-sources" id="workSources"></ul>
         </div>
     </dialog>
@@ -1912,7 +1953,7 @@
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>표지 적용과 작품 정보</h3>
-                    <p>이미지를 검색하거나 클립보드에서 표지를 붙일 수 있습니다. 작품 정보는 사이트별 결과 없음·조회 실패·재조회 대기를 구분하며, 실패한 곳만 다시 조회할 수 있습니다. 정상 결과는 1분간 재사용합니다. 작가가 다른 결과도 숨기지 않되 점수는 합산하지 않습니다. 자동 조회 미지원 사이트는 직접 검색할 수 있습니다.</p>
+                    <p>이미지를 검색하거나 클립보드에서 표지를 붙일 수 있습니다. GitHub Pages와 Vercel에서 작품 정보를 조회하며, 상태 배지·평점·평가 인원수를 표시합니다. 조회 중에는 중복 검색을 막고, 결과가 바뀌어도 창 높이를 유지합니다. 실패한 사이트만 다시 조회할 수 있습니다.</p>
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>인코딩 자동 감지</h3>
@@ -2137,6 +2178,14 @@
     function renderWorkInfo() {
         const t = window.EPUB_STUDIO_I18N.t;
         const { title, status, matches, statuses = {} } = workResult;
+        const busy = !!workRequest;
+        workTitle.disabled = busy;
+        const searchButton = document.getElementById('workSearchBtn');
+        searchButton.disabled = busy;
+        searchButton.setAttribute('aria-busy', String(busy));
+        document.getElementById('workSearch').setAttribute('aria-busy', String(busy));
+        document.getElementById('workSources').setAttribute('aria-busy', String(busy));
+        document.getElementById('workSearchButtonLabel').textContent = t(busy ? 'workSearching' : 'workSearchAction');
         const encoded = encodeURIComponent(title);
         const locale = window.EPUB_STUDIO_I18N.lang;
         const format = number => new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(number);
@@ -2149,10 +2198,16 @@
             score: (scores.reduce((sum, item) => sum + item.score / item.max * 10, 0) / scores.length).toFixed(1),
             count: scores.length
         }) : '';
-        document.getElementById('workStatus').textContent = t(conflict ? 'workAmbiguous' : status);
+        const statusText = t(conflict ? 'workAmbiguous' : status);
+        document.getElementById('workStatus').textContent = statusText;
+        document.getElementById('workStatus').title = statusText;
         const sourceLabels = {
-            loading: 'workSourceLoading', empty: 'workSourceEmpty', error: 'workSourceError',
+            found: 'workSourceFound', loading: 'workSourceLoading', empty: 'workSourceEmpty', error: 'workSourceError',
             ambiguous: 'workSourceAmbiguous', deferred: 'workSourceDeferred', manual: 'workSourceManual'
+        };
+        const badgeLabels = {
+            found: 'workBadgeFound', loading: 'workBadgeLoading', empty: 'workBadgeEmpty', error: 'workBadgeError',
+            ambiguous: 'workBadgeAmbiguous', deferred: 'workBadgeDeferred', manual: 'workBadgeManual'
         };
         document.getElementById('workSources').replaceChildren(...(title ? workPlatforms : []).map(([id, label, search, automatic]) => {
             const item = matches.find(match => match.id === id);
@@ -2160,23 +2215,28 @@
             if (!automatic || location.protocol === 'file:') sourceState = 'manual';
             else if (status === 'workLoading' && !sourceState) sourceState = 'loading';
             else if (conflict && matches.some(match => match.id === id)) sourceState = 'ambiguous';
-            const sourceNote = t(sourceLabels[sourceState] || 'workSourceError');
-            const stats = [];
-            if (item?.score) stats.push(t('workRating', { score: format(item.score), max: item.max, count: format(item.votes) }));
-            if (item && item.favorites !== undefined) stats.push(t('workFavorites', { count: format(item.favorites) }));
-            if (item && item.likes !== undefined) stats.push(t('workLikes', { count: format(item.likes) }));
-            if (item?.author) stats.unshift(item.author);
-            if (conflict && item) stats.unshift(t('workSourceAmbiguous'));
-            const link = el('a', { className: 'ui-button ui-button--compact', href: item?.url || search(encoded),
-                target: '_blank', rel: 'noopener noreferrer', 'aria-label': t(item ? 'workOpenSource' : 'workSearchSource', { source: t(label) }) },
-                t(item ? 'workOpen' : 'workSearchAction'));
+            if (!Object.hasOwn(sourceLabels, sourceState)) sourceState = 'error';
+            const sourceNote = t(sourceLabels[sourceState]);
+            const ratingVars = item?.score ? { score: format(item.score), max: item.max, count: format(item.votes) } : null;
+            const ratingText = ratingVars ? t('workRating', ratingVars) : '';
+            const ratingDetails = ratingVars ? t('workRatingDetails', ratingVars) : '';
+            const linkLabel = t(item ? 'workOpenSource' : 'workSearchSource', { source: t(label) });
+            const link = el('a', { className: 'ui-button ui-button--compact work-source-link', href: item?.url || search(encoded),
+                target: '_blank', rel: 'noopener noreferrer', 'aria-label': linkLabel, title: linkLabel,
+                'aria-disabled': String(busy && !item), tabindex: busy && !item ? '-1' : '0',
+                onClick: event => { if (busy && !item) event.preventDefault(); } },
+                t(item ? 'workOpenShort' : 'workSearchAction'));
             const retry = automatic && location.protocol !== 'file:' && ['error', 'deferred'].includes(sourceState)
-                ? el('button', { type: 'button', className: 'ui-button ui-button--compact',
+                ? el('button', { type: 'button', className: 'ui-button ui-button--compact work-source-retry',
                     'aria-label': t('workRetrySource', { source: t(label) }),
-                    onClick: () => lookupWorkInfo(title, id) }, t('workRetry')) : null;
+                    title: t('workRetrySource', { source: t(label) }),
+                    onClick: () => lookupWorkInfo(title, id) }, el('span', { 'aria-hidden': 'true' }, '↻')) : null;
             if (retry) retry.disabled = !!workRequest;
             return el('li', {}, el('div', { className: 'work-platform-name' },
-                el('strong', {}, t(label)), el('span', { className: 'work-platform-meta' }, stats.join(' · ') || sourceNote)),
+                el('strong', { title: t(label) }, t(label)),
+                el('span', { className: 'work-source-badge', 'data-state': sourceState, title: sourceNote,
+                    'aria-label': t(label) + ': ' + sourceNote }, t(badgeLabels[sourceState]))),
+                el('span', { className: 'work-platform-meta', title: ratingDetails, 'aria-label': ratingDetails }, ratingText),
                 el('div', { className: 'work-source-actions' }, retry, link));
         }));
     }
@@ -2196,11 +2256,11 @@
     }
 
     async function lookupWorkInfo(value, sourceId) {
+        if (workRequest) return;
         const title = cleanBookTitle(value).slice(0, 120);
         const previous = workResult?.title === title ? workResult : null;
         const source = previous ? sourceId : undefined;
         workTitle.value = title;
-        workRequest?.abort();
         if (!title || location.protocol === 'file:') {
             workRequest = null;
             workResult = { title, status: title ? 'workUnavailable' : 'workEnterTitle', matches: [] };
@@ -2217,9 +2277,11 @@
         let result;
         try {
             timeout = setTimeout(() => request.abort(), 7000);
-            const response = await fetch('/api/work-info', {
+            const endpoint = location.hostname === 'navyvyvy.github.io'
+                ? 'https://epub-live.vercel.app/api/work-info' : '/api/work-info';
+            const response = await fetch(endpoint, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(source ? { title, source } : { title }), signal: request.signal
+                body: JSON.stringify(source ? { title, source } : { title }), signal: request.signal, credentials: 'omit'
             });
             if (!response.ok) throw new Error('Lookup unavailable');
             const { matches, statuses } = await response.json();
@@ -2261,6 +2323,7 @@
         if (workDialog.open) return;
         workRequest?.abort();
         workRequest = null;
+        if (workResult) renderWorkInfo();
     });
     window.addEventListener('epub-langchange', () => {
         if (workDialog.open && workResult) renderWorkInfo();
