@@ -91,7 +91,7 @@ test('verified empty searches are distinct from failed and unrecognized response
         ['error', () => new Response('Access denied', { status: 403 })],
         ['error', () => new Response('not a search response', { headers: { 'Content-Type': 'text/plain' } })]
     ]) {
-        now += 11000;
+        now += 61000;
         fetchResponse = makeResponse;
         const res = response();
         await handler({ method: 'POST', headers, body: { title: 'Sample' } }, res);
@@ -127,7 +127,7 @@ test('Sosulnet crawl delay is reported without hiding other site results', async
     await handler({ method: 'POST', headers, body: { title: 'Sample' } }, first);
     assert.deepEqual(first.body.statuses, { sosul: 'found', ridi: 'found', munpia: 'found' });
     const next = response();
-    await handler({ method: 'POST', headers, body: { title: 'Sample' } }, next);
+    await handler({ method: 'POST', headers, body: { title: 'SAMPLE' } }, next);
     assert.deepEqual(next.body.statuses, { sosul: 'deferred', ridi: 'found', munpia: 'found' });
     assert.deepEqual(next.body.matches.map(item => item.id), ['ridi', 'munpia']);
     assert.equal(calls.filter(id => id === 'sosul').length, 1);
@@ -161,10 +161,117 @@ test('ebook fallback results have the same found and ambiguous states as exact t
     await handler({ method: 'POST', headers, body: { title: 'Sample' } }, found);
     assert.equal(found.body.statuses.ridi, 'found');
     assert.equal(found.body.matches[0].url, 'https://ridibooks.com/books/99');
-    now += 11000;
+    now += 61000;
     multiple = true;
     const ambiguous = response();
     await handler({ method: 'POST', headers, body: { title: 'Sample' } }, ambiguous);
     assert.equal(ambiguous.body.statuses.ridi, 'ambiguous');
     assert.deepEqual(ambiguous.body.matches, []);
+});
+
+test('concurrent requests for the same title share searches instead of returning busy', async t => {
+    t.mock.method(Date, 'now', () => 6_000_000_000_000);
+    let release;
+    const gate = new Promise(resolve => { release = resolve; });
+    const calls = [];
+    t.mock.method(globalThis, 'fetch', async url => {
+        calls.push(sourceId(url));
+        await gate;
+        return reply(sourceId(url));
+    });
+    const req = { method: 'POST', headers, body: { title: 'Sample' } };
+    const first = response(), next = response();
+    const pending = [handler(req, first), handler(req, next)];
+    release();
+    await Promise.all(pending);
+    assert.equal(next.statusCode, 200);
+    assert.deepEqual(next.body, first.body);
+    assert.equal(calls.length, 3);
+});
+
+test('successful and empty results are reused for one minute, but failures are retried', async t => {
+    let now = 7_000_000_000_000;
+    t.mock.method(Date, 'now', () => now);
+    let failRidi = true;
+    const calls = [];
+    t.mock.method(globalThis, 'fetch', async url => {
+        const id = sourceId(url);
+        calls.push(id);
+        if (id === 'ridi' && failRidi) throw new Error('temporary failure');
+        return reply(id);
+    });
+    const req = { method: 'POST', headers, body: { title: 'Sample' } };
+    const first = response();
+    await handler(req, first);
+    assert.equal(first.body.statuses.ridi, 'error');
+    failRidi = false;
+    now += 1000;
+    const next = response();
+    await handler(req, next);
+    assert.deepEqual(next.body.statuses, { sosul: 'found', ridi: 'found', munpia: 'found' });
+    assert.deepEqual(calls, ['sosul', 'ridi', 'munpia', 'ridi']);
+    const cached = response();
+    await handler(req, cached);
+    assert.equal(calls.length, 4);
+    now += 61000;
+    await handler(req, response());
+    assert.equal(calls.length, 7);
+});
+
+test('individual retries accept only known source ids and do not fetch other sources', async t => {
+    t.mock.method(Date, 'now', () => 8_000_000_000_000);
+    const calls = [];
+    t.mock.method(globalThis, 'fetch', async url => { calls.push(sourceId(url)); return reply(sourceId(url)); });
+    for (const source of ['https://example.com', '__proto__', 'toString', ['ridi'], '']) {
+        const res = response();
+        await handler({ method: 'POST', headers, body: { title: 'Sample', source } }, res);
+        assert.equal(res.statusCode, 400);
+    }
+    assert.equal(calls.length, 0);
+    const res = response();
+    await handler({ method: 'POST', headers, body: { title: 'Sample', source: 'ridi' } }, res);
+    assert.deepEqual(calls, ['ridi']);
+    assert.deepEqual(res.body.statuses, { ridi: 'found' });
+});
+
+test('confirmed no-result searches are reused without repeating upstream requests', async t => {
+    t.mock.method(Date, 'now', () => 9_000_000_000_000);
+    const calls = [];
+    t.mock.method(globalThis, 'fetch', async url => {
+        const id = sourceId(url);
+        calls.push(id);
+        return reply(id, id === 'sosul' ? '<h4>검색결과가 없습니다.</h4>'
+            : id === 'ridi' ? '<span>검색결과가 없습니다.</span>'
+                : JSON.stringify({ code: 'M000_00000', result: { total: 0, searchNovelTabDtos: [] } }));
+    });
+    const req = { method: 'POST', headers, body: { title: 'Missing' } };
+    const first = response(), next = response();
+    await handler(req, first);
+    await handler(req, next);
+    assert.deepEqual(first.body.statuses, { sosul: 'empty', ridi: 'empty', munpia: 'empty' });
+    assert.deepEqual(next.body, first.body);
+    assert.equal(calls.length, 3);
+});
+
+test('distinct concurrent queries are bounded and are not confused by title punctuation', async t => {
+    t.mock.method(Date, 'now', () => 10_000_000_000_000);
+    let release;
+    const gate = new Promise(resolve => { release = resolve; });
+    const calls = [];
+    t.mock.method(globalThis, 'fetch', async url => {
+        calls.push(url.searchParams.get('q'));
+        await gate;
+        return reply('ridi');
+    });
+    const titles = ['C', 'C++', ...Array.from({ length: 10 }, (_, i) => 'Query ' + i)];
+    const replies = titles.map(response);
+    const pending = titles.map((title, i) => handler({
+        method: 'POST', headers, body: { title, source: 'ridi' }
+    }, replies[i]));
+    release();
+    await Promise.all(pending);
+    assert.equal(calls.length, 9);
+    assert.ok(calls.includes('C') && calls.includes('C++'));
+    assert.ok(replies.every(res => res.statusCode === 200));
+    assert.equal(replies.filter(res => res.body.statuses.ridi === 'deferred').length, 3);
 });

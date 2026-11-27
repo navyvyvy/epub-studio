@@ -27,7 +27,7 @@
     <!-- 외부 라이브러리 로드 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jschardet/3.0.0/jschardet.min.js"></script>
-    <script src="./i18n.js?v=20261126-1"></script>
+    <script src="./i18n.js?v=20261127-1"></script>
     <link rel="stylesheet" href="./site-shared.css?v=20261030-3">
     <link rel="stylesheet" href="./ui-buttons.css?v=20261107-1">
     <style>
@@ -296,7 +296,8 @@
         }
         .work-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
         .work-header h2 { margin: 0; font-size: 1.2rem; }
-        .work-search > div, .work-sources li { display: flex; align-items: center; gap: 8px; }
+        .work-search > div, .work-sources li, .work-source-actions { display: flex; align-items: center; gap: 8px; }
+        .work-source-actions { flex-wrap: wrap; max-width: 100%; }
         .work-sources li { justify-content: space-between; }
         .work-search { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin-top: 16px; }
         .work-search input {
@@ -1911,7 +1912,7 @@
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>표지 적용과 작품 정보</h3>
-                    <p>이미지를 검색하거나 클립보드에서 표지를 붙일 수 있습니다. 작품 정보에서는 문피아·리디·소설넷을 자동 조회하고, 사이트별 결과 없음·조회 실패·재조회 대기를 구분합니다. 나머지 사이트는 직접 검색할 수 있습니다. 두 검색 모두 회차부터 뒤쪽 내용은 뺍니다.</p>
+                    <p>이미지를 검색하거나 클립보드에서 표지를 붙일 수 있습니다. 작품 정보는 사이트별 결과 없음·조회 실패·재조회 대기를 구분하며, 실패한 곳만 다시 조회할 수 있습니다. 정상 결과는 1분간 재사용합니다. 자동 조회 미지원 사이트는 직접 검색할 수 있습니다.</p>
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>인코딩 자동 감지</h3>
@@ -2157,7 +2158,7 @@
             const item = !conflict && matches.find(match => match.id === id);
             let sourceState = statuses[id];
             if (!automatic || location.protocol === 'file:') sourceState = 'manual';
-            else if (status === 'workLoading') sourceState = 'loading';
+            else if (status === 'workLoading' && !sourceState) sourceState = 'loading';
             else if (conflict && matches.some(match => match.id === id)) sourceState = 'ambiguous';
             const sourceNote = t(sourceLabels[sourceState] || 'workSourceError');
             const stats = [];
@@ -2168,8 +2169,14 @@
             const link = el('a', { className: 'ui-button ui-button--compact', href: item?.url || search(encoded),
                 target: '_blank', rel: 'noopener noreferrer', 'aria-label': t(item ? 'workOpenSource' : 'workSearchSource', { source: t(label) }) },
                 t(item ? 'workOpen' : 'workSearchAction'));
+            const retry = automatic && location.protocol !== 'file:' && ['error', 'deferred'].includes(sourceState)
+                ? el('button', { type: 'button', className: 'ui-button ui-button--compact',
+                    'aria-label': t('workRetrySource', { source: t(label) }),
+                    onClick: () => lookupWorkInfo(title, id) }, t('workRetry')) : null;
+            if (retry) retry.disabled = !!workRequest;
             return el('li', {}, el('div', { className: 'work-platform-name' },
-                el('strong', {}, t(label)), el('span', { className: 'work-platform-meta' }, stats.join(' · ') || sourceNote)), link);
+                el('strong', {}, t(label)), el('span', { className: 'work-platform-meta' }, stats.join(' · ') || sourceNote)),
+                el('div', { className: 'work-source-actions' }, retry, link));
         }));
     }
 
@@ -2187,8 +2194,10 @@
         return title.slice(0, start).replace(/\s*ⓒ\s*[\p{L}\p{N}_.-]+$/u, '').trimEnd() || title;
     }
 
-    async function lookupWorkInfo(value) {
+    async function lookupWorkInfo(value, sourceId) {
         const title = cleanBookTitle(value).slice(0, 120);
+        const previous = workResult?.title === title ? workResult : null;
+        const source = previous ? sourceId : undefined;
         workTitle.value = title;
         workRequest?.abort();
         if (!title || location.protocol === 'file:') {
@@ -2199,32 +2208,40 @@
         }
         const request = new AbortController();
         workRequest = request;
-        workResult = { title, status: 'workLoading', matches: [] };
+        workResult = { title, status: 'workLoading',
+            matches: source ? previous.matches.filter(item => item.id !== source) : [],
+            statuses: source ? { ...previous.statuses, [source]: 'loading' } : {} };
         renderWorkInfo();
         let timeout;
+        let result;
         try {
             timeout = setTimeout(() => request.abort(), 7000);
             const response = await fetch('/api/work-info', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }), signal: request.signal
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(source ? { title, source } : { title }), signal: request.signal
             });
             if (!response.ok) throw new Error('Lookup unavailable');
             const { matches, statuses } = await response.json();
             if (!Array.isArray(matches) || !statuses || typeof statuses !== 'object' || Array.isArray(statuses)) {
                 throw new Error('Invalid lookup response');
             }
-            if (workRequest !== request || !workDialog.open) return;
-            const allEmpty = workPlatforms.filter(([, , , automatic]) => automatic)
-                .every(([id]) => statuses[id] === 'empty');
-            workResult = { title, status: matches.length ? 'workFound' : allEmpty ? 'workNoMatches' : 'workPartialUnavailable',
-                matches, statuses };
-            renderWorkInfo();
+            result = { matches, statuses };
         } catch {
-            if (workRequest !== request || !workDialog.open) return;
-            workResult = { title, status: 'workUnavailable', matches: [] };
-            renderWorkInfo();
+            const ids = source ? [source] : workPlatforms.filter(([, , , automatic]) => automatic).map(([id]) => id);
+            result = { matches: [], statuses: Object.fromEntries(ids.map(id => [id, 'error'])) };
         } finally {
             clearTimeout(timeout);
         }
+        if (workRequest !== request || !workDialog.open) return;
+        workRequest = null;
+        const matches = source ? [...previous.matches.filter(item => item.id !== source),
+            ...result.matches.filter(item => item.id === source)] : result.matches;
+        const statuses = source ? { ...previous.statuses, [source]: result.statuses[source] || 'error' } : result.statuses;
+        const states = workPlatforms.filter(([, , , automatic]) => automatic).map(([id]) => statuses[id]);
+        workResult = { title, matches, statuses, status: matches.length ? 'workFound'
+            : states.every(state => state === 'empty') ? 'workNoMatches'
+            : states.every(state => state === 'error') ? 'workUnavailable' : 'workPartialUnavailable' };
+        renderWorkInfo();
     }
 
     document.getElementById('workSearch').onsubmit = event => {

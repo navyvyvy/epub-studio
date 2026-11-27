@@ -118,7 +118,53 @@ async function loadSearch(url, contentType = 'text/html') {
 }
 
 let nextSosulLookup = 0;
-let lookupInProgress = false;
+const lookupCache = new Map();
+const pendingLookups = new Map();
+
+async function lookupSource(id, title) {
+    const now = Date.now();
+    for (const [key, entry] of lookupCache) {
+        if (entry.expires <= now) lookupCache.delete(key);
+    }
+    const key = JSON.stringify([id, title]);
+    const cached = lookupCache.get(key);
+    if (cached) return cached.result;
+    if (pendingLookups.has(key)) return pendingLookups.get(key);
+    if (pendingLookups.size >= 9) return { id, status: 'deferred' };
+    // shortcut: crawl delays and cached results apply per instance; coordinate centrally if scaled out.
+    if (id === 'sosul') {
+        if (now < nextSosulLookup) return { id, status: 'deferred' };
+        nextSosulLookup = now + 10000;
+    }
+    const source = sources[id];
+    const pending = (async () => {
+        try {
+            const url = new URL(source.url);
+            url.searchParams.set(source.param, title);
+            const body = await loadSearch(url, source.contentType);
+            const rows = source.parse(body);
+            if (!rows.length && source.empty && !source.empty.test(body)) {
+                throw new Error('Unrecognized search page');
+            }
+            const work = selectWork(rows, title);
+            if (work) return { id, status: 'found', ...work };
+            return { id, status: matchingWorks(rows, title).length ? 'ambiguous' : 'empty' };
+        } catch {
+            return { id, status: 'error' };
+        }
+    })();
+    pendingLookups.set(key, pending);
+    try {
+        const result = await pending;
+        if (['found', 'empty', 'ambiguous'].includes(result.status)) {
+            if (lookupCache.size >= 100) lookupCache.delete(lookupCache.keys().next().value);
+            lookupCache.set(key, { result, expires: Date.now() + 60000 });
+        }
+        return result;
+    } finally {
+        pendingLookups.delete(key);
+    }
+}
 
 module.exports = async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
@@ -132,38 +178,17 @@ module.exports = async function handler(req, res) {
     if (typeof req.body?.title !== 'string' || req.body.title.length > 120 || !req.body.title.trim()) {
         return res.status(400).json({ error: 'title' });
     }
-    if (lookupInProgress) return res.status(429).json({ error: 'busy' });
-    lookupInProgress = true;
-    try {
-        const title = req.body.title.trim();
-        const results = await Promise.all(Object.entries(sources).map(async ([id, source]) => {
-            // shortcut: honor the Sosulnet crawl delay per instance; coordinate centrally if scaled out.
-            if (id === 'sosul') {
-                if (Date.now() < nextSosulLookup) return { id, status: 'deferred' };
-                nextSosulLookup = Date.now() + 10000;
-            }
-            try {
-                const url = new URL(source.url);
-                url.searchParams.set(source.param, title);
-                const body = await loadSearch(url, source.contentType);
-                const rows = source.parse(body);
-                if (!rows.length && source.empty && !source.empty.test(body)) {
-                    throw new Error('Unrecognized search page');
-                }
-                const work = selectWork(rows, title);
-                if (work) return { id, status: 'found', ...work };
-                return { id, status: matchingWorks(rows, title).length ? 'ambiguous' : 'empty' };
-            } catch {
-                return { id, status: 'error' };
-            }
-        }));
-        return res.json({
-            matches: results.filter(result => result.status === 'found').map(({ status, ...work }) => work),
-            statuses: Object.fromEntries(results.map(({ id, status }) => [id, status]))
-        });
-    } finally {
-        lookupInProgress = false;
+    if (req.body.source !== undefined
+        && (typeof req.body.source !== 'string' || !Object.hasOwn(sources, req.body.source))) {
+        return res.status(400).json({ error: 'source' });
     }
+    const title = req.body.title.trim();
+    const ids = req.body.source === undefined ? Object.keys(sources) : [req.body.source];
+    const results = await Promise.all(ids.map(id => lookupSource(id, title)));
+    return res.json({
+        matches: results.filter(result => result.status === 'found').map(({ status, ...work }) => work),
+        statuses: Object.fromEntries(results.map(({ id, status }) => [id, status]))
+    });
 };
 
 module.exports.sources = sources;

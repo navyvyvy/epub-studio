@@ -143,6 +143,79 @@ test('work info claims no results only after all automatic sources confirm empty
         .every(row => row.children[0].children[1].children[0] === 'workSourceError'));
 });
 
+test('retrying one site preserves other matches and sends only that source', async () => {
+    const { context, elements } = loadWorkInfoView();
+    const found = { id: 'ridi', title: 'Sample', author: 'Author', score: 4, max: 5, votes: 3,
+        url: 'https://ridibooks.com/books/1' };
+    context.workResult = { title: 'Sample', status: 'workFound', matches: [found],
+        statuses: { ridi: 'found', munpia: 'empty', sosul: 'deferred' } };
+    let resolve;
+    context.fetch = (url, options) => {
+        assert.deepEqual(JSON.parse(options.body), { title: 'Sample', source: 'sosul' });
+        return new Promise(done => { resolve = done; });
+    };
+    const pending = context.lookupWorkInfo('Sample', 'sosul');
+    assert.equal(context.workResult.matches[0], found);
+    assert.equal(context.workResult.statuses.ridi, 'found');
+    assert.equal(context.workResult.statuses.sosul, 'loading');
+    resolve({ ok: true, json: async () => ({ matches: [], statuses: { sosul: 'empty' } }) });
+    await pending;
+    assert.equal(context.workResult.matches[0], found);
+    assert.equal(context.workResult.statuses.munpia, 'empty');
+    assert.equal(context.workResult.statuses.sosul, 'empty');
+    assert.equal(elements.workAverage.hidden, false);
+    context.workResult.statuses.sosul = 'error';
+    context.fetch = async () => { throw new Error('site unavailable'); };
+    await context.lookupWorkInfo('Sample', 'sosul');
+    assert.equal(context.workResult.matches[0], found);
+    assert.equal(context.workResult.statuses.sosul, 'error');
+});
+
+test('only failed or deferred automatic sites offer a retry action', async () => {
+    const { context, elements } = loadWorkInfoView();
+    context.workResult = { title: 'Sample', status: 'workPartialUnavailable', matches: [],
+        statuses: { munpia: 'error', ridi: 'empty', sosul: 'deferred' } };
+    context.renderWorkInfo();
+    const buttons = () => Array.from(elements.workSources.children,
+        row => row.children[1].children.filter(child => child?.tag === 'button'));
+    assert.deepEqual(buttons().map(items => items.length), [0, 0, 1, 0, 0, 0, 1]);
+    context.workRequest = new AbortController();
+    context.renderWorkInfo();
+    assert.ok(buttons().flat().every(button => button.disabled));
+    context.workRequest = null;
+    let requested;
+    context.fetch = async (url, options) => {
+        requested = JSON.parse(options.body);
+        return { ok: true, json: async () => ({ matches: [], statuses: { munpia: 'empty' } }) };
+    };
+    await buttons()[2][0].props.onClick();
+    assert.deepEqual(requested, { title: 'Sample', source: 'munpia' });
+});
+
+test('an older lookup response cannot overwrite a newer title or clear its request', async () => {
+    const { context } = loadWorkInfoView();
+    const replies = new Map();
+    context.fetch = (url, options) => new Promise(resolve => {
+        replies.set(JSON.parse(options.body).title, resolve);
+    });
+    const first = context.lookupWorkInfo('First');
+    const second = context.lookupWorkInfo('Second');
+    replies.get('First')({ ok: true, json: async () => ({
+        matches: [], statuses: { munpia: 'error', ridi: 'error', sosul: 'error' }
+    }) });
+    await first;
+    assert.equal(context.workResult.title, 'Second');
+    assert.equal(context.workResult.status, 'workLoading');
+    assert.notEqual(context.workRequest, null);
+    replies.get('Second')({ ok: true, json: async () => ({
+        matches: [], statuses: { munpia: 'empty', ridi: 'empty', sosul: 'empty' }
+    }) });
+    await second;
+    assert.equal(context.workResult.title, 'Second');
+    assert.equal(context.workResult.status, 'workNoMatches');
+    assert.equal(context.workRequest, null);
+});
+
 function loadWorker(reportProgress = false) {
     const template = html.match(/const workerCode = `([\s\S]*?)`;\s*\n\s*const workerBlob/)[1];
     const source = Function(`return \`${template}\`;`)();
