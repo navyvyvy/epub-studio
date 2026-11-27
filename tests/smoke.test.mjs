@@ -146,6 +146,19 @@ test('work info claims no results only after all automatic sources confirm empty
         .every(row => row.children[0].children[1].props.title === 'workSourceError'));
 });
 
+test('volume-only results remain searched results rather than failures or unchecked sites', async () => {
+    const { context, elements } = loadWorkInfoView();
+    context.fetch = async () => ({ ok: true, json: async () => ({
+        matches: [], statuses: { munpia: 'volume', ridi: 'volume', sosul: 'empty' }
+    }) });
+    await context.lookupWorkInfo('Sample');
+    assert.equal(elements.workStatus.textContent, 'workNoSerial');
+    assert.equal(elements.workAverage.hidden, true);
+    assert.equal(elements.workSources.children[2].children[0].children[1].children[0], 'workBadgeVolume');
+    assert.equal(elements.workSources.children[3].children[0].children[1].children[0], 'workBadgeManual');
+    assert.equal(elements.workSources.children[6].children[0].children[1].children[0], 'workBadgeEmpty');
+});
+
 test('author conflicts preserve each source result and link without combining their ratings', () => {
     const { context, elements } = loadWorkInfoView();
     const matches = [

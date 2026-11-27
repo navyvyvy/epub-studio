@@ -89,6 +89,30 @@ test('spacing-only title candidates are not automatically selected over the requ
     assert.equal(selectWork([unrelated], '요리의신'), unrelated);
 });
 
+test('catalog format metadata prefers serialized works and excludes volume editions', () => {
+    const serialized = fixtures.ridi.replace('<svg aria-label=', '<span>총 734화</span><svg aria-label=');
+    const volume = fixtures.ridi.replaceAll('/books/12', '/books/99')
+        .replace('<svg aria-label=', '<span>총 32권</span><svg aria-label=');
+    const serial = sources.ridi.parse(serialized)[0];
+    const book = sources.ridi.parse(volume)[0];
+    assert.equal(serial.format, 'serial');
+    assert.equal(book.format, 'volume');
+    assert.equal(selectWork([book, serial], 'Sample'), serial);
+    assert.equal(selectWork([book], 'Sample'), null);
+    assert.equal(selectWork([serial, { ...serial, author: 'Other', url: 'https://ridibooks.com/books/100' }], 'Sample'), null);
+    const titleWithKwon = sources.ridi.parse(serialized.replace('<strong>Sam</strong>ple', '권력의 신'))[0];
+    assert.equal(titleWithKwon.format, 'serial');
+    assert.equal(selectWork([titleWithKwon], '권력의 신'), titleWithKwon);
+    assert.equal(sources.ridi.parse(serialized.replace('734화', '<!-- -->734<!-- -->화'))[0].format, 'serial');
+    assert.equal(sources.ridi.parse(fixtures.ridi + '<p>이야기는 총 32권으로 구성된다.</p>')[0].format, undefined);
+    assert.equal(selectWork([{ title: 'Sample 1권', author: 'Author', url: '/1' }], 'Sample 1권'), null);
+    const ebook = sources.munpia.parse(JSON.stringify({ code: 'M000_00000', result: { total: 1,
+        searchNovelTabDtos: [{ title: 'Sample', author: 'Author', novelId: 23, ebook: true }] } }))[0];
+    assert.equal(ebook.format, 'volume');
+    const wrappedSerial = { ...serial, title: '[e북] Sample' };
+    assert.equal(selectWork([book, wrappedSerial], 'Sample'), wrappedSerial);
+});
+
 test('lookup sends only the title to fixed search hosts and returns partial matches on failure', async t => {
     const calls = [];
     t.mock.method(Date, 'now', () => 1_000_000_000_000);
@@ -325,4 +349,14 @@ test('Cooking God keeps confirmed sources while a differently spaced Munpia work
     await handler({ method: 'POST', headers, body: { title: '요리의 신' } }, res);
     assert.deepEqual(res.body.statuses, { sosul: 'found', ridi: 'found', munpia: 'ambiguous' });
     assert.deepEqual(res.body.matches.map(item => item.id), ['sosul', 'ridi']);
+});
+
+test('volume-only searches are successful but do not contribute a web novel score', async t => {
+    t.mock.method(Date, 'now', () => 12_000_000_000_000);
+    t.mock.method(globalThis, 'fetch', async url => reply(sourceId(url),
+        fixtures.ridi.replace('<svg aria-label=', '<span>총 32권</span><svg aria-label=')));
+    const res = response();
+    await handler({ method: 'POST', headers, body: { title: 'Sample', source: 'ridi' } }, res);
+    assert.equal(res.body.statuses.ridi, 'volume');
+    assert.deepEqual(res.body.matches, []);
 });

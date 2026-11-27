@@ -9,8 +9,9 @@ const sources = {
                 if (!title) return [];
                 const author = card.match(/class="product-author"[^>]*>\s*<a[^>]*>([^<]+)<\/a>/i);
                 const score = card.match(/class="product-reviews"[^>]*>\s*(\d(?:\.\d+)?)\s*\(([\d,]+)\)/i);
-                return [{ title: plain(title[2].replace(/<small\b[\s\S]*?<\/small>/gi, '')), author: plain(author?.[1]),
-                    url: new URL(title[1], this.url).href, ...rating(score, 5) }];
+                const name = plain(title[2].replace(/<small\b[\s\S]*?<\/small>/gi, ''));
+                return [{ title: name, author: plain(author?.[1]),
+                    url: new URL(title[1], this.url).href, ...rating(score, 5), ...formatInfo(name) }];
             });
         }
     },
@@ -27,7 +28,9 @@ const sources = {
                 if (!book || !title) return [];
                 const author = card.match(/href="\/author\/\d+[^"]*"[^>]*>\s*<span[^>]*>([^<]+)<\/span>/i);
                 const score = card.match(/aria-label="\uad6c\ub9e4\uc790 \ud3c9\uade0 \ubcc4\uc810"[^>]*>[\s\S]*?<\/svg>\s*(\d(?:\.\d+)?)\s*<span[^>]*>([\s\S]*?)<\/span>/i);
-                return [{ title: plain(title[1]), author: plain(author?.[1]), url: new URL(book[1], this.url).href, ...rating(score, 5) }];
+                const name = plain(title[1]);
+                return [{ title: name, author: plain(author?.[1]), url: new URL(book[1], this.url).href,
+                    ...rating(score, 5), ...formatInfo(name, card) }];
             });
         }
     },
@@ -41,13 +44,14 @@ const sources = {
                 || (!result.searchNovelTabDtos.length && result.total !== 0)) {
                 throw new Error('Invalid Munpia search response');
             }
-            return result.searchNovelTabDtos.map(({ title, author, novelId }) => {
+            return result.searchNovelTabDtos.map(({ title, author, novelId, ebook }) => {
                 if (typeof title !== 'string' || typeof author !== 'string'
                     || !Number.isSafeInteger(novelId) || novelId <= 0) {
                     throw new Error('Invalid Munpia search entry');
                 }
                 return { title: plain(title), author: plain(author),
-                    url: 'https://www.munpia.com/novel/detail/' + novelId };
+                    url: 'https://www.munpia.com/novel/detail/' + novelId,
+                    ...(typeof ebook === 'boolean' ? { format: ebook ? 'volume' : 'serial' } : formatInfo(title)) };
             });
         }
     }
@@ -73,6 +77,14 @@ function rating(match, max) {
     return score > 0 && score <= max && votes > 0 ? { score, max, votes } : {};
 }
 
+function formatInfo(title, html = '') {
+    const unit = html.replace(/<!--[\s\S]*?-->/g, '')
+        .match(/<span\b[^>]*>\s*총\s*[\d,]+\s*(화|권)\s*<\/span>/u)?.[1];
+    if (unit) return { format: unit === '화' ? 'serial' : 'volume' };
+    return /(?:^|[\s[(])(?:제\s*)?\d+(?:\s*[-~]\s*\d+)?\s*권(?=$|[\s)\]])/u.test(title)
+        ? { format: 'volume' } : {};
+}
+
 function titleKey(title) {
     return title.normalize('NFKC').toLowerCase().replace(/\p{P}+/gu, '').replace(/\s+/gu, ' ').trim();
 }
@@ -86,14 +98,16 @@ function matchingWorks(results, title) {
     if (!key) return [];
     const exact = results.filter(result => titleKey(result.title) === key);
     const editions = results.filter(result => editionTitleKey(result.title) === key);
+    const serials = [...exact, ...editions].filter(result => result.format === 'serial');
     const compact = key.replace(/\s/g, '');
-    const matches = exact.length ? exact : editions.length ? editions : results.filter(result =>
+    const matches = serials.length ? serials : exact.length ? exact : editions.length ? editions : results.filter(result =>
         editionTitleKey(result.title).replace(/\s/g, '') === compact);
     return [...new Map(matches.map(result => [result.url, result])).values()];
 }
 
 function selectWork(results, title) {
-    const matches = matchingWorks(results, title);
+    const matches = matchingWorks(results.filter(result =>
+        (result.format || formatInfo(result.title).format) !== 'volume'), title);
     if (matches.length !== 1 || !matches[0].author) return null;
     const key = titleKey(title);
     return titleKey(matches[0].title) === key || editionTitleKey(matches[0].title) === key ? matches[0] : null;
@@ -156,7 +170,9 @@ async function lookupSource(id, title) {
             }
             const work = selectWork(rows, title);
             if (work) return { id, status: 'found', ...work };
-            return { id, status: matchingWorks(rows, title).length ? 'ambiguous' : 'empty' };
+            const candidates = matchingWorks(rows, title);
+            if (candidates.length && candidates.every(item => item.format === 'volume')) return { id, status: 'volume' };
+            return { id, status: candidates.length ? 'ambiguous' : 'empty' };
         } catch {
             return { id, status: 'error' };
         }
@@ -164,7 +180,7 @@ async function lookupSource(id, title) {
     pendingLookups.set(key, pending);
     try {
         const result = await pending;
-        if (['found', 'empty', 'ambiguous'].includes(result.status)) {
+        if (['found', 'empty', 'ambiguous', 'volume'].includes(result.status)) {
             if (lookupCache.size >= 100) lookupCache.delete(lookupCache.keys().next().value);
             lookupCache.set(key, { result, expires: Date.now() + 60000 });
         }

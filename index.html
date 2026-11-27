@@ -27,7 +27,7 @@
     <!-- 외부 라이브러리 로드 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jschardet/3.0.0/jschardet.min.js"></script>
-    <script src="./i18n.js?v=20261127-3"></script>
+    <script src="./i18n.js?v=20261128-1"></script>
     <link rel="stylesheet" href="./site-shared.css?v=20261030-3">
     <link rel="stylesheet" href="./ui-buttons.css?v=20261107-1">
     <style>
@@ -329,21 +329,22 @@
         @media (prefers-reduced-motion: reduce) {
             #workSearchBtn[aria-busy="true"]::before { animation: none; }
         }
-        .work-summary { display: grid; grid-template-rows: 20px 20px; gap: 4px; height: 44px; }
-        .work-status { margin: 0; font-size: 0.75rem; line-height: 20px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .work-summary { display: flex; align-items: center; gap: 8px; height: 24px; min-width: 0; }
+        .work-status { min-width: 0; margin: 0; font-size: 0.75rem; line-height: 20px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
         .work-sources { font-size: 0.75rem; }
         .work-status, .work-platform-meta { color: var(--text-dim); }
-        .work-average { margin: 0; color: var(--accent); font-size: 0.75rem; line-height: 20px; font-weight: 700; white-space: nowrap; }
+        .work-average { flex-shrink: 0; margin: 0; color: var(--accent); font-size: 0.75rem; line-height: 20px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .work-average::before { content: "·"; padding-right: 8px; color: var(--text-dim); }
         .work-sources { padding: 0; margin: 0; list-style: none; min-height: 280px; }
         .work-sources li { display: grid; grid-template-columns: 88px 60px minmax(0, 1fr) 96px; align-items: center; gap: 8px; height: 40px; border-top: 1px solid var(--border); }
         .work-platform-name { display: contents; }
         .work-platform-name strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .work-platform-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.6875rem; font-variant-numeric: tabular-nums; }
-        .work-source-badge { padding: 2px 3px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.625rem; line-height: 14px; text-align: center; white-space: nowrap; color: var(--text-dim); }
+        .work-source-badge { padding: 2px 3px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.625rem; font-weight: 700; line-height: 14px; text-align: center; white-space: nowrap; color: var(--text-dim); }
         .work-source-badge[data-state="found"] { color: var(--success); border-color: var(--success); background: rgba(82, 214, 173, 0.08); }
         .work-source-badge[data-state="loading"] { color: var(--accent); border-color: var(--accent); }
-        .work-source-badge[data-state="error"] { color: var(--danger); border-color: var(--danger); }
-        .work-source-badge:is([data-state="ambiguous"], [data-state="deferred"]) { color: var(--warning); border-color: var(--warning); }
+        .work-source-badge[data-state="error"] { color: var(--danger); border-color: var(--danger); background: rgba(255, 107, 115, 0.06); }
+        .work-source-badge:is([data-state="ambiguous"], [data-state="deferred"], [data-state="volume"]) { color: var(--warning); border-color: var(--warning); background: rgba(244, 189, 97, 0.06); }
         .work-source-actions { display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: 4px; }
         .work-source-link { grid-column: 2; }
         .work-source-retry { width: 28px; padding: 0; font-size: 17px; }
@@ -356,6 +357,7 @@
         }
         @media (max-width: 320px) {
             .work-sources li { grid-template-columns: 52px 40px minmax(0, 1fr) 60px; gap: 4px; }
+            .work-source-badge { padding-inline: 1px; }
             .work-platform-meta { font-size: 0.625rem; }
         }
         .work-sources a { text-decoration: none; }
@@ -1866,7 +1868,7 @@
                 <label for="workTitle" id="workSearchLabel">작품명</label>
                 <div>
                     <input type="search" id="workTitle" maxlength="120" required autofocus>
-                    <button type="submit" id="workSearchBtn" class="ui-button" aria-busy="false"><span id="workSearchButtonLabel" data-button-label>검색</span></button>
+                    <button type="submit" id="workSearchBtn" class="ui-button ui-button--primary" aria-busy="false"><span id="workSearchButtonLabel" data-button-label>검색</span></button>
                 </div>
             </form>
             <div class="work-summary">
@@ -1953,7 +1955,7 @@
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>표지 적용과 작품 정보</h3>
-                    <p>이미지를 검색하거나 클립보드에서 표지를 붙일 수 있습니다. GitHub Pages와 Vercel에서 작품 정보를 조회하며, 상태 배지·평점·평가 인원수를 표시합니다. 조회 중에는 중복 검색을 막고, 결과가 바뀌어도 창 높이를 유지합니다. 실패한 사이트만 다시 조회할 수 있습니다.</p>
+                    <p>이미지를 검색하거나 클립보드에서 표지를 붙일 수 있습니다. 작품 조회는 화 단위 연재본을 우선하고 단행본 점수는 제외합니다. 조회 상태와 평균은 한 줄로, 사이트별 검색 여부는 배지로 표시합니다. 조회 중에는 중복 검색을 막고 결과가 바뀌어도 창 높이를 유지합니다.</p>
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>인코딩 자동 감지</h3>
@@ -2203,11 +2205,11 @@
         document.getElementById('workStatus').title = statusText;
         const sourceLabels = {
             found: 'workSourceFound', loading: 'workSourceLoading', empty: 'workSourceEmpty', error: 'workSourceError',
-            ambiguous: 'workSourceAmbiguous', deferred: 'workSourceDeferred', manual: 'workSourceManual'
+            ambiguous: 'workSourceAmbiguous', deferred: 'workSourceDeferred', manual: 'workSourceManual', volume: 'workSourceVolume'
         };
         const badgeLabels = {
             found: 'workBadgeFound', loading: 'workBadgeLoading', empty: 'workBadgeEmpty', error: 'workBadgeError',
-            ambiguous: 'workBadgeAmbiguous', deferred: 'workBadgeDeferred', manual: 'workBadgeManual'
+            ambiguous: 'workBadgeAmbiguous', deferred: 'workBadgeDeferred', manual: 'workBadgeManual', volume: 'workBadgeVolume'
         };
         document.getElementById('workSources').replaceChildren(...(title ? workPlatforms : []).map(([id, label, search, automatic]) => {
             const item = matches.find(match => match.id === id);
@@ -2218,8 +2220,8 @@
             if (!Object.hasOwn(sourceLabels, sourceState)) sourceState = 'error';
             const sourceNote = t(sourceLabels[sourceState]);
             const ratingVars = item?.score ? { score: format(item.score), max: item.max, count: format(item.votes) } : null;
-            const ratingText = ratingVars ? t('workRating', ratingVars) : '';
-            const ratingDetails = ratingVars ? t('workRatingDetails', ratingVars) : '';
+            const ratingText = ratingVars ? t('workRating', ratingVars) : item ? t('workRatingNone') : '';
+            const ratingDetails = ratingVars ? t('workRatingDetails', ratingVars) : ratingText;
             const linkLabel = t(item ? 'workOpenSource' : 'workSearchSource', { source: t(label) });
             const link = el('a', { className: 'ui-button ui-button--compact work-source-link', href: item?.url || search(encoded),
                 target: '_blank', rel: 'noopener noreferrer', 'aria-label': linkLabel, title: linkLabel,
@@ -2301,8 +2303,9 @@
             ...result.matches.filter(item => item.id === source)] : result.matches;
         const statuses = source ? { ...previous.statuses, [source]: result.statuses[source] || 'error' } : result.statuses;
         const states = workPlatforms.filter(([, , , automatic]) => automatic).map(([id]) => statuses[id]);
+        const noSerial = states.every(state => state === 'empty' || state === 'volume');
         workResult = { title, matches, statuses, status: matches.length ? 'workFound'
-            : states.every(state => state === 'empty') ? 'workNoMatches'
+            : noSerial ? states.includes('volume') ? 'workNoSerial' : 'workNoMatches'
             : states.every(state => state === 'error') ? 'workUnavailable' : 'workPartialUnavailable' };
         renderWorkInfo();
     }
