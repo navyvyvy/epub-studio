@@ -53,6 +53,18 @@ test('ebook titles are a fallback, never a substitute for exact or ambiguous res
     assert.equal(selectWork([{ ...ebook, author: '' }], 'Sample'), null);
 });
 
+test('spacing-only title candidates are not automatically selected over the requested work', () => {
+    const title = '요리의 신';
+    const requested = { title, author: '양치기자리', url: 'https://ridibooks.com/books/5958017250' };
+    const unrelated = { title: '요리의신', author: 'DopeB', url: 'https://www.munpia.com/novel/detail/558764' };
+    assert.equal(selectWork([unrelated], title), null);
+    assert.equal(selectWork([unrelated, requested], title), requested);
+    const ebook = { ...requested, title: '[e북] 요리의 신' };
+    assert.equal(selectWork([unrelated, ebook], title), ebook);
+    assert.equal(selectWork([{ ...requested, title: '요리의 신!' }], title).author, '양치기자리');
+    assert.equal(selectWork([unrelated], '요리의신'), unrelated);
+});
+
 test('lookup sends only the title to fixed search hosts and returns partial matches on failure', async t => {
     const calls = [];
     t.mock.method(Date, 'now', () => 1_000_000_000_000);
@@ -274,4 +286,19 @@ test('distinct concurrent queries are bounded and are not confused by title punc
     assert.ok(calls.includes('C') && calls.includes('C++'));
     assert.ok(replies.every(res => res.statusCode === 200));
     assert.equal(replies.filter(res => res.body.statuses.ridi === 'deferred').length, 3);
+});
+
+test('Cooking God keeps confirmed sources while a differently spaced Munpia work needs confirmation', async t => {
+    t.mock.method(Date, 'now', () => 11_000_000_000_000);
+    const books = {
+        sosul: fixtures.sosul.replace('Sample', '요리의 신').replace('Author', '양치기자리'),
+        ridi: fixtures.ridi.replace('<strong>Sam</strong>ple', '요리의 신').replace('Author', '양치기자리'),
+        munpia: JSON.stringify({ code: 'M000_00000', result: { total: 1,
+            searchNovelTabDtos: [{ title: '요리의신', author: 'DopeB', novelId: 558764 }] } })
+    };
+    t.mock.method(globalThis, 'fetch', async url => reply(sourceId(url), books[sourceId(url)]));
+    const res = response();
+    await handler({ method: 'POST', headers, body: { title: '요리의 신' } }, res);
+    assert.deepEqual(res.body.statuses, { sosul: 'found', ridi: 'found', munpia: 'ambiguous' });
+    assert.deepEqual(res.body.matches.map(item => item.id), ['sosul', 'ridi']);
 });

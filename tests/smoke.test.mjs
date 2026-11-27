@@ -143,6 +143,28 @@ test('work info claims no results only after all automatic sources confirm empty
         .every(row => row.children[0].children[1].children[0] === 'workSourceError'));
 });
 
+test('author conflicts preserve each source result and link without combining their ratings', () => {
+    const { context, elements } = loadWorkInfoView();
+    const matches = [
+        { id: 'sosul', author: '양치기자리', score: 4.02, max: 5, votes: 668, url: 'https://ssn.so/series/1620/' },
+        { id: 'ridi', author: '양치기자리', score: 5, max: 5, votes: 1, url: 'https://ridibooks.com/books/5958017250' },
+        { id: 'munpia', author: 'DopeB', url: 'https://www.munpia.com/novel/detail/558764' }
+    ];
+    context.workResult = { title: '요리의 신', status: 'workFound', matches,
+        statuses: { sosul: 'found', ridi: 'found', munpia: 'found' } };
+    context.renderWorkInfo();
+    assert.equal(elements.workStatus.textContent, 'workAmbiguous');
+    assert.equal(elements.workAverage.hidden, true);
+    for (const [index, id] of [[2, 'munpia'], [4, 'ridi'], [6, 'sosul']]) {
+        const row = elements.workSources.children[index];
+        const match = matches.find(item => item.id === id);
+        assert.ok(row.children[0].children[1].children[0].includes(match.author));
+        const link = row.children[1].children.find(child => child?.tag === 'a');
+        assert.equal(link.props.href, match.url);
+        assert.equal(link.children[0], 'workOpen');
+    }
+});
+
 test('retrying one site preserves other matches and sends only that source', async () => {
     const { context, elements } = loadWorkInfoView();
     const found = { id: 'ridi', title: 'Sample', author: 'Author', score: 4, max: 5, votes: 3,

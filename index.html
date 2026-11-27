@@ -27,7 +27,7 @@
     <!-- 외부 라이브러리 로드 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jschardet/3.0.0/jschardet.min.js"></script>
-    <script src="./i18n.js?v=20261127-1"></script>
+    <script src="./i18n.js?v=20261127-2"></script>
     <link rel="stylesheet" href="./site-shared.css?v=20261030-3">
     <link rel="stylesheet" href="./ui-buttons.css?v=20261107-1">
     <style>
@@ -1912,7 +1912,7 @@
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>표지 적용과 작품 정보</h3>
-                    <p>이미지를 검색하거나 클립보드에서 표지를 붙일 수 있습니다. 작품 정보는 사이트별 결과 없음·조회 실패·재조회 대기를 구분하며, 실패한 곳만 다시 조회할 수 있습니다. 정상 결과는 1분간 재사용합니다. 자동 조회 미지원 사이트는 직접 검색할 수 있습니다.</p>
+                    <p>이미지를 검색하거나 클립보드에서 표지를 붙일 수 있습니다. 작품 정보는 사이트별 결과 없음·조회 실패·재조회 대기를 구분하며, 실패한 곳만 다시 조회할 수 있습니다. 정상 결과는 1분간 재사용합니다. 작가가 다른 결과도 숨기지 않되 점수는 합산하지 않습니다. 자동 조회 미지원 사이트는 직접 검색할 수 있습니다.</p>
                 </article>
                 <article class="feature-card" data-reveal>
                     <h3>인코딩 자동 감지</h3>
@@ -2155,7 +2155,7 @@
             ambiguous: 'workSourceAmbiguous', deferred: 'workSourceDeferred', manual: 'workSourceManual'
         };
         document.getElementById('workSources').replaceChildren(...(title ? workPlatforms : []).map(([id, label, search, automatic]) => {
-            const item = !conflict && matches.find(match => match.id === id);
+            const item = matches.find(match => match.id === id);
             let sourceState = statuses[id];
             if (!automatic || location.protocol === 'file:') sourceState = 'manual';
             else if (status === 'workLoading' && !sourceState) sourceState = 'loading';
@@ -2166,6 +2166,7 @@
             if (item && item.favorites !== undefined) stats.push(t('workFavorites', { count: format(item.favorites) }));
             if (item && item.likes !== undefined) stats.push(t('workLikes', { count: format(item.likes) }));
             if (item?.author) stats.unshift(item.author);
+            if (conflict && item) stats.unshift(t('workSourceAmbiguous'));
             const link = el('a', { className: 'ui-button ui-button--compact', href: item?.url || search(encoded),
                 target: '_blank', rel: 'noopener noreferrer', 'aria-label': t(item ? 'workOpenSource' : 'workSearchSource', { source: t(label) }) },
                 t(item ? 'workOpen' : 'workSearchAction'));

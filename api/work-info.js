@@ -74,21 +74,29 @@ function rating(match, max) {
 }
 
 function titleKey(title) {
-    return title.normalize('NFKC').toLowerCase().replace(/[\p{P}\p{Z}\s]+/gu, '');
+    return title.normalize('NFKC').toLowerCase().replace(/\p{P}+/gu, '').replace(/\s+/gu, ' ').trim();
+}
+
+function editionTitleKey(title) {
+    return titleKey(title.normalize('NFKC').replace(/^\s*\[e북\]\s*/iu, ''));
 }
 
 function matchingWorks(results, title) {
     const key = titleKey(title);
     if (!key) return [];
     const exact = results.filter(result => titleKey(result.title) === key);
-    const matches = exact.length ? exact : results.filter(result =>
-        titleKey(result.title.normalize('NFKC').replace(/^\s*\[e북\]\s*/iu, '')) === key);
+    const editions = results.filter(result => editionTitleKey(result.title) === key);
+    const compact = key.replace(/\s/g, '');
+    const matches = exact.length ? exact : editions.length ? editions : results.filter(result =>
+        editionTitleKey(result.title).replace(/\s/g, '') === compact);
     return [...new Map(matches.map(result => [result.url, result])).values()];
 }
 
 function selectWork(results, title) {
     const matches = matchingWorks(results, title);
-    return matches.length === 1 && matches[0].author ? matches[0] : null;
+    if (matches.length !== 1 || !matches[0].author) return null;
+    const key = titleKey(title);
+    return titleKey(matches[0].title) === key || editionTitleKey(matches[0].title) === key ? matches[0] : null;
 }
 
 async function loadSearch(url, contentType = 'text/html') {
